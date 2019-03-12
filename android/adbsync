@@ -1,0 +1,4 @@
+adb remount
+adb sync
+adb shell stop
+adb shell start
