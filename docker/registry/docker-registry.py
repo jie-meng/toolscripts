@@ -43,7 +43,7 @@ def startRegistry():
 
     configPath = scriptPath() + '/config.yml'
 
-    os.system('sudo docker run -d -p 5000:5000 -v {0}:/var/lib/registry -v {1}:/etc/docker/registry/config.yml --restart-always -name registry registry:2'.format(mappingPath, configPath))
+    os.system('sudo docker run -d -p 5000:5000 -v {0}:/var/lib/registry -v {1}:/etc/docker/registry/config.yml --restart=always -name registry registry:2'.format(mappingPath, configPath))
 
 def checkCatalog():
     os.system('curl http://{0}:5000/v2/_catalog'.format(getHostIp()))
