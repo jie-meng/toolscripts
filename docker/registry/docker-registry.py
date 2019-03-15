@@ -55,8 +55,8 @@ def checkImageTagList():
     os.system('curl http://{0}:5000/v2/{1}/tags/list'.format(hostIp, imageName))
 
 def initFuncDict(dict):
-    dict[0] = setDefaultConfig 
-    dict[1] = startRegistry
+    dict[0] = startRegistry
+    dict[1] = setDefaultConfig 
     dict[2] = checkCatalog
     dict[3] = checkImageTagList
 
@@ -64,8 +64,8 @@ def main():
     loadDefaultConfig()
 
     print('Please input selection:')
-    menu = '0. default config\n'
-    menu += '1. start registry\n'
+    menu = '0. start registry\n'
+    menu += '1. default config\n'
     menu += '2. check catalog\n'
     menu += '3. check image tag list\n'
     print(menu)
