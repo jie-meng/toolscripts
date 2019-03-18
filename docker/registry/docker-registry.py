@@ -3,7 +3,9 @@ import json
 import os.path
 
 # definitions 
-HOST_IP = "host_ip"
+PREFIX = 'prefix'
+HOST = 'host'
+PORT = 'port'
 
 gDefaultConfg = {}
 
@@ -11,19 +13,59 @@ gDefaultConfg = {}
 def scriptPath():
     return os.path.dirname(os.path.abspath(__file__))
 
-def getHostIp():
+def getPort():
     global gDefaultConfg
-    hostIp = gDefaultConfg.get(HOST_IP) 
-    if hostIp == None:
-        print('please input host ip:')
-        hostIp = input()
+    port = gDefaultConfg.get(PORT) 
+    if port == None:
+        print('please input port')
+        port = input()
 
-    return hostIp
+    return port
+
+def getHost():
+    global gDefaultConfg
+    host = gDefaultConfg.get(HOST)
+    if host == None:
+        print('please input host')
+        host = input()
+
+    return host
+
+def getPrefix():
+    global gDefaultConfg
+    prefix = gDefaultConfg.get(PREFIX)
+    if prefix == None:
+        print('is https? (y/n)')
+        isHttps = input()
+        if isHttps.lower().startswith('y'):
+            return 'https'
+        else:
+            return 'http'
+
+    return prefix 
+
+def getImage():
+    print('please input image name')
+    return input()
+
+def getImageTag():
+    print('please input image:tag')
+    return input()
 
 def setDefaultConfig():
     global gDefaultConfg
-    print('please input registry host ip:')
-    gDefaultConfg[HOST_IP] = input()
+    print('is https? (y/n)')
+    isHttps = input()
+    if isHttps.lower().startswith('y'):
+        gDefaultConfg[PREFIX] = 'https'
+    else:
+        gDefaultConfg[PREFIX] = 'http'
+
+    print('please input registry host')
+    gDefaultConfg[HOST] = input()
+
+    print('please input registry host port')
+    gDefaultConfg[PORT] = int(input())
 
     with open(scriptPath() + '/default_config.json', 'w') as conf:
         json.dump(gDefaultConfg, conf, indent = 4)
@@ -34,40 +76,48 @@ def loadDefaultConfig():
         gDefaultConfg = json.load(conf)
 
 def startRegistry():
-    #print('please set registry mapping absolute path:')
-    #mappingPath = input()
-    #if not os.path.isdir(mappingPath):
-    #    print('this path does not exists')
-    #    sys.exit(-1) 
     mappingPath = '/opt/data/registry'
-
     configPath = scriptPath() + '/config.yml'
 
-    os.system('sudo docker run -d -p 5000:5000 -v {0}:/var/lib/registry -v {1}:/etc/docker/registry/config.yml --restart=always --name registry registry:latest'.format(mappingPath, configPath))
+    print('please input port')
+    port = int(input())
+
+    # aws ec2 need sudo to use docker
+    os.system('sudo docker run -d -p {0}:{0} -v {1}:/var/lib/registry -v {2}:/etc/docker/registry/config.yml --restart=always --name registry registry:latest'.format(port, mappingPath, configPath))
 
 def checkCatalog():
-    os.system('curl http://{0}:5000/v2/_catalog'.format(getHostIp()))
+    prefix = getPrefix()
+    host = getHost()
+    os.system('curl {1}://{0}/v2/_catalog'.format(host, prefix))
 
 def checkImageTagList():
-    hostIp = getHostIp()
-    print('please input image name:')
-    imageName = input()
-    os.system('curl http://{0}:5000/v2/{1}/tags/list'.format(hostIp, imageName))
+    prefix = getPrefix()
+    host = getHost()
+    image = getImage()
+    os.system('curl {2}://{0}/v2/{1}/tags/list'.format(host, image, prefix))
+
+def tagAndPushImage():
+    host = getHost()
+    imageTag = getImageTag() 
+    os.system('docker tag {1} {0}/{1}'.format(host, imageTag))
+    os.system('docker push {0}/{1}'.format(host, imageTag))
 
 def initFuncDict(dict):
     dict[0] = startRegistry
     dict[1] = setDefaultConfig 
     dict[2] = checkCatalog
     dict[3] = checkImageTagList
+    dict[4] = tagAndPushImage 
 
 def main():
     loadDefaultConfig()
 
-    print('Please input selection:')
+    print('Please input selection')
     menu = '0. start registry\n'
     menu += '1. default config\n'
     menu += '2. check catalog\n'
     menu += '3. check image tag list\n'
+    menu += '4. docker tag and push image\n'
     print(menu)
 
     funcDict = dict()
