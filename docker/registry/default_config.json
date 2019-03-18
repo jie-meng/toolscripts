@@ -1,5 +1,5 @@
 {
     "port": 5000,
-    "host": "docker-registry.hungry4us.net",
+    "host": "registry.domain.com",
     "prefix": "https"
 }
