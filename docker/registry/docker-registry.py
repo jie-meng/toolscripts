@@ -7,15 +7,15 @@ PREFIX = 'prefix'
 HOST = 'host'
 PORT = 'port'
 
-gDefaultConfg = {}
+gDefaultConfig = {}
 
 # functions
 def scriptPath():
     return os.path.dirname(os.path.abspath(__file__))
 
 def getPort():
-    global gDefaultConfg
-    port = gDefaultConfg.get(PORT) 
+    global gDefaultConfig
+    port = gDefaultConfig.get(PORT)
     if port == None:
         print('please input port')
         port = input()
@@ -23,8 +23,8 @@ def getPort():
     return port
 
 def getHost():
-    global gDefaultConfg
-    host = gDefaultConfg.get(HOST)
+    global gDefaultConfig
+    host = gDefaultConfig.get(HOST)
     if host == None:
         print('please input host')
         host = input()
@@ -32,8 +32,8 @@ def getHost():
     return host
 
 def getPrefix():
-    global gDefaultConfg
-    prefix = gDefaultConfg.get(PREFIX)
+    global gDefaultConfig
+    prefix = gDefaultConfig.get(PREFIX)
     if prefix == None:
         print('is https? (y/n)')
         isHttps = input()
@@ -53,27 +53,27 @@ def getImageTag():
     return input()
 
 def setDefaultConfig():
-    global gDefaultConfg
+    global gDefaultConfig
     print('is https? (y/n)')
     isHttps = input()
     if isHttps.lower().startswith('y'):
-        gDefaultConfg[PREFIX] = 'https'
+        gDefaultConfig[PREFIX] = 'https'
     else:
-        gDefaultConfg[PREFIX] = 'http'
+        gDefaultConfig[PREFIX] = 'http'
 
     print('please input registry host')
-    gDefaultConfg[HOST] = input()
+    gDefaultConfig[HOST] = input()
 
     print('please input registry host port')
-    gDefaultConfg[PORT] = int(input())
+    gDefaultConfig[PORT] = int(input())
 
     with open(scriptPath() + '/default_config.json', 'w') as conf:
-        json.dump(gDefaultConfg, conf, indent = 4)
+        json.dump(gDefaultConfig, conf, indent = 4)
 
 def loadDefaultConfig():
-    global gDefaultConfg
+    global gDefaultConfig
     with open(scriptPath() + '/default_config.json') as conf:
-        gDefaultConfg = json.load(conf)
+        gDefaultConfig = json.load(conf)
 
 def startRegistry():
     mappingPath = '/opt/data/registry'
@@ -104,10 +104,10 @@ def tagAndPushImage():
 
 def initFuncDict(dict):
     dict[0] = startRegistry
-    dict[1] = setDefaultConfig 
+    dict[1] = setDefaultConfig
     dict[2] = checkCatalog
     dict[3] = checkImageTagList
-    dict[4] = tagAndPushImage 
+    dict[4] = tagAndPushImage
 
 def main():
     loadDefaultConfig()
