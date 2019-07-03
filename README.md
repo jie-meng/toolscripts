@@ -1,6 +1,6 @@
 ## toolscripts
 
-toolscripts (python3 / shell) which make complex commands simple.
+toolscripts make work simple.
 
 Env: Unix / Linux
 
