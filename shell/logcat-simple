@@ -1,0 +1,4 @@
+set -e
+DIR=$(dirname $0)
+
+python3 ${DIR}/../android/logcat-tag.py $@
