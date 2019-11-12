@@ -9,7 +9,7 @@ def main():
         print('please input args: (e.g. TAG1:I TAG2:D *:S)')
         args = input().strip()
 
-    os.system('adb logcat -c && adb logcat ' + args)
+    os.system('adb logcat -c && adb logcat "{0}"'.format(args))
 
 if __name__ == "__main__":
     main()
