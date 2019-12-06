@@ -63,10 +63,30 @@ def restore():
 
     os.system('rm -rf {0}/dump/{1}'.format(scriptPath(), gConfig.get('dbname')))
 
+def restoreAll():
+    global gConfig
+
+    print('Restore from which record?')
+    files = os.listdir('{0}/dump'.format(scriptPath()))
+    arr = list(map(lambda x: '{0}/dump/{1}'.format(scriptPath(), x), files))
+    arr = list(filter(lambda x: os.path.isfile(x) and x.endswith('zip'), arr))
+    arr.sort(reverse = True)
+    idx = 1
+    for r in arr:
+        print('{0}. {1}'.format(idx, arr[idx - 1]))
+        idx += 1
+    sel = int(input())
+    record = os.path.basename(arr[sel - 1])
+    print(record)
+    os.system('cd {0}/dump && unzip {1}'.format(scriptPath(), record))
+    os.system('cd {0} && mongorestore --host {1}:{2} -u {3} -p {4} -d {5} dump/{5}'.format(scriptPath(), gConfig.get('host'), gConfig.get('port'), gConfig.get('username'), gConfig.get('password'), gConfig.get('dbname')))
+    os.system('rm -rf {0}/dump/{1}'.format(scriptPath(), gConfig.get('dbname')))
+
 def initFuncDict(dict):
     dict[0] = ('quit', quit)
     dict[1] = ('dump db', dump)
     dict[2] = ('restore class', restore)
+    dict[2] = ('restore whole db', restoreAll)
 
 def pickSelectFromMenu(funcDict):
     print('Please input selection:')
@@ -94,4 +114,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
