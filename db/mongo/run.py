@@ -21,7 +21,7 @@ def dump():
     global gConfig
 
     os.system('rm -rf {0}/dump/{1}'.format(scriptPath(), gConfig.get('dbname')))
-    os.system('cd {0} && mongodump --host {1}:{2} --authenticationDatabase {3} -u {4} -p {5} -d {3}'\
+    os.system('cd {0} && mongodump --forceTableScan --host {1}:{2} --authenticationDatabase {3} -u {4} -p {5} -d {3}'\
               .format(scriptPath(), gConfig.get('host'), gConfig.get('port'), gConfig.get('dbname'), gConfig.get('username'), gConfig.get('password')))
     os.system('cd {0}/dump && zip -r {1}.zip {1}'.format(scriptPath(), gConfig.get('dbname')))
     os.system('rm -rf {0}/dump/{1}'.format(scriptPath(), gConfig.get('dbname')))
