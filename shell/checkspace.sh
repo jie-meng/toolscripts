@@ -1,0 +1,1 @@
+du -sk * | sort -n
