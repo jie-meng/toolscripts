@@ -13,7 +13,7 @@ def select_device():
     if len(devices) == 1:
         return devices[0]
 
-    print('Please select emulator:')
+    print('Please select device:')
 
     idx = 1
     for a in devices:
