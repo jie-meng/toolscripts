@@ -34,10 +34,10 @@ def process_workbook(source, dest):
     wb.save(dest)
 
 if __name__ == "__main__":
-    print('please input source xlsx path:')
+    print('please input source xlsx file path:')
     source = input()
 
-    print('please input dest xlsx path:')
+    print('please input dest xlsx file path:')
     dest = input()
     process_workbook(source, dest)
 
