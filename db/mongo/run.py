@@ -79,7 +79,7 @@ def restoreAll():
     record = os.path.basename(arr[sel - 1])
     print(record)
     os.system('cd {0}/dump && unzip {1}'.format(scriptPath(), record))
-    os.system('cd {0} && mongorestore --host {1}:{2} -u {3} -p {4} -d {5} dump/{5}'.format(scriptPath(), gConfig.get('host'), gConfig.get('port'), gConfig.get('username'), gConfig.get('password'), gConfig.get('dbname')))
+    os.system('cd {0} && mongorestore --drop --host {1}:{2} -u {3} -p {4} -d {5} dump/{5}'.format(scriptPath(), gConfig.get('host'), gConfig.get('port'), gConfig.get('username'), gConfig.get('password'), gConfig.get('dbname')))
     os.system('rm -rf {0}/dump/{1}'.format(scriptPath(), gConfig.get('dbname')))
 
 def initFuncDict(dict):
