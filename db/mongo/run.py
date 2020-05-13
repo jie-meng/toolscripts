@@ -86,7 +86,7 @@ def initFuncDict(dict):
     dict[0] = ('quit', quit)
     dict[1] = ('dump db', dump)
     dict[2] = ('restore class', restore)
-    dict[2] = ('restore whole db', restoreAll)
+    dict[3] = ('restore whole db', restoreAll)
 
 def pickSelectFromMenu(funcDict):
     print('Please input selection:')
