@@ -1,5 +1,3 @@
-
-
 pio project init --ide vim --board $1
 
 # .gitignore
