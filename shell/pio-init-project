@@ -1,0 +1,9 @@
+
+
+pio project init --ide vim --board $1
+
+# .gitignore
+echo ".pio\n.pioenvs\n.piolibdeps\n.vscode/.browse.c_cpp.db*\n.vscode/c_cpp_properties.json\n.vscode/launch.json\n.ccls-cache/\ntags" > .gitignore
+
+# Makefile
+echo "all:\n\tplatformio -f -c vim run\n\nupload:\n\tplatformio -f -c vim run --target upload\n\nclean:\n\tplatformio -f -c vim run --target clean\n\nprogram:\n\tplatformio -f -c vim run --target program\n\nuploadfs:\n\tplatformio -f -c vim run --target uploadfs\n\nupdate:\n\tplatformio -f -c vim update" > Makefile
