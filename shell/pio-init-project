@@ -1,7 +1,7 @@
 set -e
 
 echo "init project"
-pio project init --ide vim --board $1
+pio project init --ide vim --board "$1" --project-option "$2"
 
 # .gitignore
 echo "generate .gitignore"
