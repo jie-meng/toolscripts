@@ -1,9 +1,10 @@
 set -e
 
+# vim ide configure files 
 echo "pio project init --ide vim"
 pio project init --ide vim
 
-# .ignore
+# .ignore for ripgrep
 echo "generate .ignore"
 echo ".vscode/\n.ccls-cache/\n.pio/build/\ntags\n" > .ignore
 
