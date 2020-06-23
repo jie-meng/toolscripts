@@ -1,3 +1,5 @@
+#!/bin/sh
+
 secret_key="******"
 oathtool --totp -b $secret_key | tr -d '\n' | pbcopy
 echo "code copied to clipboard"
