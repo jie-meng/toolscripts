@@ -1,0 +1,22 @@
+#!/bin/sh
+
+# play sound on MacOS with command line
+#
+# afplay: builtin Audio File Play on MacOS
+# vorbis-tools: play ogg, install with 'brew install vorbis-tools', then 'ogg123 command can be used'
+
+soundfile=$1
+
+if [[ ! -f $soundfile ]]
+then
+    echo "$soundfile does not exists!"
+    exit -1
+fi
+
+if [[ $soundfile == *.ogg ]] || [[ $soundfile == *.OGG ]]
+then
+    ogg123 $soundfile
+else
+    afplay $soundfile
+fi
+
