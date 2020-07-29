@@ -1,0 +1,39 @@
+#!/bin/sh
+
+set -e
+
+echo "Please input your project name:"
+read name
+if [ -z $name ]
+then
+    echo "name should not be empty"
+    exit -1
+fi
+
+mkdir $name
+
+cd $name
+
+echo "please input board ID: (e.g. uno, mhetesp32devkit)"
+read board
+if [ -z $board ]
+then
+    echo "board should not be empty"
+    exit -1
+fi
+
+echo "please input project-option: (e.g. framework=espidf, framework=arduino, lib_deps=ArduinoJSON. Or leave it empty to use default)"
+read option
+
+if [ -z $option ]
+then
+    pio project init --board $board
+else
+    pio project init --board $board --project-option $option
+fi
+
+# .gitignore
+echo "generate .gitignore"
+echo ".pio\n.pioenvs\n.piolibdeps\n.vscode/.browse.c_cpp.db*\n.vscode/c_cpp_properties.json\n.vscode/launch.json\n.ccls\n.clang_complete\n.gcc-flags.json\n.ccls-cache/\ntags\n" > .gitignore
+
+echo "\nSuccess"
