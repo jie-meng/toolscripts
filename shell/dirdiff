@@ -1,6 +1,18 @@
 #!/bin/sh
 
-DIR1=$(printf '%q' "$1"); shift
-DIR2=$(printf '%q' "$1"); shift
+getCanonicalPath() {
+    canonicalPath="`cd "$1";pwd`"
+}
 
-vim $@ -c "DirDiff $DIR1 $DIR2"
+echo "Type first dir and press enter:"
+read firstDir
+getCanonicalPath $firstDir
+firstDir=$canonicalPath
+
+echo "Type second dir and press enter:"
+read secondDir
+getCanonicalPath $secondDir
+secondDir=$canonicalPath
+
+vim -c "DirDiff $firstDir $secondDir"
+
