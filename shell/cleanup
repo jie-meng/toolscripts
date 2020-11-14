@@ -1,5 +1,29 @@
 #!/usr/bin/env bash
 
+# https://github.com/fwartner/mac-cleanup/blob/master/cleanup.sh
+
+echo "Cleanup docker? (y/n)"
+read isCleanupDocker
+if [ -z "$isCleanupDocker" ]
+then
+    isCleanupDocker="no"
+fi
+
+case $isCleanupDocker in
+y|Y|yes|Yes|YES )
+    echo "Choose yes"
+    isCleanupDocker=true
+    ;;
+n|N|no|No|NO )
+    echo "Choose no"
+    isCleanupDocker=false
+    ;;
+* )
+    echo "No input, default no"
+    isCleanupDocker=false
+    ;;
+esac
+
 bytesToHuman() {
     b=${1:-0}; d=''; s=0; S=(Bytes {K,M,G,T,E,P,Y,Z}iB)
     while ((b > 1024)); do
@@ -8,6 +32,20 @@ bytesToHuman() {
         (( s++ ))
     done
     echo "$b$d ${S[$s]} of space was cleaned up"
+}
+
+deleteCaches() {
+    local cacheName=$1
+    shift
+    local paths=("$@")
+    echo "Initiating cleanup ${cacheName} cache..."
+    for folderPath in "${paths[@]}"; do
+        if [[ -d ${folderPath} ]]; then
+            dirSize=$(du -hs "${folderPath}" | awk '{print $1}')
+            echo "Deleting ${folderPath} to free up ${dirSize}..."
+            rm -rfv "${folderPath}" &>/dev/null
+        fi
+    done
 }
 
 # Default arguments
@@ -64,25 +102,32 @@ rm -rfv ~/Library/Application\ Support/MobileSync/Backup/* &>/dev/null
 echo 'Cleanup XCode Derived Data and Archives...'
 rm -rfv ~/Library/Developer/Xcode/DerivedData/* &>/dev/null
 rm -rfv ~/Library/Developer/Xcode/Archives/* &>/dev/null
+rm -rfv ~/Library/Developer/Xcode/iOS Device Logs/* &>/dev/null
 
-echo 'Cleanup pip cache...'
-rm -rfv ~/Library/Caches/pip
+if type "xcrun" &>/dev/null; then
+  echo 'Cleanup iOS Simulators...'
+  osascript -e 'tell application "com.apple.CoreSimulator.CoreSimulatorService" to quit'
+  osascript -e 'tell application "iOS Simulator" to quit'
+  osascript -e 'tell application "Simulator" to quit'
+  xcrun simctl shutdown all
+  xcrun simctl erase all
+fi
 
 if [ -d "/Users/${HOST}/Library/Caches/CocoaPods" ]; then
     echo 'Cleanup CocoaPods cache...'
     rm -rfv ~/Library/Caches/CocoaPods/* &>/dev/null
 fi
 
-# support delete Google Chrome caches
-if [ -d "/Users/${HOST}/Library/Caches/Google/Chrome" ]; then
-    echo 'Cleanup Google Chrome cache...'
-    rm -rfv ~/Library/Caches/Google/Chrome/* &> /dev/null
-fi
-
 # support delete gradle caches
 if [ -d "/Users/${HOST}/.gradle/caches" ]; then
     echo 'Cleanup Gradle cache...'
     rm -rfv ~/.gradle/caches/ &> /dev/null
+fi
+
+# support delete Dropbox Cache
+if [ -d "/Users/${HOST}/Dropbox" ]; then
+    echo 'Clear Dropbox 📦 Cache Files...'
+    sudo rm -rfv ~/Dropbox/.dropbox.cache/* &>/dev/null
 fi
 
 if type "composer" &> /dev/null; then
@@ -109,11 +154,15 @@ if type "gem" &> /dev/null; then
     gem cleanup &>/dev/null
 fi
 
-# do not cleanup docker
-# if type "docker" &> /dev/null; then
-#     echo 'Cleanup Docker'
-#     docker system prune -af
-# fi
+if $isCleanupDocker; then
+    if type "docker" &> /dev/null; then
+        echo 'Cleanup Docker'
+        docker system prune -af
+    fi
+fi
+
+echo 'Cleanup pip cache...'
+rm -rfv ~/Library/Caches/pip
 
 if [ "$PYENV_VIRTUALENV_CACHE_PATH" ]; then
     echo 'Removing Pyenv-VirtualEnv Cache...'
