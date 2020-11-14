@@ -22,11 +22,15 @@ def splitPdf2Jpg(imagePath, baseFilename, srcPdf):
     os.system('convert -quality 100 -density {3} {0} {1}/{2}-%06d.jpg'.format(srcPdf, imagePath, baseFilename, density))
 
 def mergeJpg2Pdf(imagePath, baseFilename, srcPath):
-    os.system('convert {0}/{1}* {2}/{1}-dest.pdf'.format(imagePath, baseFilename, srcPath))
+    os.system('convert {0}/{1}* {2}/{1}-kindle.pdf'.format(imagePath, baseFilename, srcPath))
 
 def testImageWidth(imagePath, baseFilename, srcPath):
-    print('How many width-pixels do you want to crop? (Please input a number)')
-    offset = int(input())
+    print('Input the offset you want to crop? (Please input 4 numbers, separate with comma: top,right,bottom,left)')
+    offsets = input()
+    crops = list(map(lambda x: int(x), offsets.split(',')))
+    if len(crops) < 4:
+        print('Incorrect input')
+        os.exit(-1)
 
     print('Which image do you want to test? (input format: 000012, which means the 12th jpg)')
     imageNumber = int(input())
@@ -35,19 +39,23 @@ def testImageWidth(imagePath, baseFilename, srcPath):
     im = Image.open('{0}/{1}-000000.jpg'.format(imagePath, baseFilename))
     width, height = im.size
 
-    # convert -crop 640x1161+48+0 learn-english-0007.jpg dest2.jp
-    os.system('convert -crop {0}x{1}+{2}+0 {3}/{4}-{5}.jpg {6}/test.jpg'.format(width - offset * 2, height, offset, imagePath, baseFilename, formatImageNumber, srcPath))
+    # convert -crop 640x1161+48+0 learn-english-0007.jpg dest.jpg
+    os.system('convert -crop {0}x{1}+{2}+{3} {4}/{5}-{6}.jpg {7}/test.jpg'.format(width - crops[3] - crops[1], height - crops[0] - crops[2], crops[3], crops[0], imagePath, baseFilename, formatImageNumber, srcPath))
 
 def resizeAllImagesWidth(imagePath, baseFilename):
-    print('How many width-pixels do you want to crop? (Please input a number)')
-    offset = int(input())
+    print('Input the offset you want to crop? (Please input 4 numbers, separate with comma: top,right,bottom,left)')
+    offsets = input()
+    crops = list(map(lambda x: int(x), offsets.split(',')))
+    if len(crops) < 4:
+        print('Incorrect input')
+        os.exit(-1)
 
     im = Image.open('{0}/{1}-000000.jpg'.format(imagePath, baseFilename))
     width, height = im.size
 
     allFiles = os.listdir(imagePath)
     for file in allFiles:
-        os.system('convert -crop {0}x{1}+{2}+0 {3}/{4} {3}/{4}'.format(width - offset * 2, height, offset, imagePath, file))
+        os.system('convert -crop {0}x{1}+{2}+{3} {4}/{5} {4}/{5}'.format(width - crops[3] - crops[1], height - crops[0] - crops[2], crops[3], crops[0], imagePath, file))
         
 
 if __name__ == "__main__":
