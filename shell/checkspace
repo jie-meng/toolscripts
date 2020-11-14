@@ -1,0 +1,15 @@
+#!/bin/sh
+
+echo "check space with unit? (k/m/g)"
+read unit
+
+case $unit in
+k|m|g )
+    du -s$unit * | sort -n
+    ;;
+* )
+    echo "incorrect input"
+    ;;
+esac
+
+
