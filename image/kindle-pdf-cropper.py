@@ -27,7 +27,7 @@ def mergeJpg2Pdf(imagePath, baseFilename, srcPath):
 def testImageWidth(imagePath, baseFilename, srcPath):
     print('Input the offset you want to crop? (Please input 4 numbers, separate with comma: top,right,bottom,left)')
     offsets = input()
-    crops = list(map(lambda x: int(x), offsets.split(',')))
+    crops = list(map(lambda x: int(x.strip()), offsets.split(',')))
     if len(crops) < 4:
         print('Incorrect input')
         os.exit(-1)
@@ -45,7 +45,7 @@ def testImageWidth(imagePath, baseFilename, srcPath):
 def resizeAllImagesWidth(imagePath, baseFilename):
     print('Input the offset you want to crop? (Please input 4 numbers, separate with comma: top,right,bottom,left)')
     offsets = input()
-    crops = list(map(lambda x: int(x), offsets.split(',')))
+    crops = list(map(lambda x: int(x.strip()), offsets.split(',')))
     if len(crops) < 4:
         print('Incorrect input')
         os.exit(-1)
