@@ -22,15 +22,26 @@ then
     exit -1
 fi
 
-echo "please input project-option: (e.g. framework=espidf, framework=arduino, lib_deps=ArduinoJSON. Or leave it empty to use default)"
+echo "please input project-option: (e.g. framework=espidf,framework=arduino,lib_deps=ArduinoJSON. Or leave it empty to use default)"
 read option
 
-if [ -z $option ]
+cmd="pio project init --board $board"
+if [ -n $option ]
 then
-    pio project init --board $board
-else
-    pio project init --board $board --project-option $option
+    IFS=','
+    read -ra splitarray <<< "$option"
+    IFS=' '
+
+    all_options=""
+    for i in "${splitarray[@]}"; do
+        all_options="$all_options --project-option $i"
+    done
+
+    cmd="$cmd $all_options"
 fi
+
+echo $cmd
+$cmd
 
 # .gitignore
 echo "generate .gitignore"
