@@ -1,0 +1,17 @@
+#!/bin/sh
+
+set -e
+
+echo "Please input folder name under ~/Downloads/:"
+read folder
+
+if [ -d ~/Downloads/$folder ]
+then
+  cp ~/Downloads/$folder/drawable-hdpi/*.png ./app/src/main/res/drawable-hdpi/${folder}.png
+  cp ~/Downloads/$folder/drawable-mdpi/*.png ./app/src/main/res/drawable-mdpi/${folder}.png
+  cp ~/Downloads/$folder/drawable-xhdpi/*.png ./app/src/main/res/drawable-xhdpi/${folder}.png
+  cp ~/Downloads/$folder/drawable-xxhdpi/*.png ./app/src/main/res/drawable-xxhdpi/${folder}.png
+  cp ~/Downloads/$folder/drawable-xxxhdpi/*.png ./app/src/main/res/drawable-xxxhdpi/${folder}.png
+fi
+
+echo "done"
