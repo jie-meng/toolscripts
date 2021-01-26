@@ -6,7 +6,7 @@
 # brew install ghostscript
 # pip3 install Pillow
 
-import sys 
+import sys
 import os
 import os.path
 from shutil import rmtree
@@ -30,7 +30,7 @@ def testImageWidth(imagePath, baseFilename, srcPath):
     crops = list(map(lambda x: int(x.strip()), offsets.split(',')))
     if len(crops) < 4:
         print('Incorrect input')
-        os.exit(-1)
+        sys.exit(-1)
 
     print('Which image do you want to test? (input format: 000012, which means the 12th jpg)')
     imageNumber = int(input())
@@ -48,7 +48,7 @@ def resizeAllImagesWidth(imagePath, baseFilename):
     crops = list(map(lambda x: int(x.strip()), offsets.split(',')))
     if len(crops) < 4:
         print('Incorrect input')
-        os.exit(-1)
+        sys.exit(-1)
 
     im = Image.open('{0}/{1}-000000.jpg'.format(imagePath, baseFilename))
     width, height = im.size
@@ -56,12 +56,11 @@ def resizeAllImagesWidth(imagePath, baseFilename):
     allFiles = os.listdir(imagePath)
     for file in allFiles:
         os.system('convert -crop {0}x{1}+{2}+{3} {4}/{5} {4}/{5}'.format(width - crops[3] - crops[1], height - crops[0] - crops[2], crops[3], crops[0], imagePath, file))
-        
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print('please input pdf file as argument')
-        sys.exit(-1) 
+        sys.exit(-1)
 
     srcPdf = os.path.realpath(sys.argv[1])
     srcPath = os.path.dirname(srcPdf)
