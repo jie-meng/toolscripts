@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Install dependencies on MacOS
 #
 # brew install imagemagick
