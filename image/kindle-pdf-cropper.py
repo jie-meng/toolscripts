@@ -67,8 +67,8 @@ if __name__ == "__main__":
 
     print('Please selection:')
     print('1. splitPdf2Jpg')
-    print('2. testImageWidth')
-    print('3. resizeAllImagesWidth')
+    print('2. testImageSize')
+    print('3. resizeAllImages')
     print('4. mergeJpg2Pdf')
 
     selection = int(input())
