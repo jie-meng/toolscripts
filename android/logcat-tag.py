@@ -58,7 +58,10 @@ def main():
     print('please input args: (e.g. TAG1:I TAG2:D *:S)')
     args = input().strip()
 
-    command = 'adb -s {0} logcat -c && adb -s {0} logcat {1} "{2}"'.format(device, process_info, args)
+    if len(args) != 0:
+        args = '"{0}"'.format(args)
+
+    command = 'adb -s {0} logcat -c && adb -s {0} logcat {1} {2}'.format(device, process_info, args)
     print(command)
     os.system(command)
 
