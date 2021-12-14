@@ -22,7 +22,7 @@ then
     exit -1
 fi
 
-echo "please input project-option: (e.g. framework=espidf,framework=arduino,lib_deps=ArduinoJSON. Or leave it empty to use default)"
+echo "please input project-option: (e.g. framework=espressif32,framework=arduino,lib_deps=ArduinoJSON. Or leave it empty to use default)"
 read option
 
 cmd="pio project init --board $board"
