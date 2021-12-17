@@ -12,6 +12,7 @@ echo "# ripgrep ignore\n.vscode/\n.ccls-cache/\n.pio/build/\n.ccls\ntags\n" > .i
 
 # Makefile
 echo "generate Makefile"
-echo "all:\n\tplatformio -f -c vim run\n\nupload:\n\tplatformio -f -c vim run --target upload\n\nclean:\n\tplatformio -f -c vim run --target clean\n\nprogram:\n\tplatformio -f -c vim run --target program\n\nuploadfs:\n\tplatformio -f -c vim run --target uploadfs\n\nupdate:\n\tplatformio -f -c vim update\n\nlog:\n\tplatformio -f -c vim device monitor\n" > Makefile
+
+echo "all:\n\tplatformio -f -c vim run\n\nupload:\n\tplatformio -f -c vim run --target upload\n\nclean:\n\tplatformio -f -c vim run --target clean\n\nprogram:\n\tplatformio -f -c vim run --target program\n\nuploadfs:\n\tplatformio -f -c vim run --target uploadfs\n\nupdate:\n\tplatformio -f -c vim update\n\nlog:\n\tplatformio -f -c vim device monitor\n\nerase:\n\tplatformio -f -c vim run --target erase\n" > Makefile
 
 echo "\nSuccess"
