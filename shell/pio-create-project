@@ -45,6 +45,6 @@ $cmd
 
 # .gitignore
 echo "generate .gitignore"
-echo ".pio\n.pioenvs\n.piolibdeps\n.vscode/.browse.c_cpp.db*\n.vscode/c_cpp_properties.json\n.vscode/launch.json\n.ccls\n.clang_complete\n.gcc-flags.json\n.ccls-cache/\ntags\n" > .gitignore
+echo ".pio\n.pioenvs\n.piolibdeps\n.vscode/.browse.c_cpp.db*\n.vscode/c_cpp_properties.json\n.vscode/launch.json\n.ccls\n.clang_complete\n.gcc-flags.json\n.ccls-cache/\nbuild/\ntags\n" > .gitignore
 
 echo "\nSuccess"
