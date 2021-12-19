@@ -8,7 +8,7 @@ pio project init --ide vim
 
 # .ignore for ripgrep
 echo "generate .ignore"
-echo "# ripgrep ignore\n.vscode/\n.ccls-cache/\n.pio/build/\n.ccls\ntags\n" > .ignore
+echo "# ripgrep ignore\n.vscode/\n.ccls-cache/\n.pio/build/\n.ccls\nbuild/\ntags\n" > .ignore
 
 # Makefile
 echo "generate Makefile"
