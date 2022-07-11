@@ -3,4 +3,4 @@
 set -e
 DIR=$(dirname $0)
 
-python3 ${DIR}/../image/kindle-pdf-cropper.py $@
+python3 ${DIR}/../pdf/kindle-pdf-cropper.py $@
