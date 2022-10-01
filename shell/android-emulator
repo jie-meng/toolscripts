@@ -3,5 +3,5 @@
 set -e
 DIR=$(dirname $0)
 
-python3 ${DIR}/../android/emulator.py
+python ${DIR}/../android/emulator.py
 
