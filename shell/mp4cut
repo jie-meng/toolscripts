@@ -5,5 +5,5 @@ if [ $# -lt 4 ]; then
   exit 1
 fi
 
-ffmpeg -i $1 -ss $2 -to $3 -c copy $4
+ffmpeg -i $1 -ss $2 -to $3 $4
 

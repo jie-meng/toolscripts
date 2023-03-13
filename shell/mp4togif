@@ -1,7 +1,7 @@
 #!/bin/sh
 
-if [ $# -lt 4 ]; then
-  echo "Usage: mp4togif input.mp4 160 output.mp4"
+if [ $# -lt 3 ]; then
+  echo "Usage: mp4togif input.mp4 160 output.gif"
   exit 1
 fi
 
