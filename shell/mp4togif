@@ -1,5 +1,10 @@
 #!/bin/sh
 
-ffmpeg -i $1 -vf "scale=$3:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" $2
+if [ $# -lt 4 ]; then
+  echo "Usage: mp4togif input.mp4 160 output.mp4"
+  exit 1
+fi
+
+ffmpeg -i $1 -vf "scale=$2:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" $3
 
 
