@@ -1,4 +1,7 @@
+"""https://gs.statcounter.com/"""
+
 import csv
+import re
 from collections import defaultdict
 import matplotlib.pyplot as plt
 import os
@@ -39,8 +42,8 @@ def read_data(file_path, min_version, percentage_threshold):
         title = next(reader)[1]
         for row in reader:
             version, percentage = row
-            version_name = version.split(' ')[-1] if ' ' in version else version
-            major_version = version_name.split('.')[0] if '.' in version_name else version_name
+            version_number = re.findall(r'\d+\.\d+|\d+', version)
+            major_version = version_number[0].split('.')[0] if version_number else version
 
             if float(percentage) < percentage_threshold or (major_version.isdigit() and int(major_version) < int(min_version)):
                 major_version = 'Other'
