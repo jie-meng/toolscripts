@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Function to display Git configuration
+show_git_config() {
+    echo -e "\nGit Username: $(git config user.name)"
+    echo -e "Git Email: $(git config user.email)\n"
+}
+
+# Function to set Git configuration
+set_git_config() {
+    echo -e "\n"
+    read -p "Enter Git Username: " name
+    read -p "Enter Git Email: " email
+
+    git config user.name "$name"
+    git config user.email "$email"
+
+    echo -e "\nGit configuration updated.\n"
+}
+
+# Main loop
+while true; do
+    # Display menu
+    echo -e "\nPlease select an option:"
+    echo "1) Display Git Username and Email"
+    echo "2) Set Git Username and Email"
+    echo "0) Exit"
+    
+    read -p "Enter your choice (1/2/0): " choice
+    
+    case $choice in
+        1)
+            show_git_config
+            ;;
+        2)
+            set_git_config
+            ;;
+        0)
+            echo -e "\nExiting the script.\n"
+            exit 0
+            ;;
+        *)
+            echo -e "\nInvalid choice, please try again.\n"
+            ;;
+    esac
+done
+
