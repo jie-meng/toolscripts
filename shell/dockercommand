@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# Function to print a given command and then execute it
+execute_command() {
+    echo "Executing: $1"
+    eval $1
+}
+
+while true; do
+    echo "Select a Docker operation:"
+    echo "1) List all containers"
+    echo "2) Stop a specific container"
+    echo "3) Stop all running containers"
+    echo "4) Remove a specific container"
+    echo "5) Remove all containers"
+    echo "6) List all images"
+    echo "7) Remove a specific image"
+    echo "8) Remove all images"
+    echo "9) Check log of specific container"
+    echo "10) Docker network inspect host"
+    echo "11) Exec into a container (bash)"
+    echo "12) Display Docker disk usage"
+    echo "13) Remove all unused data (prune)"
+    echo "0) Quit"
+
+    read -p "Your choice: " choice
+
+    case $choice in
+        1) execute_command "docker container ls -a" ;;
+        2) 
+            read -p "Enter container ID or name to stop: " container
+            execute_command "docker container stop $container"
+            ;;
+        3) execute_command "docker container stop \$(docker container ls -a -q)" ;;
+        4)
+            read -p "Enter container ID or name to remove: " container
+            execute_command "docker container rm $container"
+            ;;
+        5) execute_command "docker container rm \$(docker container ls -a -q)" ;;
+        6) execute_command "docker image ls" ;;
+        7) 
+            read -p "Enter image ID or name to remove: " image
+            execute_command "docker image rm $image"
+            ;;
+        8) execute_command "docker image rm -f \$(docker image ls -q)" ;;
+        9) 
+            read -p "Enter container ID or name for logs: " container
+            execute_command "docker logs $container" 
+            ;;
+        10) execute_command "docker network inspect host" ;;
+        11) 
+            read -p "Enter container ID or name to exec into: " container
+            execute_command "docker container exec -it $container bash" 
+            ;;
+        12) execute_command "docker system df" ;;
+        13) execute_command "docker system prune -a" ;;
+        0) echo "Goodbye!"; exit 0 ;;
+        *) echo "Invalid choice" ;;
+    esac
+
+    echo "----------------------------"
+done
+
