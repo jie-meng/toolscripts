@@ -1,0 +1,58 @@
+#!/usr/bin/env python
+
+import os
+import pyperclip
+
+def get_replacements_from_file(file_path):
+    with open(file_path, 'r') as f:
+        lines = f.readlines()
+
+    # Process the file
+    replacements = {}
+    found_seperator = False
+    for line in lines:
+        line = line.strip()
+
+        # Skip empty or comment lines
+        if not line or line.startswith('#'):
+            continue
+
+        # Check for separator
+        if line.startswith('[seperator]='):
+            if found_seperator:
+                raise ValueError("Multiple [seperator] lines found!")
+            seperator = line.split('=')[1]
+            found_seperator = True
+            continue
+
+        parts = line.split(seperator)
+        if len(parts) != 2:
+            raise ValueError(f"Invalid line format: {line}")
+        replacements[parts[0]] = parts[1]
+
+    return replacements
+
+def main():
+    file_path = 'keyword_replace.txt'
+
+    # Check if keyword_replace.txt exists
+    if not os.path.exists(file_path):
+        with open(file_path, 'w') as f:
+            f.write("# This line is the comment\n[seperator]=,\naaa,xxx\nAAA,XXX\n")
+        print("keyword_replace.txt created!")
+
+    replacements = get_replacements_from_file(file_path)
+
+    input_file_path = input("Please provide the path to the code file:\n")
+    with open(input_file_path, 'r') as f:
+        input_code = f.read()
+
+    for old_str, new_str in replacements.items():
+        input_code = input_code.replace(old_str, new_str)
+
+    pyperclip.copy(input_code)
+    print("Code has been replaced and copied to clipboard!")
+
+if __name__ == '__main__':
+    main()
+
