@@ -1,7 +1,13 @@
 ip=$(curl ifconfig.me)
-echo My public IP: $ip
+
+
+echo '\nLocal IP:'
+ifconfig | grep -E 'inet [0-9]' | awk '{print $2}'
+
+echo '\nPublic IP:'
+echo $ip
 
 if [[ $(uname -s) == "Darwin" ]]; then
     echo $ip | pbcopy
-    echo 'Ip copied to clipboard'
+    echo '\nPublic IP copied to clipboard'
 fi
