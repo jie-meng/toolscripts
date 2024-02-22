@@ -1,0 +1,7 @@
+ip=$(curl ifconfig.me)
+echo My public IP: $ip
+
+if [[ $(uname -s) == "Darwin" ]]; then
+    echo $ip | pbcopy
+    echo 'Ip copied to clipboard'
+fi
