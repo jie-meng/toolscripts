@@ -1,0 +1,9 @@
+#!/bin/sh
+
+timestamp=$(date +%Y%m%d_%H%M%S) # Get the current date and time in YYYYMMDD_HHMMSS format
+filename=$1                     # Store the filename passed as an argument to this script
+extension="${filename##*.}"     # Extract the file extension (e.g., .apk, .txt, etc.)
+basename=${filename%.*}         # Remove the file extension from the original filename
+newname="$basename-$timestamp.$extension"   # Construct a new name with the timestamp appended before the extension
+mv "$filename" "$newname"       # Rename the file using the mv command
+echo "File '$filename' renamed to '$newname'"    # Print a success message
