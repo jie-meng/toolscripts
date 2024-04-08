@@ -1,7 +1,7 @@
 import os
 import sys
 
-p = os.popen('emulator -list-avds')
+p = os.popen('emulator -list-avds | grep -v "INFO"')
 output = p.read()
 avds = list(filter(lambda x: x.strip() != '', output.split('\n')))
 
