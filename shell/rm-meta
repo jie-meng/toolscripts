@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# Set the target directory to the current directory
+TARGET_DIR="$(pwd)" # This will make the target directory the current directory
+
+# Function to recursively delete .meta files and print each deleted file
+delete_meta_files() {
+    find "$1" -type f -name "*.meta" -print -exec rm -f {} \;
+}
+
+# Invoke the function
+delete_meta_files "$TARGET_DIR"
+
+echo "All .meta files have been deleted."
+
