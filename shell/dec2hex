@@ -3,4 +3,4 @@
 set -e
 DIR=$(dirname $0)
 
-python3 ${DIR}/../calc/dec2hex.py
+python ${DIR}/../calc/dec2hex.py
