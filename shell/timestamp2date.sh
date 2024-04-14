@@ -3,7 +3,6 @@
 set -e
 DIR=$(dirname $0)
 
-# 确保传递了参数
 if [ $# -ne 1 ]; then
     echo "Usage: $0 <milliseconds>"
     exit 1
