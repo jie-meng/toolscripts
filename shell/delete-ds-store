@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Search for all .DS_Store files in the current directory and subdirectories
+echo "Searching for .DS_Store files..."
+file_list=$(find . -name '.DS_Store' -type f)
+
+# Check if any files were found
+if [[ -z "$file_list" ]]; then
+    echo "No .DS_Store files found."
+    exit 0
+else
+    echo "List of found .DS_Store files:"
+    echo "$file_list"
+    echo
+fi
+
+# Ask the user whether to delete the found files
+read -p "Do you want to delete all the above .DS_Store files? (Y/y) for yes, any other key for no: " confirmation
+if [[ "$confirmation" = "Y" || "$confirmation" = "y" ]]; then
+    # If the user confirms, delete the files
+    echo "Deleting .DS_Store files..."
+    echo "$file_list" | xargs rm
+    echo "Files have been deleted."
+else
+    echo "Operation cancelled."
+fi
+
