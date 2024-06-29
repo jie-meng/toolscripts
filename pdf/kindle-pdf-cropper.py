@@ -17,10 +17,10 @@ def splitPdf2Jpg(imagePath, baseFilename, srcPdf):
     rmtree(imagePath, True)
     os.mkdir(imagePath)
 
-    os.system('convert -quality 100 -density {3} {0} {1}/{2}-%06d.jpg'.format(srcPdf, imagePath, baseFilename, density))
+    os.system('magick -quality 100 -density {3} {0} {1}/{2}-%06d.jpg'.format(srcPdf, imagePath, baseFilename, density))
 
 def mergeJpg2Pdf(imagePath, baseFilename, srcPath):
-    os.system('convert {0}/{1}* {2}/{1}-kindle.pdf'.format(imagePath, baseFilename, srcPath))
+    os.system('magick {0}/{1}* {2}/{1}-kindle.pdf'.format(imagePath, baseFilename, srcPath))
 
 def testImageWidth(imagePath, baseFilename, srcPath):
     print('Input the offset you want to crop? (Please input 4 numbers, separate with comma: top,right,bottom,left)')
@@ -37,8 +37,8 @@ def testImageWidth(imagePath, baseFilename, srcPath):
     im = Image.open('{0}/{1}-000000.jpg'.format(imagePath, baseFilename))
     width, height = im.size
 
-    # convert -crop 640x1161+48+0 learn-english-0007.jpg dest.jpg
-    os.system('convert -crop {0}x{1}+{2}+{3} {4}/{5}-{6}.jpg {7}/test.jpg'.format(width - crops[3] - crops[1], height - crops[0] - crops[2], crops[3], crops[0], imagePath, baseFilename, formatImageNumber, srcPath))
+    # magick -crop 640x1161+48+0 learn-english-0007.jpg dest.jpg
+    os.system('magick -crop {0}x{1}+{2}+{3} {4}/{5}-{6}.jpg {7}/test.jpg'.format(width - crops[3] - crops[1], height - crops[0] - crops[2], crops[3], crops[0], imagePath, baseFilename, formatImageNumber, srcPath))
 
 def resizeAllImagesWidth(imagePath, baseFilename):
     print('Input the offset you want to crop? (Please input 4 numbers, separate with comma: top,right,bottom,left)')
@@ -53,7 +53,7 @@ def resizeAllImagesWidth(imagePath, baseFilename):
 
     allFiles = os.listdir(imagePath)
     for file in allFiles:
-        os.system('convert -crop {0}x{1}+{2}+{3} {4}/{5} {4}/{5}'.format(width - crops[3] - crops[1], height - crops[0] - crops[2], crops[3], crops[0], imagePath, file))
+        os.system('magick -crop {0}x{1}+{2}+{3} {4}/{5} {4}/{5}'.format(width - crops[3] - crops[1], height - crops[0] - crops[2], crops[3], crops[0], imagePath, file))
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
