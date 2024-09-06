@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Get the current branch name
+current_branch=$(git branch --show-current)
+
+# List all local branches excluding the current branch
+branches=$(git branch | grep -v "^\* $current_branch")
+
+# Display branches to be deleted
+echo "The following branches will be deleted:"
+echo "$branches"
+
+# Confirm deletion
+echo "Do you want to continue with deletion? (y/n)"
+read -r confirm_deletion
+
+if [ "$confirm_deletion" != "y" ]; then
+  echo "Deletion cancelled."
+  exit 0
+fi
+
+# Prompt the user for deletion type
+echo "Do you want to force delete branches? (y/n)"
+read -r force_delete
+
+if [ "$force_delete" == "y" ]; then
+  delete_flag="-D"
+else
+  delete_flag="-d"
+fi
+
+# Delete other local branches based on user input
+for branch in $branches; do
+  git branch $delete_flag $branch
+done
+
+echo "Branches deleted."
+
