@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# This script searches for the first /bin/activate file in the current directory and its subdirectories.
+# If found, it sources the file to activate the virtual environment.
+# If not found, it prints an error message and exits.
+# Find the first /bin/activate file in the current directory and subdirectories.
+#
+# Put this function in your .bashrc or .zhsrc file to activate the virtual environment by command 'venv'.
+# function venv() {
+#    source "venv-activate"
+# }
+#
+activate_file=$(find . -type f -path "*/bin/activate" | head -n 1)
+
+if [ -z "$activate_file" ]; then
+  echo "Error: No /bin/activate file found in the current directory or its subdirectories."
+  exit 1
+else
+  echo "Sourcing: $activate_file"
+  source "$activate_file"
+fi
+
