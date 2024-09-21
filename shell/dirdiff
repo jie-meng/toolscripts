@@ -1,18 +1,25 @@
-#!/bin/sh
+#!/bin/bash
 
-getCanonicalPath() {
-    canonicalPath="`cd "$1";pwd`"
-}
+# Enable path completion and prompt for the first directory
+read -e -p "Enter the first directory path: " dir1
+dir1=$(eval echo "$dir1")
 
-echo "Type first dir and press enter:"
-read firstDir
-getCanonicalPath $firstDir
-firstDir=$canonicalPath
+# Enable path completion and prompt for the second directory
+read -e -p "Enter the second directory path: " dir2
+dir2=$(eval echo "$dir2")
 
-echo "Type second dir and press enter:"
-read secondDir
-getCanonicalPath $secondDir
-secondDir=$canonicalPath
+# Check if the first directory exists
+if [ ! -d "$dir1" ]; then
+  echo "Directory $dir1 does not exist"
+  exit 1
+fi
 
-vim -c "DirDiff $firstDir $secondDir"
+# Check if the second directory exists
+if [ ! -d "$dir2" ]; then
+  echo "Directory $dir2 does not exist"
+  exit 1
+fi
+
+# Use Vim's DirDiff command to compare the two directories
+vim -c "DirDiff $dir1 $dir2"
 
