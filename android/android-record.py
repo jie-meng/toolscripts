@@ -59,24 +59,25 @@ def main():
     record_process.terminate()
     record_process.wait()
 
+    # Wait 2 seconds to ensure the recording is stopped
+    print("Stopping recording...")
+    time.sleep(2)
+
     # Pull the recorded video to the current directory
     local_file = f"video-{timestamp}.mp4"
     print(
         f"Pulling the video file {video_file} to the current directory as {local_file}...")
-    pull_process = subprocess.run(['adb',
-                                   '-s',
-                                   selected_device,
-                                   'pull',
-                                   video_file,
-                                   local_file],
-                                  capture_output=True,
-                                  text=True)
-
-    if pull_process.returncode == 0:
+    ret = os.system(f"adb -s {selected_device} pull {video_file} {local_file}")
+    if ret == 0:
         print(f"Video file downloaded successfully: {local_file}")
     else:
-        print(f"Failed to download video file. Error: {pull_process.stderr}")
+        print(f"Failed to download video file. Error: {ret}")
 
+    # Delete the video file from the device
+    print(f"Deleting the video file {video_file} from the device...")
+    os.system(f"adb -s {selected_device} shell rm {video_file}")
+
+    print("Done.")
 
 if __name__ == "__main__":
     main()
