@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# Function to convert a hex color to RGB
+hex_to_rgb() {
+    local hex=$1
+    # Ensure the hex color starts with '#' for uniformity in processing
+    if [[ $hex != \#* ]]; then
+        hex="#$hex"
+    fi
+    
+    # Remove the leading '#' for conversion
+    hex=${hex#"#"}
+    
+    # Convert hex to decimal
+    r=$((16#${hex:0:2}))
+    g=$((16#${hex:2:2}))
+    b=$((16#${hex:4:2}))
+    
+    # Print the result
+    echo "RGB($r, $g, $b)"
+}
+
+# Check if a color was provided as an argument
+if [ -z "$1" ]; then
+    echo "Usage: $0 <hex_color>"
+    exit 1
+fi
+
+# Call the function with the provided argument
+hex_to_rgb "$1"
+
