@@ -46,7 +46,7 @@ def main():
 
     # Get the current timestamp in the format YYYYMMDD_hhmmss
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    video_file = f"/sdcard/video-{timestamp}.mp4"
+    video_file = f"/sdcard/android-video-{timestamp}.mp4"
 
     # Start screen recording
     print(f"Starting screen recording on device {selected_device}...")
