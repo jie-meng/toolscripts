@@ -20,7 +20,8 @@ while true; do
     echo "10) Docker network inspect host"
     echo "11) Exec into a container (bash)"
     echo "12) Display Docker disk usage"
-    echo "13) Remove all unused data (prune)"
+    echo "13) System prune"
+    echo "14) Remove all volumes"
     echo "0) Quit"
 
     read -p "Your choice: " choice
@@ -54,6 +55,7 @@ while true; do
             ;;
         12) execute_command "docker system df" ;;
         13) execute_command "docker system prune -a" ;;
+        14) execute_command "docker volume prune" ;;
         0) echo "Goodbye!"; exit 0 ;;
         *) echo "Invalid choice" ;;
     esac
