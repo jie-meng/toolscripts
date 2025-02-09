@@ -1,22 +1,46 @@
 #!/bin/sh
 
-# play sound on MacOS with command line
+# Play sound on MacOS from the command line.
 #
-# afplay: builtin Audio File Play on MacOS
-# vorbis-tools: play ogg, install with 'brew install vorbis-tools', then 'ogg123 command can be used'
+# Uses afplay (built-in audio file player on MacOS)
+# Uses ogg123 for OGG files (requires installation via 'brew install vorbis-tools')
 
 soundfile=$1
+# The second parameter defines the number of loops; default is 1 if not provided.
+# 0: do not play, exit immediately.
+# -1: infinite loop.
+loop=${2:-1}
 
-if [[ ! -f $soundfile ]]
-then
-    echo "$soundfile does not exists!"
+if [ ! -f "$soundfile" ]; then
+    echo "$soundfile does not exist!"
     exit -1
 fi
 
-if [[ $soundfile == *.ogg ]] || [[ $soundfile == *.OGG ]]
-then
-    ogg123 $soundfile
+# If loop is set to 0, do not play and exit immediately.
+if [ "$loop" -eq 0 ]; then
+    exit 0
+fi
+
+# Function to play the audio file based on its extension.
+play_sound() {
+    if [[ "$soundfile" == *.ogg ]] || [[ "$soundfile" == *.OGG ]]; then
+        ogg123 "$soundfile"
+    else
+        afplay "$soundfile"
+    fi
+}
+
+# Infinite loop playback when loop is -1.
+if [ "$loop" -eq -1 ]; then
+    while true; do
+        play_sound
+    done
 else
-    afplay $soundfile
+    # Fixed number of loops.
+    i=1
+    while [ "$i" -le "$loop" ]; do
+        play_sound
+        i=$((i+1))
+    done
 fi
 
