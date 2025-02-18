@@ -64,7 +64,7 @@ def main():
     time.sleep(2)
 
     # Pull the recorded video to the current directory
-    local_file = f"video-{timestamp}.mp4"
+    local_file = f"android-video-{timestamp}.mp4"
     print(
         f"Pulling the video file {video_file} to the current directory as {local_file}...")
     ret = os.system(f"adb -s {selected_device} pull {video_file} {local_file}")
