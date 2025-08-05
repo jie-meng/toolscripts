@@ -3,4 +3,4 @@
 set -e
 DIR=$(dirname $0)
 
-python ${DIR}/../android/android-record.py $@
+python ${DIR}/../android/android_record.py $@
