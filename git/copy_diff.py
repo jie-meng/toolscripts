@@ -110,12 +110,77 @@ def handle_multiple_commits():
         print("No diffs copied.\n")
         sys.exit(0)
 
+def handle_review_prompt():
+    lang_options = ["English (en)", "中文 (zh-cn)"]
+    print("\nSelect review prompt language:")
+    for idx, opt in enumerate(lang_options, 1):
+        print(f"{idx}. {opt}")
+    print("0. Exit")
+    while True:
+        try:
+            sel = int(input("Please select: "))
+            if sel == 0:
+                sys.exit(0)
+            elif sel == 1:
+                prompt = (
+                    "You are a professional AI code review assistant. I will then give you pull requests (including added, deleted, and modified code), file types and project background are unknown. Please strictly analyze and summarize according to these requirements:\n\n"
+                    "Tech Stack Inference\n\n"
+                    "Infer the primary programming language, frameworks, or libraries used, as well as whether it is backend, frontend, or full-stack, based on the diff.\n"
+                    "Briefly explain your reasoning (e.g., language syntax, imported libraries, project structure clues, etc.).\n"
+                    "Overview of Code Changes\n\n"
+                    "Summarize in concise technical language what the main changes in this diff are (e.g., bug fixes, feature additions, refactoring, configuration changes).\n"
+                    "Indicate the primary modules or business functionalities affected by these changes.\n"
+                    "Code Quality & Clean Code Evaluation\n\n"
+                    "Thoroughly assess code style, naming conventions, comments and documentation, readability, maintainability, architecture and modularity, code duplication, etc.\n"
+                    "Identify error-prone code, unsafe patterns, inefficient implementations, anti-patterns, or parts that violate best practices.\n"
+                    "Clearly specify the exact location and nature of each problem (line number, filename, code snippet, or sufficiently precise description).\n"
+                    "Provide actionable suggestions for fixes/refactoring/optimization, along with explanatory reasoning.\n"
+                    "Major Issues and Risks\n\n"
+                    "Evaluate whether there are hard-to-detect logic bugs, unhandled exceptions, missing boundary checks, performance bottlenecks, or security vulnerabilities.\n"
+                    "Clearly point out these suspicious parts and briefly explain their potential impact.\n"
+                    "Incremental Suggestions\n\n"
+                    "Offer further suggestions to improve code quality, maintainability, and test coverage (such as unit tests, better comments, type annotations, or improved documentation).\n"
+                    "Please follow this structure for a professional review report. The review should be comprehensive and rigorous—highlight any and all suspicious or problematic code, and provide practical, actionable advice. Do not omit seemingly minor issues.\n\n"
+                )
+                pyperclip.copy(prompt)
+                print("English review prompt copied to clipboard.\n")
+                sys.exit(0)
+            elif sel == 2:
+                prompt = (
+                    "你是专业的代码审查(AI Code Review)助手。接下来我会不断给出 Pull Request 的 DIFF（包含增删改），文件类型和项目上下文未知。请你按照以下要求严格分析和总结：\n\n"
+                    "技术栈推断\n\n"
+                    "根据 diff 内容推断主要使用的编程语言、框架或库，以及明显的后端/前端/全栈类型（如有）。\n"
+                    "简单说明推断的依据（如语法、导入库、项目结构线索等）。\n"
+                    "代码变更概览\n\n"
+                    "用简明扼要的语言总结此 diff 主要做了哪些事情（例如：修复 bug、添加功能、重构、配置变更等）。\n"
+                    "说明受影响的主要模块或功能业务。\n"
+                    "代码质量 & Clean Code 评价\n\n"
+                    "全面评估变更的代码风格、命名、注释、可读性、可维护性、设计架构、模块解耦、重复代码等。\n"
+                    "发现任何易错写法、不安全代码、低效实现、反模式或不符合最佳实践的地方要具体列出。\n"
+                    "指出被修改的具体位置与问题描述（行号/文件名/代码片段，或足够明确的定位描述）。\n"
+                    "提出详细的修复/重构/优化建议，并解释理由。\n"
+                    "潜在的重大问题和风险\n\n"
+                    "检查代码逻辑是否存在难以发现的 bug、异常未处理、未校验边界条件、性能瓶颈、安全隐患等。\n"
+                    "指出这些疑点，并简单说明为何值得关注。\n"
+                    "增量建议\n\n"
+                    "给出进一步增强代码质量、工程可维护性、测试覆盖的建议（如单测、注释、类型声明、文档完善等）。\n"
+                    "请严格按照上述结构给出专业分析报告。审查要全面严谨，发现问题要清晰具体，并给出实际可行的建议。不要遗漏任何看起来可疑的写法。\n\n"
+                )
+                pyperclip.copy(prompt)
+                print("中文审查提示已复制到剪贴板。\n")
+                sys.exit(0)
+            else:
+                print("Invalid input, please try again.")
+        except Exception:
+            print("Please enter a number.")
+
 def main():
     options = [
         "Staged diff (git diff --cached)",
         "Working directory diff (git diff)",
         "Diff of a specific commit",
         "Diffs of multiple commits (input hashes)",
+        "Generate review prompt from working diff",
     ]
     while True:
         print("\nPlease select the diff type to copy:")
@@ -131,6 +196,9 @@ def main():
             handle_single_commit()
         elif sel == 4:
             handle_multiple_commits()
+        elif sel == 5:
+            handle_review_prompt()
 
 if __name__ == "__main__":
     main()
+
