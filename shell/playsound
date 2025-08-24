@@ -4,12 +4,15 @@
 #
 # Uses afplay (built-in audio file player on MacOS)
 # Uses ogg123 for OGG files (requires installation via 'brew install vorbis-tools')
+# Uses ffplay for PCM files
 
 soundfile=$1
 # The second parameter defines the number of loops; default is 1 if not provided.
 # 0: do not play, exit immediately.
 # -1: infinite loop.
 loop=${2:-1}
+pcm_format=${3:-s16le}
+pcm_rate=${4:-16000}
 
 if [ ! -f "$soundfile" ]; then
     echo "$soundfile does not exist!"
@@ -23,8 +26,11 @@ fi
 
 # Function to play the audio file based on its extension.
 play_sound() {
-    if [[ "$soundfile" == *.ogg ]] || [[ "$soundfile" == *.OGG ]]; then
+    ext=$(echo "$soundfile" | awk -F. '{print tolower($NF)}')
+    if [ "$ext" = "ogg" ]; then
         ogg123 "$soundfile"
+    elif [ "$ext" = "pcm" ]; then
+        ffplay -f "$pcm_format" -ar "$pcm_rate" -nodisp -autoexit "$soundfile"
     else
         afplay "$soundfile"
     fi
@@ -43,4 +49,3 @@ else
         i=$((i+1))
     done
 fi
-
