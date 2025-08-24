@@ -1,6 +1,4 @@
-#!/bin/sh
-
-# Play sound on MacOS from the command line.
+#!/bin/bash
 #
 # Uses afplay (built-in audio file player on MacOS)
 # Uses ogg123 for OGG files (requires installation via 'brew install vorbis-tools')
@@ -11,22 +9,46 @@ soundfile=$1
 # 0: do not play, exit immediately.
 # -1: infinite loop.
 loop=${2:-1}
-pcm_format=${3:-s16le}
-pcm_rate=${4:-16000}
+
+usage() {
+    echo "Usage: $0 <soundfile> [loop_count] [pcm_format] [pcm_rate]"
+    echo "  soundfile: Path to audio file (.wav, .ogg, .pcm, etc.)"
+    echo "  loop_count: Number of times to play (default: 1, 0: exit, -1: infinite)"
+    echo "  pcm_format: PCM format (default: s16le, only for .pcm)"
+    echo "  pcm_rate: PCM sample rate (default: 16000, only for .pcm)"
+    exit 1
+}
+
+if [ -z "$soundfile" ]; then
+    usage
+fi
 
 if [ ! -f "$soundfile" ]; then
     echo "$soundfile does not exist!"
-    exit -1
+    exit 1
 fi
 
-# If loop is set to 0, do not play and exit immediately.
-if [ "$loop" -eq 0 ]; then
-    exit 0
+# Extract extension (lowercase, robust)
+ext="${soundfile##*.}"
+ext="${ext,,}"
+
+# Only set PCM params if needed
+if [ "$ext" = "pcm" ]; then
+    pcm_format=${3:-s16le}
+    pcm_rate=${4:-16000}
+    # Basic validation
+    if ! [[ "$pcm_rate" =~ ^[0-9]+$ ]]; then
+        echo "Invalid PCM rate: $pcm_rate"
+        exit 1
+    fi
+    if [ -z "$pcm_format" ]; then
+        echo "PCM format must be specified for .pcm files"
+        exit 1
+    fi
 fi
 
 # Function to play the audio file based on its extension.
 play_sound() {
-    ext=$(echo "$soundfile" | awk -F. '{print tolower($NF)}')
     if [ "$ext" = "ogg" ]; then
         ogg123 "$soundfile"
     elif [ "$ext" = "pcm" ]; then
@@ -36,16 +58,15 @@ play_sound() {
     fi
 }
 
-# Infinite loop playback when loop is -1.
-if [ "$loop" -eq -1 ]; then
+if [ "$loop" -eq 0 ]; then
+    exit 0
+elif [ "$loop" -eq -1 ]; then
     while true; do
         play_sound
     done
 else
-    # Fixed number of loops.
-    i=1
-    while [ "$i" -le "$loop" ]; do
+    for ((i=0; i<loop; i++)); do
         play_sound
-        i=$((i+1))
     done
 fi
+
