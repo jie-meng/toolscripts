@@ -1,0 +1,16 @@
+#!/bin/bash
+
+if [ $# -ne 1 ]; then
+  echo "Usage: mp3-to-pcm <input.mp3>"
+  exit 1
+fi
+
+mp3_path=$(eval echo "$1")
+
+if [ ! -f "$mp3_path" ]; then
+  echo "File not found: $mp3_path"
+  exit 1
+fi
+
+pcm_path="${mp3_path%.*}.pcm"
+ffmpeg -y -i "$mp3_path" -f s16le -ar 16000 -ac 1 "$pcm_path"
