@@ -23,11 +23,11 @@ done
 selected_version="${versions[$((choice-1))]}"
 
 # Ask the user for the virtual environment directory name
-read -p "Enter a name for the virtual environment directory (default is '.env'): " venv_name
+read -p "Enter a name for the virtual environment directory (default is '.venv'): " venv_name
 
 # Use the default name if the user doesn't provide one
 if [ -z "$venv_name" ]; then
-  venv_name=".env"
+  venv_name=".venv"
 fi
 
 # Create a .python-version file with the selected version
