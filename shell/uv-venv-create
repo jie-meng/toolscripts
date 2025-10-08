@@ -1,0 +1,79 @@
+#!/bin/bash
+
+# Check if uv is installed
+if ! command -v uv &> /dev/null; then
+    echo "Error: uv is not installed. Please install uv first."
+    echo "Visit: https://docs.astral.sh/uv/getting-started/installation/"
+    exit 1
+fi
+
+# Set the pyenv versions path
+PYENV_PATH="$HOME/.pyenv/versions"
+
+# Check if pyenv versions exist, otherwise fall back to system Python
+if [ -d "$PYENV_PATH" ] && [ "$(ls -A $PYENV_PATH 2>/dev/null)" ]; then
+    # Get all version numbers from pyenv and sort them
+    versions=( $(ls $PYENV_PATH | sort -Vr) )
+else
+    # Fall back to system Python versions
+    echo "No pyenv versions found, using system Python versions..."
+    # Try to find system Python versions
+    system_pythons=()
+    for py in python3.12 python3.11 python3.10 python3.9 python3.8 python3 python; do
+        if command -v $py &> /dev/null; then
+            version=$($py --version 2>&1 | cut -d' ' -f2)
+            if [[ ! " ${system_pythons[@]} " =~ " ${version} " ]]; then
+                system_pythons+=("$version")
+            fi
+        fi
+    done
+
+    if [ ${#system_pythons[@]} -eq 0 ]; then
+        echo "No Python versions found. Please install Python or pyenv first."
+        exit 1
+    fi
+
+    # Sort system Python versions
+    IFS=$'\n' versions=($(sort -Vr <<<"${system_pythons[*]}"))
+    unset IFS
+fi
+
+# Display all version numbers
+echo "Please select a Python version to create a virtual environment:"
+for i in "${!versions[@]}"; do
+  echo "$((i+1))) ${versions[$i]}"
+done
+
+# Get user input for version choice
+read -p "Enter the number for your chosen version (1-${#versions[@]}): " choice
+
+# Validate the input
+while [[ "$choice" -lt 1 || "$choice" -gt "${#versions[@]}" ]]; do
+  read -p "Invalid selection, please enter again: " choice
+done
+
+selected_version="${versions[$((choice-1))]}"
+
+# Use .venv as the virtual environment directory (uv default)
+venv_name=".venv"
+
+# Create a .python-version file with the selected version
+echo "$selected_version" > .python-version
+
+# Use uv venv to create the virtual environment with the specified Python version
+echo "Creating virtual environment with Python $selected_version..."
+uv venv "$venv_name" --python "$selected_version"
+
+if [ $? -eq 0 ]; then
+    echo "Virtual environment for Python version $selected_version has been created in $venv_name"
+    echo ""
+    echo "To activate the virtual environment, run:"
+    echo "  source $venv_name/bin/activate"
+    echo ""
+    echo "To use uv with this environment (auto-detected):"
+    echo "  uv pip install <package>"
+else
+    echo "Error: Failed to create virtual environment"
+    exit 1
+fi
+
