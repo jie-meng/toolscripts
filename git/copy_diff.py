@@ -1,6 +1,9 @@
 import subprocess
 import pyperclip
 import sys
+import re
+from urllib.parse import urlparse
+
 
 def run_cmd(cmd):
     """Run a shell command and return its output, or None if error."""
@@ -10,6 +13,7 @@ def run_cmd(cmd):
     except subprocess.CalledProcessError as e:
         print(f"Error: {e.stderr}")
         return None
+
 
 def select_from_list(options, prompt="Please select: "):
     """Display a list of options and return the selected index."""
@@ -24,6 +28,7 @@ def select_from_list(options, prompt="Please select: "):
                 print("Invalid input, please try again.")
         except Exception:
             print("Please enter a number.")
+
 
 def get_recent_commits(n=20):
     """Get a list of recent commits (hash and message)."""
@@ -41,12 +46,14 @@ def get_recent_commits(n=20):
                 commits.append((parts[0], ''))
     return commits
 
+
 def print_menu(options):
     print()
     for idx, opt in enumerate(options, 1):
         print(f"{idx}. {opt}")
     print()
     print("0. Exit")
+
 
 def get_menu_selection(num_options):
     while True:
@@ -59,6 +66,7 @@ def get_menu_selection(num_options):
         except Exception:
             print("Please enter a number.")
 
+
 def copy_and_exit(diff, success_msg, empty_msg):
     if diff is not None and diff.strip():
         pyperclip.copy(diff)
@@ -68,13 +76,16 @@ def copy_and_exit(diff, success_msg, empty_msg):
         print(empty_msg)
         sys.exit(0)
 
+
 def handle_staged_diff():
     diff = run_cmd("git diff --cached")
     copy_and_exit(diff, "Staged diff copied to clipboard.\n", "No diff to copy.\n")
 
+
 def handle_working_diff():
     diff = run_cmd("git diff")
     copy_and_exit(diff, "Working directory diff copied to clipboard.\n", "No diff to copy.\n")
+
 
 def handle_single_commit():
     while True:
@@ -87,6 +98,7 @@ def handle_single_commit():
             commit_hash = commits[csel-1][0]
             diff = run_cmd(f"git show {commit_hash}")
             copy_and_exit(diff, f"Diff of commit {commit_hash} copied to clipboard.\n", "No diff to copy.\n")
+
 
 def handle_multiple_commits():
     hashes_input = input("Enter commit hashes (comma separated): ")
@@ -109,6 +121,94 @@ def handle_multiple_commits():
     else:
         print("No diffs copied.\n")
         sys.exit(0)
+
+
+def parse_pr_input(pr_input):
+    """Parse user input for PR.
+
+    Return tuple (repo, number, raw, hostname)
+    - repo: owner/repo or None
+    - number: PR number or None
+    - raw: original input to fallback to gh
+    - hostname: hostname from URL if provided (e.g. git.realestate.com.au) else None
+    """
+    pr_input = pr_input.strip()
+    # numeric only
+    if re.match(r'^\d+$', pr_input):
+        return (None, pr_input, pr_input, None)
+
+    # owner/repo#number
+    m = re.match(r'^([^/\s]+/[^#\s]+)#(\d+)$', pr_input)
+    if m:
+        repo = m.group(1)
+        number = m.group(2)
+        return (repo, number, pr_input, None)
+
+    # URL
+    try:
+        parsed = urlparse(pr_input)
+        if parsed.scheme and parsed.netloc:
+            hostname = parsed.netloc
+            # Remove potential port
+            if ':' in hostname:
+                hostname = hostname.split(':', 1)[0]
+            # Expecting paths like /owner/repo/pull/123 or /owner/repo/pulls/123
+            parts = [p for p in parsed.path.split('/') if p]
+            if len(parts) >= 4 and parts[-2] in ('pull', 'pulls'):
+                owner = parts[0]
+                repo_name = parts[1]
+                number = parts[3] if parts[2] in ('pull', 'pulls') else parts[-1]
+                repo = f"{owner}/{repo_name}"
+                if re.match(r'^\d+$', number):
+                    return (repo, number, pr_input, hostname)
+            # fallback: try to extract number at end
+            end_number = None
+            for part in reversed(parts):
+                if re.match(r'^\d+$', part):
+                    end_number = part
+                    break
+            if end_number:
+                if len(parts) >= 2:
+                    repo = f"{parts[0]}/{parts[1]}"
+                    return (repo, end_number, pr_input, hostname)
+                return (None, end_number, pr_input, hostname)
+    except Exception:
+        pass
+
+    # fallback: return raw input and let gh attempt
+    return (None, None, pr_input, None)
+
+
+def handle_pr_diff():
+    """Handle copying a PR diff using gh pr diff. Accepts PR URL, number, or owner/repo#number.
+
+    For GitHub Enterprise instances, use the full URL directly instead of --hostname flag.
+    """
+    pr_input = input("Enter PR URL, number (e.g. 123) or owner/repo#number: ")
+    if not pr_input.strip():
+        print("No PR provided.\n")
+        return
+    repo, number, raw, hostname = parse_pr_input(pr_input)
+
+    # Build gh command based on what we parsed
+    # For GitHub Enterprise (non-github.com), use the full URL directly
+    if hostname and hostname.lower() not in ("github.com", "api.github.com"):
+        # Use the original URL for GitHub Enterprise
+        cmd = f"gh pr diff {raw}"
+    elif repo and number:
+        # GitHub.com: use repo + number
+        cmd = f"gh pr diff {number} --repo {repo}"
+    elif number and not repo:
+        # number only, assume current repo
+        cmd = f"gh pr diff {number}"
+    else:
+        # fallback: pass raw input directly to gh
+        cmd = f"gh pr diff {raw}"
+
+    print(f"Running: {cmd}")
+    diff = run_cmd(cmd)
+    copy_and_exit(diff, f"PR diff copied to clipboard.\n", "No diff to copy.\n")
+
 
 def handle_review_prompt():
     lang_options = ["English (en)", "中文 (zh-cn)"]
@@ -174,12 +274,14 @@ def handle_review_prompt():
         except Exception:
             print("Please enter a number.")
 
+
 def main():
     options = [
         "Staged diff (git diff --cached)",
         "Working directory diff (git diff)",
         "Diff of a specific commit",
         "Diffs of multiple commits (input hashes)",
+        "PR diff (gh pr diff)",
         "Generate review prompt from working diff",
     ]
     while True:
@@ -197,7 +299,10 @@ def main():
         elif sel == 4:
             handle_multiple_commits()
         elif sel == 5:
+            handle_pr_diff()
+        elif sel == 6:
             handle_review_prompt()
+
 
 if __name__ == "__main__":
     main()
