@@ -10,6 +10,16 @@ soundfile=$1
 # -1: infinite loop.
 loop=${2:-1}
 
+# Function to stop any currently playing sound
+stop_playing() {
+    pkill -x afplay 2>/dev/null
+    pkill -x ogg123 2>/dev/null
+    pkill -x ffplay 2>/dev/null
+}
+
+# Always stop any currently playing sound before starting
+stop_playing
+
 usage() {
     echo "Usage: $0 <soundfile> [loop_count] [pcm_format] [pcm_rate]"
     echo "  soundfile: Path to audio file (.wav, .ogg, .pcm, etc.)"
