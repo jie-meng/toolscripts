@@ -58,16 +58,16 @@ def get_user_choice(options_dict, default_key, prompt):
 def run_mmdc(input_file, output_file, theme, background):
     """Execute mmdc command"""
     cmd = ["mmdc", "-i", input_file, "-o", output_file]
-    
+
     if theme:
         cmd.extend(["-t", theme])
-    
+
     if background:
         cmd.extend(["-b", background])
-    
+
     print(f"\nExecuting command: {' '.join(cmd)}")
     print("-" * 60)
-    
+
     try:
         result = subprocess.run(cmd, check=True)
         if result.returncode == 0:
@@ -85,34 +85,34 @@ def run_mmdc(input_file, output_file, theme, background):
 def interactive_mode(input_file):
     """Interactive mode for user prompts"""
     input_path = Path(input_file)
-    
+
     # Check if input file exists
     if not input_path.exists():
         print(f"Error: Input file '{input_file}' does not exist")
         return False
-    
+
     print(f"\nInput file: {input_file}")
-    
+
     # Get output file name
     default_output = input_path.stem
     output_name = input(f"\nOutput filename (default: {default_output}): ").strip()
     if not output_name:
         output_name = default_output
-    
+
     # Select output format
     print_options(FORMATS, "Select Output Format")
     format_ext = get_user_choice(FORMATS, "1", "Choose format (default: 1-PNG): ")
-    
+
     output_file = f"{output_name}.{format_ext}"
-    
+
     # Select theme
     print_options(THEMES, "Select Theme")
     theme = get_user_choice(THEMES, "1", "Choose theme (default: 1-default): ")
-    
+
     # Select background
     print_options(BACKGROUNDS, "Select Background")
     background = get_user_choice(BACKGROUNDS, "1", "Choose background (default: 1-white): ")
-    
+
     # Execute conversion
     return run_mmdc(input_file, output_file, theme, background)
 
@@ -126,13 +126,13 @@ Usage examples:
   %(prog)s diagram.mmd                    # Interactive mode
   %(prog)s -p diagram.mmd                 # Quick preview mode (default settings, auto-open)
   %(prog)s -i input.mmd -o output.png -t dark -b transparent  # Direct mode
-  
+
 Supported themes: default, dark, forest, neutral
 Supported backgrounds: white (default), transparent, black, red, or any hex color (#F0F0F0)
 Supported formats: png, svg, pdf
         """
     )
-    
+
     parser.add_argument(
         "input_file",
         nargs="?",
@@ -161,50 +161,63 @@ Supported formats: png, svg, pdf
         action="store_true",
         help="Quick preview mode: generate with default settings and open the file immediately"
     )
-    
+
     args = parser.parse_args()
-    
+
     # Determine input file
     input_file = args.input_file or args.input_file_alt
-    
+
     if not input_file:
         parser.print_help()
         sys.exit(1)
-    
+
     # Preview mode: use defaults and open file immediately
     if args.preview:
         input_path = Path(input_file)
         if not input_path.exists():
             print(f"Error: Input file '{input_file}' does not exist")
             sys.exit(1)
-        
+
         # Use default settings
-        output_file = f"{input_path.stem}.png"
+        import uuid
+        output_file = f"{input_path.stem}_{uuid.uuid4()}.png"
         theme = "default"
         background = "white"
-        
+
         print(f"\n🚀 Quick preview mode")
         print(f"Input: {input_file}")
         print(f"Output: {output_file}")
-        
+
         success = run_mmdc(input_file, output_file, theme, background)
-        
+
         if success:
             # Open the generated file
             try:
-                subprocess.run(["open", output_file], check=True)
-                print(f"\n✓ Opening {output_file}...")
+                # Use imgcat to display the image, then delete it
+                try:
+                    subprocess.run(["imgcat", output_file], check=True)
+                    print(f"\n✓ Displayed {output_file} with imgcat.")
+                except Exception as e:
+                    print(f"\n✗ Failed to display file with imgcat: {e}")
+                    print(f"Please open {output_file} manually")
+                # Delete the file after displaying
+                try:
+                    import os
+                    os.remove(output_file)
+                    print(f"✓ Deleted {output_file} after display.")
+                except Exception as e:
+                    print(f"✗ Failed to delete {output_file}: {e}")
             except Exception as e:
                 print(f"\n✗ Failed to open file: {e}")
                 print(f"Please open {output_file} manually")
-        
+
         sys.exit(0 if success else 1)
-    
+
     # If all parameters provided, execute directly
     if args.output and args.theme and args.background:
         success = run_mmdc(input_file, args.output, args.theme, args.background)
         sys.exit(0 if success else 1)
-    
+
     # Otherwise, enter interactive mode
     success = interactive_mode(input_file)
     sys.exit(0 if success else 1)
