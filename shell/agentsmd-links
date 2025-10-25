@@ -1,0 +1,52 @@
+#!/bin/bash
+set -e
+
+# Configuration: Add or remove AI tools from these arrays
+SYMLINK_FILES=("CLAUDE.md" "QWEN.md" "IFLOW.md")
+IGNORE_FILES=(".claude" ".qwen" ".iflow" ".specify")
+
+# Main configuration file
+MAIN_AGENTS_FILE="AGENTS.md"
+GITIGNORE_FILE=".gitignore"
+
+# Step 1: Check and create AGENTS.md file if not exists
+if [ ! -f "$MAIN_AGENTS_FILE" ]; then
+  touch "$MAIN_AGENTS_FILE"
+fi
+
+# Step 2: Remove and create symlinks for all configured files
+for file in "${SYMLINK_FILES[@]}"; do
+  if [ -e "$file" ] || [ -L "$file" ]; then
+    rm -rf "$file"
+  fi
+  ln -s "$MAIN_AGENTS_FILE" "$file"
+done
+
+# Step 3: Check and organize .gitignore, add ignore rules
+
+# Combine all files for gitignore pattern
+ALL_FILES=("${SYMLINK_FILES[@]}" "${IGNORE_FILES[@]}")
+PATTERN=$(printf "%s|" "${ALL_FILES[@]}")
+PATTERN=${PATTERN%|}  # Remove trailing |
+
+# Build ignore block dynamically
+IGNORE_BLOCK="# AI tools config"
+for file in "${ALL_FILES[@]}"; do
+  IGNORE_BLOCK="$IGNORE_BLOCK\n$file"
+done
+
+# Create .gitignore if it does not exist
+if [ ! -f "$GITIGNORE_FILE" ]; then
+  echo -e "$IGNORE_BLOCK" > "$GITIGNORE_FILE"
+else
+  # Remove existing related entries
+  TMP=$(mktemp)
+  grep -vE "^(${PATTERN//./\.})$" "$GITIGNORE_FILE" > "$TMP"
+  mv "$TMP" "$GITIGNORE_FILE"
+  # Check if AI tools config marker already exists
+  if ! grep -q "# AI tools config" "$GITIGNORE_FILE"; then
+    echo >> "$GITIGNORE_FILE"
+  fi
+  echo -e "$IGNORE_BLOCK" >> "$GITIGNORE_FILE"
+fi
+
