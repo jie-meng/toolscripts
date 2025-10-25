@@ -22,26 +22,22 @@ for file in "${SYMLINK_FILES[@]}"; do
   ln -s "$MAIN_AGENTS_FILE" "$file"
 done
 
-# Step 3: Check and organize .gitignore, add ignore rules
+# Step 3: Check and organize .gitignore, add ignore rules (only if .gitignore exists)
+if [ -f "$GITIGNORE_FILE" ]; then
+  # Combine all files for gitignore pattern
+  ALL_FILES=("${SYMLINK_FILES[@]}" "${IGNORE_FILES[@]}")
+  PATTERN=$(printf "%s|" "${ALL_FILES[@]}")
+  PATTERN=${PATTERN%|}  # Remove trailing |
 
-# Combine all files for gitignore pattern
-ALL_FILES=("${SYMLINK_FILES[@]}" "${IGNORE_FILES[@]}")
-PATTERN=$(printf "%s|" "${ALL_FILES[@]}")
-PATTERN=${PATTERN%|}  # Remove trailing |
+  # Build ignore block dynamically
+  IGNORE_BLOCK="# AI tools config"
+  for file in "${ALL_FILES[@]}"; do
+    IGNORE_BLOCK="$IGNORE_BLOCK\n$file"
+  done
 
-# Build ignore block dynamically
-IGNORE_BLOCK="# AI tools config"
-for file in "${ALL_FILES[@]}"; do
-  IGNORE_BLOCK="$IGNORE_BLOCK\n$file"
-done
-
-# Create .gitignore if it does not exist
-if [ ! -f "$GITIGNORE_FILE" ]; then
-  echo -e "$IGNORE_BLOCK" > "$GITIGNORE_FILE"
-else
   # Remove existing related entries
   TMP=$(mktemp)
-  grep -vE "^(${PATTERN//./\.})$" "$GITIGNORE_FILE" > "$TMP"
+  grep -vE "^(${PATTERN//./\./})$" "$GITIGNORE_FILE" > "$TMP"
   mv "$TMP" "$GITIGNORE_FILE"
   # Check if AI tools config marker already exists
   if ! grep -q "# AI tools config" "$GITIGNORE_FILE"; then
