@@ -2,11 +2,11 @@
 
 # CLI tools list
 tools=(
-    "@anthropic-ai/claude-code:2.0.26"
-    "@github/copilot:0.0.337"
-    "@google/gemini-cli:0.10.0"
-    "@iflow-ai/iflow-cli:0.3.9"
-    "@qwen-code/qwen-code:0.0.14"
+    "@anthropic-ai/claude-code"
+    "@github/copilot"
+    "@google/gemini-cli"
+    "@iflow-ai/iflow-cli"
+    "@qwen-code/qwen-code"
 )
 
 # Color definitions
@@ -72,7 +72,6 @@ version_compare() {
 # Install or update package
 install_or_update() {
     local package=$1
-    local expected_version=$2
     
     log_info "Checking $package..."
     
@@ -137,10 +136,8 @@ main() {
     fi
     
     # Iterate through all tools
-    for tool_info in "${tools[@]}"; do
-        tool="${tool_info%:*}"
-        version="${tool_info#*:}"
-        install_or_update "$tool" "$version"
+    for tool in "${tools[@]}"; do
+        install_or_update "$tool"
     done
     
     log_success "All CLI tools check completed!"
@@ -148,8 +145,7 @@ main() {
     # Display all installed CLI tools
     echo
     log_info "Currently installed CLI tools:"
-    for tool_info in "${tools[@]}"; do
-        tool="${tool_info%:*}"
+    for tool in "${tools[@]}"; do
         if is_installed "$tool"; then
             version=$(get_installed_version "$tool")
             echo -e "  ${GREEN}✓${NC} $tool@$version"
