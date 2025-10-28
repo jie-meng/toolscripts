@@ -56,11 +56,11 @@ get_latest_version() {
 version_compare() {
     local installed=$1
     local latest=$2
-    
+
     if [[ "$installed" == "$latest" ]]; then
         return 0  # Same version
     fi
-    
+
     # Use sort -V for version comparison
     if [[ $(echo -e "$installed\n$latest" | sort -V | head -n1) == "$latest" ]]; then
         return 1  # Installed version is newer
@@ -72,27 +72,27 @@ version_compare() {
 # Install or update package
 install_or_update() {
     local package=$1
-    
+
     log_info "Checking $package..."
-    
+
     if is_installed "$package"; then
         local installed_version=$(get_installed_version "$package")
         local latest_version=$(get_latest_version "$package")
-        
+
         if [[ -z "$installed_version" ]]; then
             log_warning "Cannot get installed version, attempting reinstall..."
             npm install -g "$package@latest"
             return $?
         fi
-        
+
         if [[ -z "$latest_version" ]]; then
             log_error "Cannot get latest version info"
             return 1
         fi
-        
+
         log_info "Installed version: $installed_version"
         log_info "Latest version: $latest_version"
-        
+
         version_compare "$installed_version" "$latest_version"
         case $? in
             0)
@@ -120,7 +120,7 @@ install_or_update() {
             return 1
         fi
     fi
-    
+
     echo
 }
 
@@ -128,20 +128,20 @@ install_or_update() {
 main() {
     log_info "Starting CLI tools check and installation..."
     echo
-    
+
     # Check if npm is available
     if ! command -v npm &> /dev/null; then
         log_error "npm is not installed or not in PATH"
         exit 1
     fi
-    
+
     # Iterate through all tools
     for tool in "${tools[@]}"; do
         install_or_update "$tool"
     done
-    
+
     log_success "All CLI tools check completed!"
-    
+
     # Display all installed CLI tools
     echo
     log_info "Currently installed CLI tools:"
