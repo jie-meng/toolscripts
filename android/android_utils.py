@@ -1,15 +1,21 @@
 import os
+import sys
 
-def selectAdbDevice():
+
+def select_device():
+    """
+    Select an Android device from the list of connected devices.
+    """
     p = os.popen('adb devices')
     output = p.read()
-    devices = list(map(lambda line: line.split('\t')[0], filter(lambda x: x.endswith('device'), output.split('\n'))))
+    device_lines = filter(lambda x: '\t' in x, output.split('\n'))
+    devices = list(map(lambda x: x.split('\t')[0], device_lines))
 
     if len(devices) == 0:
-        print('No device found')
-        return None
-    elif len(devices) == 1:
-        print('{0} selected.\n'.format(devices[0]))
+        print('No devices found.')
+        sys.exit(-1)
+
+    if len(devices) == 1:
         return devices[0]
 
     print('Please select device:')
@@ -19,8 +25,12 @@ def selectAdbDevice():
         print('{0}. {1}'.format(idx, a))
         idx += 1
 
-    selection = int(input())
-    device = devices[int(selection) - 1]
-    print('{0} selected.\n'.format(device))
+    try:
+        selection = int(input("Enter the number of the device: "))
+        if selection < 1 or selection > len(devices):
+            raise ValueError("Invalid selection")
+    except ValueError as e:
+        print(e)
+        sys.exit(-1)
 
-    return device
+    return devices[selection - 1]
