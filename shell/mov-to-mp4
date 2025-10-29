@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# Script to convert MOV to MP4 with selectable quality
+# Usage: mov-to-mp4 /path/to/file.mov
+
+set -e
+
+if [ "$#" -ne 1 ]; then
+    echo "Usage: mov-to-mp4 /path/to/file.mov"
+    exit 1
+fi
+
+INPUT_FILE="$1"
+EXT="${INPUT_FILE##*.}"
+BASENAME="$(basename "$INPUT_FILE" .mov)"
+DIRNAME="$(dirname "$INPUT_FILE")"
+OUTPUT_FILE="$DIRNAME/$BASENAME.mp4"
+
+if [ ! -f "$INPUT_FILE" ]; then
+    echo "Error: File '$INPUT_FILE' does not exist."
+    exit 1
+fi
+
+if [ "$EXT" != "mov" ]; then
+    echo "Error: Input file must have .mov extension."
+    exit 1
+fi
+
+echo "Select quality:"
+echo "  1) High (larger size, best quality)"
+echo "  2) Medium (balanced)"
+echo "  3) Low (smallest size, lower quality)"
+read -p "Enter choice [1-3]: " QUALITY
+
+case "$QUALITY" in
+    1)
+        CRF=18
+        PRESET=slow
+        ;;
+    2)
+        CRF=23
+        PRESET=medium
+        ;;
+    3)
+        CRF=28
+        PRESET=fast
+        ;;
+    *)
+        echo "Invalid choice."
+        exit 1
+        ;;
+esac
+
+# Convert using ffmpeg
+ffmpeg -i "$INPUT_FILE" -c:v libx264 -crf $CRF -preset $PRESET -c:a aac -movflags +faststart "$OUTPUT_FILE"
+
+if [ $? -eq 0 ]; then
+    echo "Conversion successful! Output: $OUTPUT_FILE"
+else
+    echo "Conversion failed."
+    exit 1
+fi
+
