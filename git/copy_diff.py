@@ -67,9 +67,50 @@ def get_menu_selection(num_options):
             print("Please enter a number.")
 
 
-def copy_and_exit(diff, success_msg, empty_msg):
+def copy_and_exit(diff, success_msg, empty_msg, prompt_type=None):
+    """Copy diff to clipboard, optionally with review prompt.
+
+    Args:
+        diff: The diff content to copy
+        success_msg: Success message to print
+        empty_msg: Message to print if diff is empty
+        prompt_type: None (no prompt), 'en' (English prompt), 'zh-cn' (Chinese prompt)
+    """
     if diff is not None and diff.strip():
-        pyperclip.copy(diff)
+        content_to_copy = '```\n' + diff + '```\n'
+        if prompt_type == 'en':
+            content_to_copy = '```\n' + diff + '```\n\n' + '''As a professional code reviewer, please analyze the above git diff and output your review in clear, structured English Markdown. Strictly follow this format:
+
+1. **Problematic Code & Explanation**
+   - List all code snippets with potential issues (bugs, design flaws, maintainability, performance, etc.), and clearly explain the reason and impact for each.
+
+2. **Improvement Suggestions**
+   - For each issue, provide concrete suggestions for improvement or fixes.
+
+3. **Overall Assessment**
+   - Summarize the strengths and risks of this change, and highlight anything that needs special attention.
+
+4. **Recommended Commit Message**
+   - Generate a concise, accurate, and conventional commit message for this change.
+
+Format your output in clean Markdown for easy copy-paste into review tools or commit descriptions.'''
+        elif prompt_type == 'zh-cn':
+            content_to_copy = '```\n' + diff + '```\n\n' + '''作为一名专业的代码审查员，请分析上述 git diff 并以清晰、结构化的中文 Markdown 格式输出您的审查意见。请严格遵循以下格式：
+
+1. **问题代码及说明**
+   - 列出所有存在潜在问题的代码片段（bug、设计缺陷、可维护性、性能等），并清楚说明每个问题的原因和影响。
+
+2. **改进建议**
+   - 针对每个问题，提供具体的改进或修复建议。
+
+3. **整体评估**
+   - 总结此次变更的优势和风险，并突出需要特别关注的地方。
+
+4. **推荐提交信息**
+   - 为此变更生成简洁、准确且符合规范的提交信息，提交信息使用英文。
+
+请以清晰的 Markdown 格式输出，便于复制粘贴到审查工具或提交描述中。'''
+        pyperclip.copy(content_to_copy)
         print(success_msg)
         sys.exit(0)
     else:
@@ -77,17 +118,17 @@ def copy_and_exit(diff, success_msg, empty_msg):
         sys.exit(0)
 
 
-def handle_staged_diff():
+def handle_staged_diff(prompt_type=None):
     diff = run_cmd("git diff --cached")
-    copy_and_exit(diff, "Staged diff copied to clipboard.\n", "No diff to copy.\n")
+    copy_and_exit(diff, "Staged diff copied to clipboard.\n", "No diff to copy.\n", prompt_type=prompt_type)
 
 
-def handle_working_diff():
+def handle_working_diff(prompt_type=None):
     diff = run_cmd("git diff")
-    copy_and_exit(diff, "Working directory diff copied to clipboard.\n", "No diff to copy.\n")
+    copy_and_exit(diff, "Working directory diff copied to clipboard.\n", "No diff to copy.\n", prompt_type=prompt_type)
 
 
-def handle_single_commit():
+def handle_single_commit(prompt_type=None):
     while True:
         commits = get_recent_commits()
         commit_options = ["Back to previous menu"] + [f"{c[0]} {c[1]}" for c in commits]
@@ -97,10 +138,10 @@ def handle_single_commit():
         else:
             commit_hash = commits[csel-1][0]
             diff = run_cmd(f"git show {commit_hash}")
-            copy_and_exit(diff, f"Diff of commit {commit_hash} copied to clipboard.\n", "No diff to copy.\n")
+            copy_and_exit(diff, f"Diff of commit {commit_hash} copied to clipboard.\n", "No diff to copy.\n", prompt_type=prompt_type)
 
 
-def handle_multiple_commits():
+def handle_multiple_commits(prompt_type=None):
     hashes_input = input("Enter commit hashes (comma separated): ")
     hashes = [h.strip() for h in hashes_input.split(',') if h.strip()]
     if not hashes:
@@ -115,7 +156,43 @@ def handle_multiple_commits():
             print(f"Warning: Could not get diff for commit {h}.")
     if all_diffs:
         combined = '\n\n'.join(all_diffs)
-        pyperclip.copy(combined)
+        # Use copy_and_exit to handle the optional prompt
+        if prompt_type == 'en':
+            content_to_copy = combined + '\n\n' + '''As a professional code reviewer, please analyze the above git diff and output your review in clear, structured English Markdown. Strictly follow this format:
+
+1. **Problematic Code & Explanation**
+   - List all code snippets with potential issues (bugs, design flaws, maintainability, performance, etc.), and clearly explain the reason and impact for each.
+
+2. **Improvement Suggestions**
+   - For each issue, provide concrete suggestions for improvement or fixes.
+
+3. **Overall Assessment**
+   - Summarize the strengths and risks of this change, and highlight anything that needs special attention.
+
+4. **Recommended Commit Message**
+   - Generate a concise, accurate, and conventional commit message for this change.
+
+Format your output in clean Markdown for easy copy-paste into review tools or commit descriptions.'''
+            pyperclip.copy(content_to_copy)
+        elif prompt_type == 'zh-cn':
+            content_to_copy = combined + '\n\n' + '''作为一名专业的代码审查员，请分析上述 git diff 并以清晰、结构化的中文 Markdown 格式输出您的审查意见。请严格遵循以下格式：
+
+1. **问题代码及说明**
+   - 列出所有存在潜在问题的代码片段（bug、设计缺陷、可维护性、性能等），并清楚说明每个问题的原因和影响。
+
+2. **改进建议**
+   - 针对每个问题，提供具体的改进或修复建议。
+
+3. **整体评估**
+   - 总结此次变更的优势和风险，并突出需要特别关注的地方。
+
+4. **推荐提交信息**
+   - 为此变更生成简洁、准确且符合规范的提交信息，提交信息使用英文。
+
+请以清晰的 Markdown 格式输出，便于复制粘贴到审查工具或提交描述中。'''
+            pyperclip.copy(content_to_copy)
+        else:
+            pyperclip.copy(combined)
         print("Combined diffs copied to clipboard.\n")
         sys.exit(0)
     else:
@@ -179,7 +256,7 @@ def parse_pr_input(pr_input):
     return (None, None, pr_input, None)
 
 
-def handle_pr_diff():
+def handle_pr_diff(prompt_type=None):
     """Handle copying a PR diff using gh pr diff. Accepts PR URL, number, or owner/repo#number.
 
     For GitHub Enterprise instances, use the full URL directly instead of --hostname flag.
@@ -207,7 +284,7 @@ def handle_pr_diff():
 
     print(f"Running: {cmd}")
     diff = run_cmd(cmd)
-    copy_and_exit(diff, f"PR diff copied to clipboard.\n", "No diff to copy.\n")
+    copy_and_exit(diff, f"PR diff copied to clipboard.\n", "No diff to copy.\n", prompt_type=prompt_type)
 
 
 def handle_review_prompt():
@@ -290,18 +367,57 @@ def main():
         sel = get_menu_selection(len(options))
         if sel == 0:
             sys.exit(0)
-        elif sel == 1:
-            handle_staged_diff()
-        elif sel == 2:
-            handle_working_diff()
-        elif sel == 3:
-            handle_single_commit()
-        elif sel == 4:
-            handle_multiple_commits()
-        elif sel == 5:
-            handle_pr_diff()
         elif sel == 6:
             handle_review_prompt()
+        else:
+            # Ask for prompt type for diff options 1-5 (default: No)
+            print("\nDo you want to include a review prompt?")
+            print("1. No")
+            print("2. En (English)")
+            print("3. Zh (中文)")
+            print("0. Back")
+
+            prompt_sel = None
+            prompt_type = None
+
+            while prompt_sel is None:
+                sel_input = input("Please select (default: 1): ").strip()
+                if sel_input == '':
+                    prompt_type = None
+                    prompt_sel = 1
+                else:
+                    try:
+                        sel_num = int(sel_input)
+                        if sel_num == 0:
+                            prompt_sel = 0
+                        elif sel_num == 1:
+                            prompt_type = None
+                            prompt_sel = sel_num
+                        elif sel_num == 2:
+                            prompt_type = 'en'
+                            prompt_sel = sel_num
+                        elif sel_num == 3:
+                            prompt_type = 'zh-cn'
+                            prompt_sel = sel_num
+                        else:
+                            print("Invalid input, please try again.")
+                    except ValueError:
+                        print("Please enter a number.")
+
+            if prompt_sel == 0:
+                continue  # User chose to go back, skip execution
+
+            # Execute the selected diff handler with prompt type
+            if sel == 1:
+                handle_staged_diff(prompt_type=prompt_type)
+            elif sel == 2:
+                handle_working_diff(prompt_type=prompt_type)
+            elif sel == 3:
+                handle_single_commit(prompt_type=prompt_type)
+            elif sel == 4:
+                handle_multiple_commits(prompt_type=prompt_type)
+            elif sel == 5:
+                handle_pr_diff(prompt_type=prompt_type)
 
 
 if __name__ == "__main__":
