@@ -1,7 +1,7 @@
 import subprocess
-import pyperclip
 import sys
 import re
+import platform
 from urllib.parse import urlparse
 
 
@@ -13,6 +13,27 @@ def run_cmd(cmd):
     except subprocess.CalledProcessError as e:
         print(f"Error: {e.stderr}")
         return None
+
+
+def copy_to_clipboard(content):
+    """Copy content to clipboard using appropriate method for the OS."""
+    system = platform.system()
+    if system == "Darwin":  # macOS
+        try:
+            process = subprocess.Popen(['pbcopy'], stdin=subprocess.PIPE, text=True)
+            process.communicate(input=content)
+            return True
+        except Exception as e:
+            print(f"Error: Failed to copy to clipboard: {e}")
+            return False
+    else:  # Other systems (Linux, Windows, etc.)
+        try:
+            import pyperclip
+            pyperclip.copy(content)
+            return True
+        except Exception as e:
+            print(f"Error: Failed to copy to clipboard: {e}")
+            return False
 
 
 def select_from_list(options, prompt="Please select: "):
@@ -110,7 +131,7 @@ Format your output in clean Markdown for easy copy-paste into review tools or co
    - 为此变更生成简洁、准确且符合规范的提交信息，提交信息使用英文。
 
 请以清晰的 Markdown 格式输出，便于复制粘贴到审查工具或提交描述中。'''
-        pyperclip.copy(content_to_copy)
+        copy_to_clipboard(content_to_copy)
         print(success_msg)
         sys.exit(0)
     else:
@@ -173,7 +194,7 @@ def handle_multiple_commits(prompt_type=None):
    - Generate a concise, accurate, and conventional commit message for this change.
 
 Format your output in clean Markdown for easy copy-paste into review tools or commit descriptions.'''
-            pyperclip.copy(content_to_copy)
+            copy_to_clipboard(content_to_copy)
         elif prompt_type == 'zh-cn':
             content_to_copy = combined + '\n\n' + '''作为一名专业的代码审查员，请分析上述 git diff 并以清晰、结构化的中文 Markdown 格式输出您的审查意见。请严格遵循以下格式：
 
@@ -190,9 +211,9 @@ Format your output in clean Markdown for easy copy-paste into review tools or co
    - 为此变更生成简洁、准确且符合规范的提交信息，提交信息使用英文。
 
 请以清晰的 Markdown 格式输出，便于复制粘贴到审查工具或提交描述中。'''
-            pyperclip.copy(content_to_copy)
+            copy_to_clipboard(content_to_copy)
         else:
-            pyperclip.copy(combined)
+            copy_to_clipboard(combined)
         print("Combined diffs copied to clipboard.\n")
         sys.exit(0)
     else:
@@ -319,7 +340,7 @@ def handle_review_prompt():
                     "Offer further suggestions to improve code quality, maintainability, and test coverage (such as unit tests, better comments, type annotations, or improved documentation).\n"
                     "Please follow this structure for a professional review report. The review should be comprehensive and rigorous—highlight any and all suspicious or problematic code, and provide practical, actionable advice. Do not omit seemingly minor issues.\n\n"
                 )
-                pyperclip.copy(prompt)
+                copy_to_clipboard(prompt)
                 print("English review prompt copied to clipboard.\n")
                 sys.exit(0)
             elif sel == 2:
@@ -343,7 +364,7 @@ def handle_review_prompt():
                     "给出进一步增强代码质量、工程可维护性、测试覆盖的建议（如单测、注释、类型声明、文档完善等）。\n"
                     "请严格按照上述结构给出专业分析报告。审查要全面严谨，发现问题要清晰具体，并给出实际可行的建议。不要遗漏任何看起来可疑的写法。\n\n"
                 )
-                pyperclip.copy(prompt)
+                copy_to_clipboard(prompt)
                 print("中文审查提示已复制到剪贴板。\n")
                 sys.exit(0)
             else:
