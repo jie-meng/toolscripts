@@ -11,7 +11,6 @@ TOOLS = [
     "@anthropic-ai/claude-code",
     "@github/copilot",
     "@google/gemini-cli",
-    "opencode-ai",
     "@iflow-ai/iflow-cli",
     "@qwen-code/qwen-code",
 ]

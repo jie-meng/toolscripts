@@ -6,4 +6,4 @@ set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Execute the python script
-python ${DIR}/../ai/npm-tools.py $@
+python ${DIR}/../ai/npm_tools.py $@
