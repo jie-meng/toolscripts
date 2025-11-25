@@ -88,6 +88,34 @@ def get_menu_selection(num_options):
             print("Please enter a number.")
 
 
+def get_current_branch():
+    """Get the current git branch name."""
+    return run_cmd("git rev-parse --abbrev-ref HEAD")
+
+
+def get_commit_message_format():
+    """Determine commit message format based on branch name.
+    
+    If branch name is in A/B/C format (contains two slashes),
+    return format like 'A[B] message' (e.g., 'feat[SNEC-001] message').
+    Otherwise return None for default format.
+    """
+    branch = get_current_branch()
+    if not branch:
+        return None
+    
+    branch = branch.strip()
+    # Check if branch name contains exactly two slashes (A/B/C format)
+    if branch.count('/') == 2:
+        parts = branch.split('/', 2)
+        prefix = parts[0]  # A
+        middle = parts[1]  # B
+        # Return format string with placeholders
+        return f"{prefix}[{middle}] <message>"
+    
+    return None
+
+
 def copy_and_exit(diff, success_msg, empty_msg, prompt_type=None):
     """Copy diff to clipboard, optionally with review prompt.
 
@@ -100,7 +128,13 @@ def copy_and_exit(diff, success_msg, empty_msg, prompt_type=None):
     if diff is not None and diff.strip():
         content_to_copy = '```\n' + diff + '```\n'
         if prompt_type == 'en':
-            content_to_copy = '```\n' + diff + '```\n\n' + '''As a professional code reviewer, please analyze the above git diff and output your review in clear, structured English Markdown. Strictly follow this format:
+            commit_format = get_commit_message_format()
+            if commit_format:
+                commit_msg_instruction = f"- Generate a concise, accurate commit message for this change. Based on the branch name '{get_current_branch().strip()}', use the format: '{commit_format}'."
+            else:
+                commit_msg_instruction = "- Generate a concise, accurate, and conventional commit message for this change."
+            
+            content_to_copy = '```\n' + diff + '```\n\n' + f'''As a professional code reviewer, please analyze the above git diff and output your review in clear, structured English Markdown. Strictly follow this format:
 
 1. **Problematic Code & Explanation**
    - List all code snippets with potential issues (bugs, design flaws, maintainability, performance, etc.), and clearly explain the reason and impact for each.
@@ -112,11 +146,17 @@ def copy_and_exit(diff, success_msg, empty_msg, prompt_type=None):
    - Summarize the strengths and risks of this change, and highlight anything that needs special attention.
 
 4. **Recommended Commit Message**
-   - Generate a concise, accurate, and conventional commit message for this change.
+   {commit_msg_instruction}
 
 Format your output in clean Markdown for easy copy-paste into review tools or commit descriptions.'''
         elif prompt_type == 'zh-cn':
-            content_to_copy = '```\n' + diff + '```\n\n' + '''作为一名专业的代码审查员，请分析上述 git diff 并以清晰、结构化的中文 Markdown 格式输出您的审查意见。请严格遵循以下格式：
+            commit_format = get_commit_message_format()
+            if commit_format:
+                commit_msg_instruction = f"- 为此变更生成简洁、准确且符合规范的提交信息。基于分支名 '{get_current_branch().strip()}'，使用格式: '{commit_format}'。提交信息使用英文。"
+            else:
+                commit_msg_instruction = "- 为此变更生成简洁、准确且符合规范的提交信息，提交信息使用英文。"
+            
+            content_to_copy = '```\n' + diff + '```\n\n' + f'''作为一名专业的代码审查员，请分析上述 git diff 并以清晰、结构化的中文 Markdown 格式输出您的审查意见。请严格遵循以下格式：
 
 1. **问题代码及说明**
    - 列出所有存在潜在问题的代码片段（bug、设计缺陷、可维护性、性能等），并清楚说明每个问题的原因和影响。
@@ -128,7 +168,7 @@ Format your output in clean Markdown for easy copy-paste into review tools or co
    - 总结此次变更的优势和风险，并突出需要特别关注的地方。
 
 4. **推荐提交信息**
-   - 为此变更生成简洁、准确且符合规范的提交信息，提交信息使用英文。
+   {commit_msg_instruction}
 
 请以清晰的 Markdown 格式输出，便于复制粘贴到审查工具或提交描述中。'''
         copy_to_clipboard(content_to_copy)
