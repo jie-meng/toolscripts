@@ -1,0 +1,73 @@
+#!/bin/bash
+
+# Script to compress MP4 files with selectable quality
+# Usage: mp4-compress /path/to/file.mp4
+
+set -e
+
+if [ "$#" -ne 1 ]; then
+    echo "Usage: mp4-compress /path/to/file.mp4"
+    exit 1
+fi
+
+INPUT_FILE="$1"
+EXT="${INPUT_FILE##*.}"
+BASENAME="$(basename "$INPUT_FILE" .mp4)"
+DIRNAME="$(dirname "$INPUT_FILE")"
+OUTPUT_FILE="$DIRNAME/${BASENAME}_compressed.mp4"
+
+if [ ! -f "$INPUT_FILE" ]; then
+    echo "Error: File '$INPUT_FILE' does not exist."
+    exit 1
+fi
+
+if [ "$EXT" != "mp4" ]; then
+    echo "Error: Input file must have .mp4 extension."
+    exit 1
+fi
+
+echo "Select compression quality:"
+echo "  1) High (larger size, best quality)"
+echo "  2) Medium (balanced)"
+echo "  3) Low (smallest size, lower quality)"
+read -p "Enter choice [1-3]: " QUALITY
+
+case "$QUALITY" in
+    1)
+        CRF=18
+        PRESET=slow
+        ;;
+    2)
+        CRF=23
+        PRESET=medium
+        ;;
+    3)
+        CRF=28
+        PRESET=fast
+        ;;
+    *)
+        echo "Invalid choice."
+        exit 1
+        ;;
+esac
+
+# Get original file size for comparison
+ORIGINAL_SIZE=$(du -h "$INPUT_FILE" | cut -f1)
+
+echo "Compressing video..."
+echo "Original size: $ORIGINAL_SIZE"
+
+# Compress using ffmpeg
+ffmpeg -i "$INPUT_FILE" -c:v libx264 -crf $CRF -preset $PRESET -c:a aac -movflags +faststart "$OUTPUT_FILE"
+
+if [ $? -eq 0 ]; then
+    # Get compressed file size
+    COMPRESSED_SIZE=$(du -h "$OUTPUT_FILE" | cut -f1)
+    echo "Compression successful!"
+    echo "Original size:  $ORIGINAL_SIZE"
+    echo "Compressed size: $COMPRESSED_SIZE"
+    echo "Output: $OUTPUT_FILE"
+else
+    echo "Compression failed."
+    exit 1
+fi
