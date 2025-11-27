@@ -10,8 +10,8 @@ def run_cmd(cmd):
     try:
         result = subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
         return result.stdout
-    except subprocess.CalledProcessError as e:
-        print(f"Error: {e.stderr}")
+    except subprocess.CalledProcessError:
+        # Don't print error for commands that are expected to fail (like checks)
         return None
 
 
@@ -116,98 +116,44 @@ def get_commit_message_format():
     return None
 
 
-def copy_and_exit(diff, success_msg, empty_msg, prompt_type=None):
-    """Copy diff to clipboard, optionally with review prompt.
-
-    Args:
-        diff: The diff content to copy
-        success_msg: Success message to print
-        empty_msg: Message to print if diff is empty
-        prompt_type: None (no prompt), 'en' (English prompt), 'zh-cn' (Chinese prompt)
-    """
-    if diff is not None and diff.strip():
-        content_to_copy = '```\n' + diff + '```\n'
-        if prompt_type == 'en':
-            commit_format = get_commit_message_format()
-            if commit_format:
-                commit_msg_instruction = f"- Generate a concise, accurate commit message for this change. Based on the branch name '{get_current_branch().strip()}', use the format: '{commit_format}'."
-            else:
-                commit_msg_instruction = "- Generate a concise, accurate, and conventional commit message for this change."
-            
-            content_to_copy = '```\n' + diff + '```\n\n' + f'''As a professional code reviewer, please analyze the above git diff and output your review in clear, structured English Markdown. Strictly follow this format:
-
-1. **Problematic Code & Explanation**
-   - List all code snippets with potential issues (bugs, design flaws, maintainability, performance, etc.), and clearly explain the reason and impact for each.
-
-2. **Improvement Suggestions**
-   - For each issue, provide concrete suggestions for improvement or fixes.
-
-3. **Overall Assessment**
-   - Summarize the strengths and risks of this change, and highlight anything that needs special attention.
-
-4. **Recommended Commit Message**
-   {commit_msg_instruction}
-
-Format your output in clean Markdown for easy copy-paste into review tools or commit descriptions.'''
-        elif prompt_type == 'zh-cn':
-            commit_format = get_commit_message_format()
-            if commit_format:
-                commit_msg_instruction = f"- 为此变更生成简洁、准确且符合规范的提交信息。基于分支名 '{get_current_branch().strip()}'，使用格式: '{commit_format}'。提交信息使用英文。"
-            else:
-                commit_msg_instruction = "- 为此变更生成简洁、准确且符合规范的提交信息，提交信息使用英文。"
-            
-            content_to_copy = '```\n' + diff + '```\n\n' + f'''作为一名专业的代码审查员，请分析上述 git diff 并以清晰、结构化的中文 Markdown 格式输出您的审查意见。请严格遵循以下格式：
-
-1. **问题代码及说明**
-   - 列出所有存在潜在问题的代码片段（bug、设计缺陷、可维护性、性能等），并清楚说明每个问题的原因和影响。
-
-2. **改进建议**
-   - 针对每个问题，提供具体的改进或修复建议。
-
-3. **整体评估**
-   - 总结此次变更的优势和风险，并突出需要特别关注的地方。
-
-4. **推荐提交信息**
-   {commit_msg_instruction}
-
-请以清晰的 Markdown 格式输出，便于复制粘贴到审查工具或提交描述中。'''
-        copy_to_clipboard(content_to_copy)
-        print(success_msg)
-        sys.exit(0)
-    else:
-        print(empty_msg)
-        sys.exit(0)
-
-
-def handle_staged_diff(prompt_type=None):
+def get_staged_diff():
+    """Get staged diff."""
     diff = run_cmd("git diff --cached")
-    copy_and_exit(diff, "Staged diff copied to clipboard.\n", "No diff to copy.\n", prompt_type=prompt_type)
+    info = {"success_msg": "Staged diff copied to clipboard.\n", "empty_msg": "No staged diff to copy.\n"}
+    return diff, info
 
-
-def handle_working_diff(prompt_type=None):
+def get_working_diff():
+    """Get working directory diff."""
     diff = run_cmd("git diff")
-    copy_and_exit(diff, "Working directory diff copied to clipboard.\n", "No diff to copy.\n", prompt_type=prompt_type)
+    info = {"success_msg": "Working directory diff copied to clipboard.\n", "empty_msg": "No diff to copy.\n"}
+    return diff, info
 
-
-def handle_single_commit(prompt_type=None):
+def get_single_commit_diff():
+    """Get diff of a single, user-selected commit."""
     while True:
         commits = get_recent_commits()
+        if not commits:
+            return None, {"empty_msg": "No recent commits found.\n"}
         commit_options = ["Back to previous menu"] + [f"{c[0]} {c[1]}" for c in commits]
         csel = select_from_list(commit_options, prompt="Select a commit: ")
         if csel == 0:
-            break
+            return None, {}  # User chose to go back
         else:
             commit_hash = commits[csel-1][0]
             diff = run_cmd(f"git show {commit_hash}")
-            copy_and_exit(diff, f"Diff of commit {commit_hash} copied to clipboard.\n", "No diff to copy.\n", prompt_type=prompt_type)
+            info = {
+                "success_msg": f"Diff of commit {commit_hash} copied to clipboard.\n",
+                "empty_msg": "No diff to copy.\n"
+            }
+            return diff, info
 
-
-def handle_multiple_commits(prompt_type=None):
+def get_multiple_commits_diff():
+    """Get combined diff of multiple user-inputted commits."""
     hashes_input = input("Enter commit hashes (comma separated): ")
     hashes = [h.strip() for h in hashes_input.split(',') if h.strip()]
     if not hashes:
-        print("No valid commit hashes entered.\n")
-        sys.exit(0)
+        return None, {"empty_msg": "No valid commit hashes entered.\n"}
+
     all_diffs = []
     for h in hashes:
         diff = run_cmd(f"git show {h}")
@@ -215,51 +161,13 @@ def handle_multiple_commits(prompt_type=None):
             all_diffs.append(diff)
         else:
             print(f"Warning: Could not get diff for commit {h}.")
-    if all_diffs:
-        combined = '\n\n'.join(all_diffs)
-        # Use copy_and_exit to handle the optional prompt
-        if prompt_type == 'en':
-            content_to_copy = combined + '\n\n' + '''As a professional code reviewer, please analyze the above git diff and output your review in clear, structured English Markdown. Strictly follow this format:
 
-1. **Problematic Code & Explanation**
-   - List all code snippets with potential issues (bugs, design flaws, maintainability, performance, etc.), and clearly explain the reason and impact for each.
+    if not all_diffs:
+        return None, {"empty_msg": "No diffs could be generated.\n"}
 
-2. **Improvement Suggestions**
-   - For each issue, provide concrete suggestions for improvement or fixes.
-
-3. **Overall Assessment**
-   - Summarize the strengths and risks of this change, and highlight anything that needs special attention.
-
-4. **Recommended Commit Message**
-   - Generate a concise, accurate, and conventional commit message for this change.
-
-Format your output in clean Markdown for easy copy-paste into review tools or commit descriptions.'''
-            copy_to_clipboard(content_to_copy)
-        elif prompt_type == 'zh-cn':
-            content_to_copy = combined + '\n\n' + '''作为一名专业的代码审查员，请分析上述 git diff 并以清晰、结构化的中文 Markdown 格式输出您的审查意见。请严格遵循以下格式：
-
-1. **问题代码及说明**
-   - 列出所有存在潜在问题的代码片段（bug、设计缺陷、可维护性、性能等），并清楚说明每个问题的原因和影响。
-
-2. **改进建议**
-   - 针对每个问题，提供具体的改进或修复建议。
-
-3. **整体评估**
-   - 总结此次变更的优势和风险，并突出需要特别关注的地方。
-
-4. **推荐提交信息**
-   - 为此变更生成简洁、准确且符合规范的提交信息，提交信息使用英文。
-
-请以清晰的 Markdown 格式输出，便于复制粘贴到审查工具或提交描述中。'''
-            copy_to_clipboard(content_to_copy)
-        else:
-            copy_to_clipboard(combined)
-        print("Combined diffs copied to clipboard.\n")
-        sys.exit(0)
-    else:
-        print("No diffs copied.\n")
-        sys.exit(0)
-
+    combined = '\n\n'.join(all_diffs)
+    info = {"success_msg": "Combined diffs copied to clipboard.\n"}
+    return combined, info
 
 def parse_pr_input(pr_input):
     """Parse user input for PR.
@@ -317,36 +225,66 @@ def parse_pr_input(pr_input):
     return (None, None, pr_input, None)
 
 
-def handle_pr_diff(prompt_type=None):
-    """Handle copying a PR diff using gh pr diff. Accepts PR URL, number, or owner/repo#number.
-
-    For GitHub Enterprise instances, use the full URL directly instead of --hostname flag.
-    """
+def get_pr_diff():
+    """Get PR diff using gh command."""
     pr_input = input("Enter PR URL, number (e.g. 123) or owner/repo#number: ")
     if not pr_input.strip():
-        print("No PR provided.\n")
-        return
+        return None, {"empty_msg": "No PR provided.\n"}
+    
     repo, number, raw, hostname = parse_pr_input(pr_input)
 
-    # Build gh command based on what we parsed
-    # For GitHub Enterprise (non-github.com), use the full URL directly
     if hostname and hostname.lower() not in ("github.com", "api.github.com"):
-        # Use the original URL for GitHub Enterprise
         cmd = f"gh pr diff {raw}"
     elif repo and number:
-        # GitHub.com: use repo + number
         cmd = f"gh pr diff {number} --repo {repo}"
     elif number and not repo:
-        # number only, assume current repo
         cmd = f"gh pr diff {number}"
     else:
-        # fallback: pass raw input directly to gh
         cmd = f"gh pr diff {raw}"
 
     print(f"Running: {cmd}")
     diff = run_cmd(cmd)
-    copy_and_exit(diff, f"PR diff copied to clipboard.\n", "No diff to copy.\n", prompt_type=prompt_type)
+    info = {"success_msg": "PR diff copied to clipboard.\n", "empty_msg": "No diff to copy.\n"}
+    return diff, info
 
+def get_branch_diff():
+    """Get the combined diff for all commits on the current branch since it forked."""
+    current_branch = get_current_branch()
+    if not current_branch:
+        return None, {"empty_msg": "Could not determine the current branch."}
+    current_branch = current_branch.strip()
+
+    base_branch_candidates = ['origin/main', 'origin/master', 'origin/develop', 'origin/dev', 'main', 'master', 'develop', 'dev']
+    auto_detected_base = None
+
+    for candidate in base_branch_candidates:
+        proc = subprocess.run(f"git rev-parse --verify {candidate}", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if proc.returncode == 0:
+            auto_detected_base = candidate
+            break
+
+    final_base_branch = None
+    if auto_detected_base:
+        prompt_message = f"Automatically selected '{auto_detected_base}' as the base. Press Enter to confirm, or enter a different branch/commit hash: "
+        user_input = input(prompt_message).strip()
+        final_base_branch = user_input if user_input else auto_detected_base
+    else:
+        prompt_message = "Could not automatically find a base branch. Please enter a base branch or commit hash to compare against: "
+        user_input = input(prompt_message).strip()
+        if not user_input:
+            return None, {"empty_msg": "No base branch provided. Aborting."}
+        final_base_branch = user_input
+
+    diff_cmd = f"git diff {final_base_branch}...{current_branch}"
+    print(f"Running: {diff_cmd}")
+    diff = run_cmd(diff_cmd)
+    
+    info = {
+        "success_msg": f"Diff of branch '{current_branch}' from its fork point with '{final_base_branch}' copied to clipboard.\n",
+        "empty_msg": "No diff to copy.\n",
+        "current_branch": current_branch
+    }
+    return diff, info
 
 def handle_review_prompt():
     lang_options = ["English (en)", "中文 (zh-cn)"]
@@ -413,74 +351,140 @@ def handle_review_prompt():
             print("Please enter a number.")
 
 
+def ask_for_prompt_type():
+    """Asks user for review prompt preference, returns prompt type or 'back'."""
+    print("\nDo you want to include a review prompt?")
+    print("1. No")
+    print("2. En (English)")
+    print("3. Zh (中文)")
+    print("0. Back to main menu")
+
+    while True:
+        sel_input = input("Please select (default: 1): ").strip()
+        if sel_input == '':
+            return None  # No prompt
+        try:
+            sel_num = int(sel_input)
+            if sel_num == 0:
+                return 'back'
+            elif sel_num == 1:
+                return None  # No prompt
+            elif sel_num == 2:
+                return 'en'
+            elif sel_num == 3:
+                return 'zh-cn'
+            else:
+                print("Invalid input, please try again.")
+        except ValueError:
+            print("Please enter a number.")
+
+def format_and_copy(diff, prompt_type, info):
+    """Formats the diff with an optional review prompt and copies to clipboard."""
+    content_to_copy = '```\n' + diff + '```\n'
+    
+    if prompt_type:
+        current_branch = info.get("current_branch", get_current_branch().strip())
+        commit_format = get_commit_message_format()
+
+        if prompt_type == 'en':
+            commit_msg_instruction = "- Generate a concise, accurate, and conventional commit message for this change."
+            if commit_format:
+                commit_msg_instruction = f"- Generate a concise, accurate commit message for this change. Based on the branch name '{current_branch}', use the format: '{commit_format}'."
+            
+            content_to_copy += '\n\n' + f'''As a professional code reviewer, please analyze the above git diff and output your review in clear, structured English Markdown. Strictly follow this format:
+
+1. **Problematic Code & Explanation**
+   - List all code snippets with potential issues (bugs, design flaws, maintainability, performance, etc.), and clearly explain the reason and impact for each.
+
+2. **Improvement Suggestions**
+   - For each issue, provide concrete suggestions for improvement or fixes.
+
+3. **Overall Assessment**
+   - Summarize the strengths and risks of this change, and highlight anything that needs special attention.
+
+4. **Recommended Commit Message**
+   {commit_msg_instruction}
+
+Format your output in clean Markdown for easy copy-paste into review tools or commit descriptions.'''
+        elif prompt_type == 'zh-cn':
+            commit_msg_instruction = "- 为此变更生成简洁、准确且符合规范的提交信息，提交信息使用英文。"
+            if commit_format:
+                commit_msg_instruction = f"- 为此变更生成简洁、准确且符合规范的提交信息。基于分支名 '{current_branch}'，使用格式: '{commit_format}'。提交信息使用英文。"
+            
+            content_to_copy += '\n\n' + f'''作为一名专业的代码审查员，请分析上述 git diff 并以清晰、结构化的中文 Markdown 格式输出您的审查意见。请严格遵循以下格式：
+
+1. **问题代码及说明**
+   - 列出所有存在潜在问题的代码片段（bug、设计缺陷、可维护性、性能等），并清楚说明每个问题的原因和影响。
+
+2. **改进建议**
+   - 针对每个问题，提供具体的改进或修复建议。
+
+3. **整体评估**
+   - 总结此次变更的优势和风险，并突出需要特别关注的地方。
+
+4. **推荐提交信息**
+   {commit_msg_instruction}
+
+请以清晰的 Markdown 格式输出，便于复制粘贴到审查工具或提交描述中。'''
+
+    copy_to_clipboard(content_to_copy)
+    print(info.get("success_msg", "Diff copied to clipboard.\n"))
+
 def main():
     options = [
         "Staged diff (git diff --cached)",
         "Working directory diff (git diff)",
         "Diff of a specific commit",
         "Diffs of multiple commits (input hashes)",
+        "Branch diff from merge-base (e.g. vs main/master)",
         "PR diff (gh pr diff)",
-        "Generate review prompt from working diff",
+        "Generate review prompt for clipboard",
     ]
+    
+    diff_handlers = {
+        1: get_staged_diff,
+        2: get_working_diff,
+        3: get_single_commit_diff,
+        4: get_multiple_commits_diff,
+        5: get_branch_diff,
+        6: get_pr_diff,
+    }
+
     while True:
         print("\nPlease select the diff type to copy:")
         print_menu(options)
         sel = get_menu_selection(len(options))
+
         if sel == 0:
             sys.exit(0)
-        elif sel == 6:
+        
+        if sel == 7:
             handle_review_prompt()
-        else:
-            # Ask for prompt type for diff options 1-5 (default: No)
-            print("\nDo you want to include a review prompt?")
-            print("1. No")
-            print("2. En (English)")
-            print("3. Zh (中文)")
-            print("0. Back")
+            continue
 
-            prompt_sel = None
-            prompt_type = None
+        # Get diff content and info from the appropriate handler
+        handler = diff_handlers.get(sel)
+        if not handler:
+            print("Invalid selection.")
+            continue
+            
+        diff, info = handler()
 
-            while prompt_sel is None:
-                sel_input = input("Please select (default: 1): ").strip()
-                if sel_input == '':
-                    prompt_type = None
-                    prompt_sel = 1
-                else:
-                    try:
-                        sel_num = int(sel_input)
-                        if sel_num == 0:
-                            prompt_sel = 0
-                        elif sel_num == 1:
-                            prompt_type = None
-                            prompt_sel = sel_num
-                        elif sel_num == 2:
-                            prompt_type = 'en'
-                            prompt_sel = sel_num
-                        elif sel_num == 3:
-                            prompt_type = 'zh-cn'
-                            prompt_sel = sel_num
-                        else:
-                            print("Invalid input, please try again.")
-                    except ValueError:
-                        print("Please enter a number.")
+        # If diff is None, it means operation failed, was cancelled, or produced no output.
+        # The message should be in the info dict.
+        if diff is None or not diff.strip():
+            if "empty_msg" in info:
+                print(info["empty_msg"])
+            continue
 
-            if prompt_sel == 0:
-                continue  # User chose to go back, skip execution
+        # Now that we have the diff, ask about the review prompt
+        prompt_type = ask_for_prompt_type()
+        if prompt_type == 'back':
+            continue
 
-            # Execute the selected diff handler with prompt type
-            if sel == 1:
-                handle_staged_diff(prompt_type=prompt_type)
-            elif sel == 2:
-                handle_working_diff(prompt_type=prompt_type)
-            elif sel == 3:
-                handle_single_commit(prompt_type=prompt_type)
-            elif sel == 4:
-                handle_multiple_commits(prompt_type=prompt_type)
-            elif sel == 5:
-                handle_pr_diff(prompt_type=prompt_type)
+        # Format with prompt and copy to clipboard
+        format_and_copy(diff, prompt_type, info)
 
 
 if __name__ == "__main__":
     main()
-
