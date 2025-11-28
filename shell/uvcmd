@@ -1,0 +1,60 @@
+#!/bin/bash
+
+# Function to print a given command and then execute it
+execute_command() {
+    echo "Executing: $1"
+    eval $1
+}
+
+# Get the directory of the script
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+
+while true; do
+    echo "Select a uv command:"
+    echo "1) Create a virtual environment"
+    echo "2) Sync dependencies"
+    echo "3) Generate lock file (uv lock)"
+    echo "4) Install a package"
+    echo "5) Uninstall a package"
+    echo "6) List installed packages"
+    echo "7) List installed packages in requirements.txt format"
+    echo "8) Clean the cache"
+    echo "9) Show the cache directory"
+    echo "0) Quit"
+
+    read -p "Your choice: " choice
+
+    case $choice in
+        1)
+            execute_command "$SCRIPT_DIR/uv-venv-create"
+            ;;
+        2)
+            if [ -f "pyproject.toml" ]; then
+                execute_command "uv sync"
+            else
+                read -p "Enter the requirements file (default: requirements.txt): " req_file
+                req_file=${req_file:-requirements.txt}
+                execute_command "uv pip sync $req_file"
+            fi
+            ;;
+        3)
+            execute_command "uv lock"
+            ;;
+        4)
+            read -p "Enter package name to install: " package
+            execute_command "uv pip install $package"
+            ;;
+        5)
+            read -p "Enter package name to uninstall: " package
+            execute_command "uv pip uninstall $package"
+            ;;
+        6) execute_command "uv pip list" ;;
+        7) execute_command "uv pip freeze" ;;
+        8) execute_command "uv cache clean" ;;
+        9) execute_command "uv cache dir" ;;
+        0) echo "Goodbye!"; exit 0 ;;
+        *) echo "Invalid choice" ;;
+    esac
+
+    echo "----------------------------"
+done
