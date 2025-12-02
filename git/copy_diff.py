@@ -96,8 +96,8 @@ def get_current_branch():
 def get_commit_message_format():
     """Determine commit message format based on branch name.
     
-    If branch name is in A/B/C format (contains two slashes),
-    return format like 'A[B] message' (e.g., 'feat[SNEC-001] message').
+    If branch name contains at least one slash (A/B or A/B/C format),
+    return format like 'A[B] message' (e.g., 'feat[item-definition] message').
     Otherwise return None for default format.
     """
     branch = get_current_branch()
@@ -105,9 +105,9 @@ def get_commit_message_format():
         return None
     
     branch = branch.strip()
-    # Check if branch name contains exactly two slashes (A/B/C format)
-    if branch.count('/') == 2:
-        parts = branch.split('/', 2)
+    # Check if branch name contains at least one slash
+    if branch.count('/') >= 1:
+        parts = branch.split('/', 2)  # Split into max 3 parts
         prefix = parts[0]  # A
         middle = parts[1]  # B
         # Return format string with placeholders
