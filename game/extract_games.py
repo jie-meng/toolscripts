@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 
 # Configurable list of file extensions
-TARGET_EXTENSIONS = ['.nes', '.sfc', '.smc', '.n64', '.gba']
+TARGET_EXTENSIONS = ['.nes', '.sfc', '.smc', '.n64', '.z64', '.gba']
 
 # Directory mapping configuration
 DIRECTORY_MAPPING = {
@@ -14,6 +14,7 @@ DIRECTORY_MAPPING = {
     '.sfc': 'snes',
     '.smc': 'snes',
     '.n64': 'n64',
+    '.z64': 'n64',
     '.gba': 'gba'
 }
 
@@ -24,13 +25,9 @@ def clean_filename(filename):
              abc（测试） -> abc
              abc (简) (v0.99) -> abc
     """
-    import sys
-    print(f"    [clean_filename] Input: '{filename}'", file=sys.stderr)
-
     # Find the first occurrence of '(' or '（' using find
     paren_pos_en = filename.find('(')
     paren_pos_cn = filename.find('（')
-    print(f"    [clean_filename] paren_pos_en={paren_pos_en}, paren_pos_cn={paren_pos_cn}", file=sys.stderr)
 
     # Use the first occurring parenthesis
     paren_pos = -1
@@ -41,17 +38,11 @@ def clean_filename(filename):
     elif paren_pos_cn != -1:
         paren_pos = paren_pos_cn
 
-    print(f"    [clean_filename] Final paren_pos={paren_pos}", file=sys.stderr)
-
     if paren_pos != -1:
         filename = filename[:paren_pos]
-        print(f"    [clean_filename] After slicing: filename='{filename}'", file=sys.stderr)
 
     # Remove trailing whitespace
     filename = filename.rstrip()
-    print(f"    [clean_filename] After rstrip: filename='{filename}'", file=sys.stderr)
-
-    print(f"    [clean_filename] Output: '{filename}'", file=sys.stderr)
 
     return filename
 
@@ -72,7 +63,6 @@ def extract_all_zips():
     for ext, target_dir in DIRECTORY_MAPPING.items():
         dir_path = current_dir / target_dir
         dir_path.mkdir(exist_ok=True)
-        print(f"Created directory: {dir_path}")
 
     # Get all zip files
     zip_files = list(current_dir.glob('*.zip'))
@@ -88,7 +78,6 @@ def extract_all_zips():
         # Get target filename from zip file name (remove .zip extension)
         zip_basename = os.path.splitext(zip_file.name)[0]
         cleaned_zip_name = clean_filename(zip_basename)
-        print(f"  Debug: zip_basename='{zip_basename}', cleaned='{cleaned_zip_name}'")
 
         try:
             with zipfile.ZipFile(zip_file, 'r') as zf:
