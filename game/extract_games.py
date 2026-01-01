@@ -19,17 +19,41 @@ DIRECTORY_MAPPING = {
 
 def clean_filename(filename):
     """
-    Remove the first '(' and everything after it (excluding extension)
-    Example: abc(dsfsdf).gba -> abc.gba
+    Remove all '(' or '（' and everything after them
+    Example: abc(dsfsdf) -> abc
+             abc（测试） -> abc
+             abc (简) (v0.99) -> abc
     """
-    name, ext = os.path.splitext(filename)
+    import sys
+    print(f"    [clean_filename] Input: '{filename}'", file=sys.stderr)
 
-    # Find the first left parenthesis
-    paren_pos = name.find('(')
+    # Find the first occurrence of '(' or '（' using find
+    paren_pos_en = filename.find('(')
+    paren_pos_cn = filename.find('（')
+    print(f"    [clean_filename] paren_pos_en={paren_pos_en}, paren_pos_cn={paren_pos_cn}", file=sys.stderr)
+
+    # Use the first occurring parenthesis
+    paren_pos = -1
+    if paren_pos_en != -1 and paren_pos_cn != -1:
+        paren_pos = min(paren_pos_en, paren_pos_cn)
+    elif paren_pos_en != -1:
+        paren_pos = paren_pos_en
+    elif paren_pos_cn != -1:
+        paren_pos = paren_pos_cn
+
+    print(f"    [clean_filename] Final paren_pos={paren_pos}", file=sys.stderr)
+
     if paren_pos != -1:
-        name = name[:paren_pos]
+        filename = filename[:paren_pos]
+        print(f"    [clean_filename] After slicing: filename='{filename}'", file=sys.stderr)
 
-    return name + ext
+    # Remove trailing whitespace
+    filename = filename.rstrip()
+    print(f"    [clean_filename] After rstrip: filename='{filename}'", file=sys.stderr)
+
+    print(f"    [clean_filename] Output: '{filename}'", file=sys.stderr)
+
+    return filename
 
 def get_target_directory(filename):
     """
@@ -61,6 +85,11 @@ def extract_all_zips():
         print(f"Processing: {zip_file.name}")
         extracted_from_zip = 0
 
+        # Get target filename from zip file name (remove .zip extension)
+        zip_basename = os.path.splitext(zip_file.name)[0]
+        cleaned_zip_name = clean_filename(zip_basename)
+        print(f"  Debug: zip_basename='{zip_basename}', cleaned='{cleaned_zip_name}'")
+
         try:
             with zipfile.ZipFile(zip_file, 'r') as zf:
                 for file_info in zf.filelist:
@@ -69,24 +98,24 @@ def extract_all_zips():
 
                     # Check if it's a target file
                     if ext in TARGET_EXTENSIONS:
-                        # Clean filename
-                        cleaned_filename = clean_filename(filename)
+                        # Use zip file name as target filename (with original extension)
+                        target_filename = cleaned_zip_name + ext
 
                         # Get target directory
                         target_dir_name = DIRECTORY_MAPPING.get(ext)
                         if target_dir_name:
                             target_dir = current_dir / target_dir_name
-                            target_path = target_dir / cleaned_filename
+                            target_path = target_dir / target_filename
 
                             # Check if target file already exists
                             if target_path.exists():
-                                print(f"  ⊘ Skipped: {filename} -> {target_dir_name}/{cleaned_filename} (file already exists)")
+                                print(f"  ⊘ Skipped: {filename} -> {target_dir_name}/{target_filename} (file already exists)")
                             else:
                                 # Extract file
                                 with zf.open(file_info) as source, open(target_path, 'wb') as target:
                                     shutil.copyfileobj(source, target)
 
-                                print(f"  ✓ Extracted: {filename} -> {target_dir_name}/{cleaned_filename}")
+                                print(f"  ✓ Extracted: {filename} -> {target_dir_name}/{target_filename}")
                                 extracted_from_zip += 1
         except Exception as e:
             print(f"  ✗ Failed: {e}")
