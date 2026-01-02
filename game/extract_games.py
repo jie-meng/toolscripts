@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 
 # Configurable list of file extensions
-TARGET_EXTENSIONS = ['.nes', '.sfc', '.smc', '.n64', '.z64', '.gba']
+TARGET_EXTENSIONS = ['.nes', '.sfc', '.smc', '.n64', '.z64', '.gba', '.gbc']
 
 # Directory mapping configuration
 DIRECTORY_MAPPING = {
@@ -15,7 +15,8 @@ DIRECTORY_MAPPING = {
     '.smc': 'snes',
     '.n64': 'n64',
     '.z64': 'n64',
-    '.gba': 'gba'
+    '.gba': 'gba',
+    '.gbc': 'gbc'
 }
 
 def clean_filename(filename):
