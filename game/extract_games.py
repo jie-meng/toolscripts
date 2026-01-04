@@ -45,6 +45,9 @@ def clean_filename(filename):
     # Remove trailing whitespace
     filename = filename.rstrip()
 
+    # Replace spaces with underscores
+    filename = filename.replace(' ', '_')
+
     return filename
 
 def get_target_directory(filename):
