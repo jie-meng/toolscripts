@@ -3,4 +3,4 @@
 set -e
 DIR=$(dirname $0)
 
-python ${DIR}/../ios/ios-record.py $@
+python ${DIR}/../ios/ios_record.py $@

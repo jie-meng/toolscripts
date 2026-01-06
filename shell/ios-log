@@ -1,0 +1,6 @@
+#!/bin/sh
+
+set -e
+DIR=$(dirname $0)
+
+python ${DIR}/../ios/ios_log.py $@
