@@ -6,8 +6,7 @@
 
 soundfile=$1
 # The second parameter defines the number of loops; default is 1 if not provided.
-# 0: do not play, exit immediately.
-# -1: infinite loop.
+# 0: infinite loop.
 loop=${2:-1}
 
 # Function to stop any currently playing sound
@@ -23,7 +22,7 @@ stop_playing
 usage() {
     echo "Usage: $0 <soundfile> [loop_count] [pcm_format] [pcm_rate]"
     echo "  soundfile: Path to audio file (.wav, .ogg, .pcm, etc.)"
-    echo "  loop_count: Number of times to play (default: 1, 0: exit, -1: infinite)"
+    echo "  loop_count: Number of times to play (default: 1, 0: infinite)"
     echo "  pcm_format: PCM format (default: s16le, only for .pcm)"
     echo "  pcm_rate: PCM sample rate (default: 16000, only for .pcm)"
     exit 1
@@ -69,8 +68,6 @@ play_sound() {
 }
 
 if [ "$loop" -eq 0 ]; then
-    exit 0
-elif [ "$loop" -eq -1 ]; then
     while true; do
         play_sound
     done
