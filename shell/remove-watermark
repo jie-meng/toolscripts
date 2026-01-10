@@ -25,7 +25,7 @@ show_usage() {
     echo "======================================================================"
     echo
     echo "Usage:"
-    echo "  $0 <image_files...> [options]"
+    echo "  remove-watermark <image_files...> [options]"
     echo
     echo "Options:"
     echo "  -p, --position <pos>    Watermark position (default: bottom-right)"
@@ -36,25 +36,25 @@ show_usage() {
     echo
     echo "Examples:"
     echo "  # Process with default settings (bottom-right, 250x100px)"
-    echo "  $0 image.jpg"
+    echo "  remove-watermark image.jpg"
     echo
     echo "  # Process multiple images"
-    echo "  $0 cat.jpg dog.jpg photo.png"
+    echo "  remove-watermark cat.jpg dog.jpg photo.png"
     echo
     echo "  # Specify watermark position"
-    echo "  $0 image.jpg -p top-left"
+    echo "  remove-watermark image.jpg -p top-left"
     echo
     echo "  # Specify watermark size"
-    echo "  $0 image.jpg -s 300,120"
+    echo "  remove-watermark image.jpg -s 300,120"
     echo
     echo "  # Specify output file"
-    echo "  $0 input.jpg -o output.jpg"
+    echo "  remove-watermark input.jpg -o output.jpg"
     echo
     echo "  # Full example"
-    echo "  $0 photo.jpg -p bottom-right -s 300,120 -o clean.jpg"
+    echo "  remove-watermark photo.jpg -p bottom-right -s 300,120 -o clean.jpg"
     echo
     echo "  # Batch processing"
-    echo "  $0 *.jpg -s 280,100"
+    echo "  remove-watermark *.jpg -s 280,100"
     echo
     echo "Watermark Positions:"
     echo "  top-left      Remove watermark from top-left corner"
