@@ -3,7 +3,7 @@ set -e
 
 # Configuration: Add or remove AI tools from these arrays
 SYMLINK_FILES=("CLAUDE.md" "QWEN.md" "IFLOW.md" "GEMINI.md")
-IGNORE_FILES=(".claude" ".qwen" ".iflow" ".gemini", ".specify")
+IGNORE_FILES=(".claude" ".qwen" ".iflow" ".gemini" ".specify")
 
 # Main configuration file
 MAIN_AGENTS_FILE="AGENTS.md"
