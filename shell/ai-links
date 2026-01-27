@@ -1,0 +1,108 @@
+#!/bin/bash
+set -e
+
+# Configuration: Add or remove AI tools from these arrays
+SYMLINK_FILES=("CLAUDE.md" "GEMINI.md" "IFLOW.md" "QWEN.md")
+IGNORE_DIRS=(".claude/" ".cursor/" ".gemini/" ".iflow/" ".qwen/" ".specify/")
+AI_TOOL_DIRS=(".claude" ".cursor" ".gemini" ".iflow" ".qwen")
+
+# Main configuration files and directories
+MAIN_CONFIG_DIR=".ai-config"
+MAIN_AGENTS_FILE="AGENTS.md"
+MAIN_SKILLS_DIR="${MAIN_CONFIG_DIR}/skills"
+GITIGNORE_FILE=".gitignore"
+
+# Step 1: Create main configuration directory and files if not exist
+if [ ! -d "$MAIN_CONFIG_DIR" ]; then
+  mkdir -p "$MAIN_CONFIG_DIR"
+fi
+
+if [ ! -f "$MAIN_AGENTS_FILE" ]; then
+  touch "$MAIN_AGENTS_FILE"
+  echo "Created ${MAIN_AGENTS_FILE}"
+fi
+
+if [ ! -d "$MAIN_SKILLS_DIR" ]; then
+  mkdir -p "$MAIN_SKILLS_DIR"
+  echo "Created ${MAIN_SKILLS_DIR}/"
+fi
+
+# Step 2: Remove and create symlinks for AGENTS.md files
+for file in "${SYMLINK_FILES[@]}"; do
+  if [ -e "$file" ] || [ -L "$file" ]; then
+    rm -rf "$file"
+  fi
+  ln -s "$MAIN_AGENTS_FILE" "$file"
+done
+
+# Step 3: Create skills directory symlinks for each AI tool
+for tool_dir in "${AI_TOOL_DIRS[@]}"; do
+  # Create AI tool directory if not exists
+  if [ ! -d "$tool_dir" ]; then
+    mkdir -p "$tool_dir"
+    echo "Created ${tool_dir}/"
+  fi
+  
+  SKILLS_LINK="${tool_dir}/skills"
+  
+  # Remove existing skills directory/symlink
+  if [ -e "$SKILLS_LINK" ] || [ -L "$SKILLS_LINK" ]; then
+    rm -rf "$SKILLS_LINK"
+  fi
+  
+  # Create relative symlink to main skills directory
+  ln -s "../${MAIN_SKILLS_DIR}" "$SKILLS_LINK"
+  echo "Created symlink: ${SKILLS_LINK} -> ../${MAIN_SKILLS_DIR}"
+done
+
+# Step 4: Check and organize .gitignore, add ignore rules (only if .gitignore exists)
+if [ -f "$GITIGNORE_FILE" ]; then
+  # Combine all files for gitignore pattern
+  ALL_FILES=("${SYMLINK_FILES[@]}" "${IGNORE_DIRS[@]}")
+  
+  # Remove existing AI tools config block (including the comment line and all following entries)
+  TMP=$(mktemp)
+  awk '
+    /^# AI tools config$/ { 
+      in_block=1
+      next 
+    }
+    in_block && /^$/ { 
+      next 
+    }
+    in_block && /^[^#]/ { 
+      next 
+    }
+    in_block && /^#/ && !/^# AI tools config$/ { 
+      in_block=0 
+    }
+    !in_block { print }
+  ' "$GITIGNORE_FILE" > "$TMP"
+  mv "$TMP" "$GITIGNORE_FILE"
+  
+  # Remove trailing empty lines at the end of file
+  TMP=$(mktemp)
+  awk '
+    { lines[NR] = $0 }
+    END {
+      last = NR
+      while (last > 0 && lines[last] == "") last--
+      for (i = 1; i <= last; i++) print lines[i]
+    }
+  ' "$GITIGNORE_FILE" > "$TMP"
+  mv "$TMP" "$GITIGNORE_FILE"
+  
+  # Build and append new ignore block
+  echo "" >> "$GITIGNORE_FILE"
+  echo "# AI tools config" >> "$GITIGNORE_FILE"
+  for file in "${ALL_FILES[@]}"; do
+    echo "$file" >> "$GITIGNORE_FILE"
+  done
+fi
+
+echo ""
+echo "✓ AI agent configuration links created successfully!"
+echo "  - AGENTS.md symlinks: ${SYMLINK_FILES[*]}"
+echo "  - Skills directory: ${MAIN_SKILLS_DIR}/"
+echo "  - Skills symlinks created in: ${AI_TOOL_DIRS[*]}"
+
