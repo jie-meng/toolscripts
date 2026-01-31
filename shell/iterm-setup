@@ -1,0 +1,110 @@
+#!/bin/bash
+
+# iTerm2 Scripts Setup
+# This script automates the setup of iTerm2 Python scripts
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ITERM_SCRIPTS_SRC="$SCRIPT_DIR/../iterm"
+ITERM_SCRIPTS_DEST="$HOME/Library/Application Support/iTerm2/Scripts"
+ITERM_AUTOLAUNCH_DEST="$HOME/Library/Application Support/iTerm2/Scripts/AutoLaunch"
+
+echo "=== iTerm2 Scripts Setup ==="
+echo ""
+
+# Check if iTerm2 is installed
+if ! [ -d "/Applications/iTerm.app" ]; then
+    echo "⚠️  Warning: iTerm2 not found in /Applications/"
+    read -p "Continue anyway? (y/N): " confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        echo "Setup cancelled."
+        exit 0
+    fi
+fi
+
+# Step 1: Create iTerm2 Scripts directory if it doesn't exist
+echo "Step 1: Setting up iTerm2 Scripts directories..."
+mkdir -p "$ITERM_SCRIPTS_DEST"
+mkdir -p "$ITERM_AUTOLAUNCH_DEST"
+echo "✅ Scripts directory ready: $ITERM_SCRIPTS_DEST"
+echo "✅ AutoLaunch directory ready: $ITERM_AUTOLAUNCH_DEST"
+
+echo ""
+
+# Step 2: Copy Python scripts to iTerm2 AutoLaunch directory (for daemon scripts)
+echo "Step 2: Copying scripts to iTerm2 AutoLaunch directory..."
+if [ -d "$ITERM_SCRIPTS_SRC" ]; then
+    # Find all .py files in the iterm directory
+    py_files=("$ITERM_SCRIPTS_SRC"/*.py)
+    
+    if [ -e "${py_files[0]}" ]; then
+        for script in "${py_files[@]}"; do
+            script_name=$(basename "$script")
+            # Skip test_connection.py from being copied to Scripts directory
+            if [ "$script_name" != "test_connection.py" ]; then
+                # Copy to AutoLaunch directory so it starts automatically
+                cp "$script" "$ITERM_AUTOLAUNCH_DEST/"
+                chmod +x "$ITERM_AUTOLAUNCH_DEST/$script_name"
+                echo "  ✅ Copied to AutoLaunch: $script_name"
+            fi
+        done
+    else
+        echo "  ⚠️  No Python scripts found in $ITERM_SCRIPTS_SRC"
+    fi
+else
+    echo "❌ Source directory not found: $ITERM_SCRIPTS_SRC"
+    exit 1
+fi
+
+echo ""
+
+# Step 3: Configure keyboard shortcut (⌘⌥L) for split_vertical_quarter
+echo "Step 3: Configuring keyboard shortcut (⌘⌥L)..."
+
+# Key code for ⌘⌥L: 0x6c (l) with 0x180000 (Command+Option modifier), keycode 0x25 (37)
+SHORTCUT_KEY="0x6c-0x180000-0x25"
+SHORTCUT_CONFIG='{
+    Action = 60;
+    "Apply Mode" = 1;
+    Escaping = 2;
+    Text = "split_vertical_quarter()";
+    Version = 2;
+}'
+
+# Ensure GlobalKeyMap exists
+if ! defaults read com.googlecode.iterm2 GlobalKeyMap &>/dev/null; then
+    /usr/libexec/PlistBuddy -c "Add :GlobalKeyMap dict" ~/Library/Preferences/com.googlecode.iterm2.plist 2>/dev/null || true
+fi
+
+# Remove existing shortcut if present (to allow updating)
+/usr/libexec/PlistBuddy -c "Delete :GlobalKeyMap:$SHORTCUT_KEY" ~/Library/Preferences/com.googlecode.iterm2.plist 2>/dev/null || true
+
+# Add the shortcut
+/usr/libexec/PlistBuddy -c "Add :GlobalKeyMap:$SHORTCUT_KEY dict" ~/Library/Preferences/com.googlecode.iterm2.plist
+/usr/libexec/PlistBuddy -c "Add :GlobalKeyMap:$SHORTCUT_KEY:Action integer 60" ~/Library/Preferences/com.googlecode.iterm2.plist
+/usr/libexec/PlistBuddy -c "Add :GlobalKeyMap:$SHORTCUT_KEY:\"Apply Mode\" integer 0" ~/Library/Preferences/com.googlecode.iterm2.plist
+/usr/libexec/PlistBuddy -c "Add :GlobalKeyMap:$SHORTCUT_KEY:Escaping integer 2" ~/Library/Preferences/com.googlecode.iterm2.plist
+/usr/libexec/PlistBuddy -c "Add :GlobalKeyMap:$SHORTCUT_KEY:Text string \"split_vertical_quarter()\"" ~/Library/Preferences/com.googlecode.iterm2.plist
+/usr/libexec/PlistBuddy -c "Add :GlobalKeyMap:$SHORTCUT_KEY:Version integer 2" ~/Library/Preferences/com.googlecode.iterm2.plist
+echo "  ✅ Configured keyboard shortcut: ⌘⌥L → split_vertical_quarter()"
+
+echo ""
+echo "=== Setup Complete! ==="
+echo ""
+echo "📋 Next Steps:"
+echo ""
+echo "1. RESTART iTerm2 completely (⌘Q and reopen)"
+echo "   → The script will AUTO-START because it's in the AutoLaunch folder!"
+echo "   → Keyboard shortcut ⌘⌥L is already configured!"
+echo "2. Verify Python API is enabled:"
+echo "   iTerm2 → Preferences → General → Magic → Enable Python API: ✅"
+echo "3. Test the shortcut: Press ⌘⌥L to split vertically with 3/4 - 1/4 ratio"
+echo ""
+echo "🔧 Troubleshooting:"
+echo "- If shortcut doesn't work, check: Scripts → Manage → Console for script status"
+echo "- Verify shortcut in: iTerm2 → Preferences → Keys → Key Bindings"
+echo "- Script location: ~/Library/Application Support/iTerm2/Scripts/AutoLaunch/"
+echo ""
+echo "For more details, see: $ITERM_SCRIPTS_SRC/README.md"
+echo ""
