@@ -1,8 +1,24 @@
 ---
 name: code-review
-description: Perform comprehensive code review for staged git changes with automatic language detection and commit message generation
+description: |
+  [TRIGGER] Use this skill when user requests: code review, 代码审查, 评审代码, review code, check code, 审查代码, review changes, 代码检查, review my code, 看看代码, 帮我review, CR, code CR.
+  This skill performs comprehensive git staged changes review with 6-section structured output: tech stack inference, change overview, code quality evaluation, risk analysis, incremental suggestions, and auto-generated commit message (copied to clipboard).
+  IMPORTANT: This is NOT a simple git diff - it provides deep analysis following Clean Code principles and best practices.
 license: MIT
 ---
+
+# When to Use This Skill
+
+**ALWAYS invoke this skill when user mentions ANY of these keywords:**
+- "code review" / "review code" / "review my code" / "review changes"
+- "代码审查" / "评审代码" / "审查代码" / "代码检查" / "帮我审查"
+- "CR" / "code CR"
+- "check my code" / "检查代码" / "看看代码"
+- "review staged changes" / "review git changes"
+
+**This skill is different from simple `git diff`:**
+- Simple git diff only shows changes
+- This skill provides **structured 6-section comprehensive analysis** with actionable suggestions
 
 # Requirements for Outputs
 
@@ -26,18 +42,23 @@ license: MIT
 - Consider current branch name for format:
   - If branch name contains slash (e.g., `feat/item-definition`), use format: `type[scope]: message`
   - If branch name doesn't contain slash, use conventional format: `type: message`
+- **CRITICAL: Commit message MUST be a SINGLE LINE, maximum 72 characters**
+- **NO multi-line commit messages - summarize all changes in ONE concise sentence**
+- Commit message should be a high-level summary, not a detailed list
 - Commit message MUST be concise, accurate, and in English
 - Common types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`
 
 ## Clipboard Support
 
 ### macOS
-- Use `pbcopy` command to copy commit message to clipboard
+- **REQUIRED**: Use `pbcopy` command to copy commit message to clipboard
 - Commit message from section 6 is automatically extracted and copied
+- This is a mandatory step - the commit message MUST be copied to clipboard after review generation
 
 ### Other Systems
 - Use `pyperclip` library if available
 - Fall back to manual copy if clipboard tools unavailable
+- IMPORTANT: Commit message must still be clearly displayed for manual copying
 
 # Code Review
 
@@ -118,8 +139,12 @@ If Chinese review requested:
 
 #### 6. 推荐提交信息 (Recommended Commit Message)
 - 为此变更生成简洁、准确且符合规范的提交信息，**提交信息使用英文**
+- **必须是单行，最多72个字符，不要多行**
+- **用一句话高度概括所有变更，不要列举细节**
 - 基于当前分支名，如果分支名包含斜杠（如 `feat/item-definition`），则使用格式：`feat[item-definition] message`
 - 如果分支名不包含斜杠，则使用常规格式
+
+**[IMPORTANT: After generating the commit message, MUST immediately copy it to clipboard using `echo -n "message" | pbcopy` on macOS - use `-n` flag to avoid trailing newline]**
 
 If English review requested:
 
@@ -146,20 +171,41 @@ If English review requested:
 
 #### 6. Recommended Commit Message
 - Generate a concise, accurate, and conventional commit message for this change, **commit message must be in English**
+- **MUST be a SINGLE LINE, maximum 72 characters - NO multi-line messages**
+- **Provide a high-level summary of all changes in ONE sentence, do NOT list individual changes**
 - Based on the branch name, if it contains a slash (e.g., `feat/item-definition`), use the format: `feat[item-definition] message`
 - If the branch name doesn't contain a slash, use the conventional format
 
-### Step 5: Copy Commit Message to Clipboard
+**[IMPORTANT: After generating the commit message, MUST immediately copy it to clipboard using `echo -n "message" | pbcopy` on macOS - use `-n` flag to avoid trailing newline]**
+
+### Step 5: Copy Commit Message to Clipboard (MANDATORY)
+**CRITICAL: This step is REQUIRED and MUST be executed after generating the code review.**
+
 Extract commit message from section 6 and copy to clipboard:
-- macOS: Use `pbcopy`
-- Others: Use `pyperclip` or manual copy
+- **IMPORTANT: Trim all leading/trailing whitespace (spaces, newlines, tabs) before copying**
+- macOS: Use `echo -n "commit message" | pbcopy` (the `-n` flag prevents trailing newline)
+- Alternative: `printf '%s' "commit message" | pbcopy`
+- Others: Use `pyperclip` with `.strip()` applied to the message
+
+**Example:**
+```bash
+# Correct - no trailing newline
+echo -n "feat[audio]: add audio codec support" | pbcopy
+
+# Wrong - will include trailing newline
+echo "feat[audio]: add audio codec support" | pbcopy
+```
+
+**Do NOT skip this step - the commit message must be copied to clipboard automatically.**
 
 ## Error Handling
 
 - **No staged changes**: Report that no staged changes found and suggest using `git add`
 - **Language detection failure**: Default to English review
-- **Clipboard failure**: Report error but provide commit message for manual copy
+- **Clipboard failure**: Report error prominently, but STILL provide commit message for manual copy
 - **Commit message extraction failure**: Report error and provide full review for manual extraction
+
+**Note: Clipboard operation is a critical requirement. If automated clipboard copy fails, the commit message MUST still be displayed clearly for manual copying.**
 
 ## Examples
 
