@@ -1,24 +1,26 @@
 ---
-name: code-review
+name: code-review-staged
 description: |
-  [TRIGGER] Use this skill when user requests: code review, 代码审查, 评审代码, review code, check code, 审查代码, review changes, 代码检查, review my code, 看看代码, 帮我review, CR, code CR.
-  This skill performs comprehensive git staged changes review with 6-section structured output: tech stack inference, change overview, code quality evaluation, risk analysis, incremental suggestions, and auto-generated commit message (copied to clipboard).
-  IMPORTANT: This is NOT a simple git diff - it provides deep analysis following Clean Code principles and best practices.
+  [TRIGGER] Use this skill when user requests to review STAGED git changes (git diff --cached).
+  Trigger keywords: "review staged", "审查暂存", "review staged changes", "staged code review", "staged CR", "暂存区审查", "review cached", "git staged review", "use code-review-staged skill".
+  This skill performs comprehensive 6-section structured code review for git STAGED changes only: tech stack inference, change overview, code quality evaluation, risk analysis, incremental suggestions, and auto-generated commit message (copied to clipboard).
+  IMPORTANT: This skill ONLY reviews staged changes (git diff --cached), NOT unstaged or all changes.
 license: MIT
 ---
 
 # When to Use This Skill
 
-**ALWAYS invoke this skill when user mentions ANY of these keywords:**
-- "code review" / "review code" / "review my code" / "review changes"
-- "代码审查" / "评审代码" / "审查代码" / "代码检查" / "帮我审查"
-- "CR" / "code CR"
-- "check my code" / "检查代码" / "看看代码"
-- "review staged changes" / "review git changes"
+**ALWAYS invoke this skill when user wants to review STAGED git changes:**
+- "review staged changes" / "review staged" / "staged code review"
+- "审查暂存区" / "暂存区代码审查" / "审查暂存的代码"
+- "staged CR" / "review cached changes"
+- "use code-review-staged skill" / "使用 code-review-staged"
+- "review my staged code" / "check staged changes"
 
-**This skill is different from simple `git diff`:**
-- Simple git diff only shows changes
-- This skill provides **structured 6-section comprehensive analysis** with actionable suggestions
+**This skill is specifically for STAGED changes (git diff --cached):**
+- Only reviews changes that have been `git add`ed to staging area
+- Does NOT review unstaged changes or all changes
+- Provides **structured 6-section comprehensive analysis** with actionable suggestions
 
 # Requirements for Outputs
 
@@ -60,19 +62,20 @@ license: MIT
 - Fall back to manual copy if clipboard tools unavailable
 - IMPORTANT: Commit message must still be clearly displayed for manual copying
 
-# Code Review
+# Code Review for Staged Changes
 
-Perform comprehensive code review for staged git changes with automatic language detection and commit message generation.
+Perform comprehensive code review for git STAGED changes (`git diff --cached`) with automatic language detection and commit message generation.
 
 ## Usage
 
-When user requests code review, invoke this skill.
+When user requests to review staged changes, invoke this skill.
 
 **Example requests:**
-- "Review my code changes"
-- "代码审查"
-- "Check my staged changes"
-- "帮我审查一下代码"
+- "Review my staged changes"
+- "审查暂存区的代码"
+- "Staged code review"
+- "帮我审查暂存的代码"
+- "Use code-review-staged skill to review"
 
 ## Technical Requirements
 
@@ -210,22 +213,22 @@ echo "feat[audio]: add audio codec support" | pbcopy
 ## Examples
 
 ### Example 1: Chinese Request with Feature Branch
-**User input**: "帮我审查一下代码"
+**User input**: "审查暂存区的代码"
 **Branch**: `feat/audio-support`
-**Changes**: Added new audio codec files
+**Changes**: Added new audio codec files (staged)
 **Review language**: Chinese
 **Commit message**: `feat[audio]: add audio codec support for ESP32`
 
 ### Example 2: English Request with Bug Fix Branch
-**User input**: "Review my code changes"
+**User input**: "Review my staged changes"
 **Branch**: `fix/wifi-connection`
-**Changes**: Fixed WiFi disconnect issue
+**Changes**: Fixed WiFi disconnect issue (staged)
 **Review language**: English
 **Commit message**: `fix(network): resolve WiFi disconnection on timeout`
 
-### Example 3: Chinese Request with Refactor Branch
-**User input**: "检查我的代码变更"
+### Example 3: Explicit Skill Invocation
+**User input**: "Use code-review-staged skill to review my code"
 **Branch**: `refactor/time-manager`
-**Changes**: Refactored TimeManager interface
-**Review language**: Chinese
+**Changes**: Refactored TimeManager interface (staged)
+**Review language**: English
 **Commit message**: `refactor(datetime): refactor TimeManager interface for better testability`
