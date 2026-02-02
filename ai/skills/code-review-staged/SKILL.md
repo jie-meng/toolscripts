@@ -1,10 +1,6 @@
 ---
 name: code-review-staged
-description: |
-  [TRIGGER] Use this skill when user requests to review STAGED git changes (git diff --cached).
-  Trigger keywords: "review staged", "审查暂存", "review staged changes", "staged code review", "staged CR", "暂存区审查", "review cached", "git staged review", "use code-review-staged skill".
-  This skill performs comprehensive 6-section structured code review for git STAGED changes only: tech stack inference, change overview, code quality evaluation, risk analysis, incremental suggestions, and auto-generated commit message (copied to clipboard).
-  IMPORTANT: This skill ONLY reviews staged changes (git diff --cached), NOT unstaged or all changes.
+description: "Comprehensive 6-section structured code review for git STAGED changes (git diff --cached). When user requests: 'review staged', '审查暂存', 'staged code review', 'staged CR', '暂存区审查', 'review cached'. Performs tech stack inference, change overview, code quality evaluation, risk analysis, incremental suggestions, and auto-generated commit message (copied to clipboard). ONLY reviews staged changes, NOT unstaged or all changes."
 license: MIT
 ---
 
