@@ -1,0 +1,61 @@
+#!/bin/bash
+# Setup Skills - Copy skills from ai/skills to target directory
+
+# Color codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Get the target directory from the first argument
+TARGET_DIR="$1"
+
+# Check if argument is provided
+if [ -z "$TARGET_DIR" ]; then
+    echo -e "${RED}Error: No target directory specified.${NC}"
+    echo "Usage: $0 <target-dir>"
+    echo "Example: $0 .iflow"
+    exit 1
+fi
+
+# Get the script's directory to find ai/skills
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+SOURCE_SKILLS_DIR="$PROJECT_ROOT/ai/skills"
+
+# Check if source skills directory exists
+if [ ! -d "$SOURCE_SKILLS_DIR" ]; then
+    echo -e "${RED}Error: Source skills directory not found: $SOURCE_SKILLS_DIR${NC}"
+    exit 1
+fi
+
+# Check if source skills directory is empty
+if [ -z "$(ls -A "$SOURCE_SKILLS_DIR" 2>/dev/null)" ]; then
+    echo -e "${RED}Error: Source skills directory is empty: $SOURCE_SKILLS_DIR${NC}"
+    exit 1
+fi
+
+# Construct target path in home directory
+TARGET_PATH="$HOME/$TARGET_DIR"
+
+# Check if target directory exists in home
+if [ ! -d "$TARGET_PATH" ]; then
+    echo -e "${RED}Error: Target directory not found in home: $TARGET_PATH${NC}"
+    echo -e "${YELLOW}Please make sure the directory exists first.${NC}"
+    exit 1
+fi
+
+# Create skills directory in target if it doesn't exist
+TARGET_SKILLS_DIR="$TARGET_PATH/skills"
+if [ ! -d "$TARGET_SKILLS_DIR" ]; then
+    echo -e "${YELLOW}Creating skills directory: $TARGET_SKILLS_DIR${NC}"
+    mkdir -p "$TARGET_SKILLS_DIR"
+fi
+
+# Copy all skills from source to target
+echo "Copying skills from $SOURCE_SKILLS_DIR to $TARGET_SKILLS_DIR"
+cp -r "$SOURCE_SKILLS_DIR"/* "$TARGET_SKILLS_DIR/"
+
+# Count copied files
+COPIED_COUNT=$(find "$TARGET_SKILLS_DIR" -type f | wc -l | tr -d ' ')
+echo -e "${GREEN}✓ Successfully copied $COPIED_COUNT skill file(s) to $TARGET_SKILLS_DIR${NC}"
