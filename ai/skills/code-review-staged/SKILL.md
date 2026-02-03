@@ -1,6 +1,6 @@
 ---
 name: code-review-staged
-description: "Comprehensive 6-section structured code review for git STAGED changes (git diff --cached). When user requests: 'review staged', '审查暂存', 'staged code review', 'staged CR', '暂存区审查', 'review cached'. Performs tech stack inference, change overview, code quality evaluation, risk analysis, incremental suggestions, and auto-generated commit message (copied to clipboard). ONLY reviews staged changes, NOT unstaged or all changes."
+description: "Comprehensive 6-section structured code review for git STAGED changes (git diff --cached) with smart context awareness. When user requests: 'review staged', '审查暂存', 'staged code review', 'staged CR', '暂存区审查', 'review cached'. Performs tech stack inference, change overview, code quality evaluation, risk analysis, incremental suggestions, and auto-generated commit message (copied to clipboard). ONLY reviews staged changes, NOT unstaged or all changes. Intelligently reads related files (headers, definitions, tests) to validate changes in context."
 license: MIT
 ---
 
@@ -79,6 +79,8 @@ When user requests to review staged changes, invoke this skill.
 - **Git operations**:
   - `git diff --cached` - View staged changes
   - `git rev-parse --abbrev-ref HEAD` - Get current branch name
+- **File operations**:
+  - `read_file` - Read related files for context (headers, definitions, etc.)
 - **Clipboard operations**:
   - macOS: `pbcopy`
   - Others: `pyperclip`
@@ -99,19 +101,34 @@ git diff --cached
 ```
 Retrieve all staged changes for review.
 
-### Step 2: Get Current Branch
+### Step 2: Smart Context Retrieval (Optional but Recommended)
+Analyze the `diff` output to determine if external context is needed for a high-quality review.
+- **When to read context**:
+    - If a function signature changes, check its usages or definition.
+    - If a class inherits from a base class not in diff, read the base class definition.
+    - If a variable type is unclear, check its declaration.
+    - If a config value changes, check where it's consumed if the impact is ambiguous.
+    - **Header/Source Pairing**: For C/C++, always check the corresponding `.h` or `.cpp` file if one is modified.
+    - **Tests**: Check if existing tests need updates or if new tests are consistent with existing patterns.
+- **How to read**: Use the `read_file` tool.
+- **Constraints**:
+    - **Limit Scope**: Read only 1-3 directly related files. Do not scan the whole directory.
+    - **Relevance**: Only read files that are strictly necessary to validate the correctness of the staged changes.
+    - **Efficiency**: If the file is huge, read only relevant sections (using `start_line`/`end_line` if possible) or search within it.
+
+### Step 3: Get Current Branch
 ```bash
 git rev-parse --abbrev-ref HEAD
 ```
 Determine current branch name for commit message formatting.
 
-### Step 3: Detect Language
+### Step 4: Detect Language
 Analyze user's input to determine review output language:
 - Contains Chinese characters → Chinese review
 - Only English → English review
 - Commit message always in English
 
-### Step 4: Perform Code Review
+### Step 5: Perform Code Review
 
 If Chinese review requested:
 
@@ -177,7 +194,7 @@ If English review requested:
 
 **[IMPORTANT: After generating the commit message, MUST immediately copy it to clipboard using `echo -n "message" | pbcopy` on macOS - use `-n` flag to avoid trailing newline]**
 
-### Step 5: Copy Commit Message to Clipboard (MANDATORY)
+### Step 6: Copy Commit Message to Clipboard (MANDATORY)
 **CRITICAL: This step is REQUIRED and MUST be executed after generating the code review.**
 
 Extract commit message from section 6 and copy to clipboard:
@@ -228,3 +245,4 @@ echo "feat[audio]: add audio codec support" | pbcopy
 **Changes**: Refactored TimeManager interface (staged)
 **Review language**: English
 **Commit message**: `refactor(datetime): refactor TimeManager interface for better testability`
+
