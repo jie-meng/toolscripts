@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -e
+DIR=$(dirname $0)
+
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <days>"
+    exit 1
+fi
+
+python ${DIR}/../time/timestamp_offset.py $1
