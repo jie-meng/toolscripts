@@ -12,14 +12,55 @@ MAIN_AGENTS_FILE="AGENTS.md"
 MAIN_SKILLS_DIR="${MAIN_CONFIG_DIR}/skills"
 GITIGNORE_FILE=".gitignore"
 
-# Step 1: Create main configuration directory and files if not exist
-if [ ! -d "$MAIN_CONFIG_DIR" ]; then
-  mkdir -p "$MAIN_CONFIG_DIR"
+# Step 1: Find AGENTS.md in current or parent directories
+AGENTS_PATH=""
+SEARCH_DIR="$(pwd)"
+
+while [ "$SEARCH_DIR" != "/" ]; do
+  if [ -f "${SEARCH_DIR}/${MAIN_AGENTS_FILE}" ]; then
+    AGENTS_PATH="${SEARCH_DIR}/${MAIN_AGENTS_FILE}"
+    AGENTS_DIR="$SEARCH_DIR"
+    break
+  fi
+  SEARCH_DIR="$(dirname "$SEARCH_DIR")"
+done
+
+# If AGENTS.md not found, exit with error
+if [ -z "$AGENTS_PATH" ]; then
+  echo "Error: AGENTS.md not found in current directory or any parent directory."
+  echo "Please create AGENTS.md first, then run this script again."
+  exit 1
 fi
 
-if [ ! -f "$MAIN_AGENTS_FILE" ]; then
-  touch "$MAIN_AGENTS_FILE"
-  echo "Created ${MAIN_AGENTS_FILE}"
+echo "Found AGENTS.md at: ${AGENTS_PATH}"
+
+# Change to AGENTS.md directory to create symlinks
+cd "$AGENTS_DIR"
+
+# Step 2: Create symlinks for AGENTS.md files (CLAUDE.md, GEMINI.md, etc.)
+for file in "${SYMLINK_FILES[@]}"; do
+  if [ -e "$file" ] || [ -L "$file" ]; then
+    rm -rf "$file"
+  fi
+  ln -s "$MAIN_AGENTS_FILE" "$file"
+  echo "Created symlink: ${file} -> ${MAIN_AGENTS_FILE}"
+done
+
+# Step 3: Check if .git exists in current directory (AGENTS.md directory)
+if [ ! -d ".git" ]; then
+  echo ""
+  echo "Note: .git directory not found. Skipping .ai-config and AI tool directories creation."
+  echo "Run this script in a git repository root to create skill directories."
+  echo ""
+  echo "✓ AGENTS.md symlinks created successfully!"
+  echo "  - Symlinks: ${SYMLINK_FILES[*]}"
+  exit 0
+fi
+
+# Step 4: Create .ai-config directory and skills subdirectory
+if [ ! -d "$MAIN_CONFIG_DIR" ]; then
+  mkdir -p "$MAIN_CONFIG_DIR"
+  echo "Created ${MAIN_CONFIG_DIR}/"
 fi
 
 if [ ! -d "$MAIN_SKILLS_DIR" ]; then
@@ -27,15 +68,7 @@ if [ ! -d "$MAIN_SKILLS_DIR" ]; then
   echo "Created ${MAIN_SKILLS_DIR}/"
 fi
 
-# Step 2: Remove and create symlinks for AGENTS.md files
-for file in "${SYMLINK_FILES[@]}"; do
-  if [ -e "$file" ] || [ -L "$file" ]; then
-    rm -rf "$file"
-  fi
-  ln -s "$MAIN_AGENTS_FILE" "$file"
-done
-
-# Step 3: Create skills directory symlinks for each AI tool
+# Step 5: Create skills directory symlinks for each AI tool
 for tool_dir in "${AI_TOOL_DIRS[@]}"; do
   # Create AI tool directory if not exists
   if [ ! -d "$tool_dir" ]; then
@@ -55,7 +88,7 @@ for tool_dir in "${AI_TOOL_DIRS[@]}"; do
   echo "Created symlink: ${SKILLS_LINK} -> ../${MAIN_SKILLS_DIR}"
 done
 
-# Step 4: Check and organize .gitignore, add ignore rules (only if .gitignore exists)
+# Step 6: Check and organize .gitignore, add ignore rules (only if .gitignore exists)
 if [ -f "$GITIGNORE_FILE" ]; then
   # Combine all files for gitignore pattern
   ALL_FILES=("${SYMLINK_FILES[@]}" "${IGNORE_DIRS[@]}")
@@ -105,4 +138,3 @@ echo "✓ AI agent configuration links created successfully!"
 echo "  - AGENTS.md symlinks: ${SYMLINK_FILES[*]}"
 echo "  - Skills directory: ${MAIN_SKILLS_DIR}/"
 echo "  - Skills symlinks created in: ${AI_TOOL_DIRS[*]}"
-
