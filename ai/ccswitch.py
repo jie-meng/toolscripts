@@ -15,18 +15,18 @@ GLM_ENV = {
     "ANTHROPIC_SMALL_FAST_MODEL": "glm-4.5-air",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.7"
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5"
 }
 MINIMAX_ENV = {
     "ANTHROPIC_AUTH_TOKEN": None,  # To be filled
     "ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic",
     "API_TIMEOUT_MS": "3000000",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1,
-    "ANTHROPIC_MODEL": "MiniMax-M2.1",
-    "ANTHROPIC_SMALL_FAST_MODEL": "MiniMax-M2.1",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "MiniMax-M2.1",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "MiniMax-M2.1",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "MiniMax-M2.1"
+    "ANTHROPIC_MODEL": "MiniMax-M2.5",
+    "ANTHROPIC_SMALL_FAST_MODEL": "MiniMax-M2.5",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "MiniMax-M2.5",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "MiniMax-M2.5",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "MiniMax-M2.5"
 }
 
 def get_api_key(env_var, prompt):
@@ -80,4 +80,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
