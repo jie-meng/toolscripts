@@ -8,7 +8,6 @@ import shutil
 
 # --- Configuration ---
 TOOLS = [
-    "@anthropic-ai/claude-code",
     "@github/copilot",
     "@google/gemini-cli",
     "@iflow-ai/iflow-cli",
