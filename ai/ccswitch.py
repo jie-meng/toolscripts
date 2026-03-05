@@ -29,16 +29,35 @@ MINIMAX_ENV = {
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "MiniMax-M2.5"
 }
 
-def get_api_key(env_var, prompt):
+def get_env_or_input(env_var, prompt):
     """
-    Get API key from environment variable or prompt user for input.
+    Get value from environment variable or prompt user for input.
     """
-    key = os.environ.get(env_var)
-    if key:
+    value = os.environ.get(env_var)
+    if value:
         print(f"Found {env_var} in environment. Using it.")
     else:
-        key = input(f"{prompt}: ")
-    return key
+        value = input(f"{prompt}: ").strip()
+    return value
+
+def build_custom_env():
+    """
+    Build custom provider env settings from env vars or interactive input.
+    """
+    endpoint = get_env_or_input("CUSTOM_AI_ENDPOINT", "Enter your CUSTOM_AI_ENDPOINT")
+    model = get_env_or_input("CUSTOM_AI_MODEL", "Enter your CUSTOM_AI_MODEL")
+    api_key = get_env_or_input("CUSTOM_AI_API_KEY", "Enter your CUSTOM_AI_API_KEY")
+    return {
+        "ANTHROPIC_AUTH_TOKEN": api_key,
+        "ANTHROPIC_BASE_URL": endpoint,
+        "API_TIMEOUT_MS": "3000000",
+        "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1,
+        "ANTHROPIC_MODEL": model,
+        "ANTHROPIC_SMALL_FAST_MODEL": model,
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL": model,
+        "ANTHROPIC_DEFAULT_SONNET_MODEL": model,
+        "ANTHROPIC_DEFAULT_OPUS_MODEL": model
+    }
 
 def update_settings_env(new_env):
     """
@@ -62,18 +81,23 @@ def main():
     print("Select Claude Code Model:")
     print("1. GLM Code Plan")
     print("2. MiniMax M2")
-    choice = input("Enter 1 or 2: ").strip()
+    print("3. Custom Endpoint/Model/API Key")
+    choice = input("Enter 1, 2 or 3: ").strip()
     if choice == "1":
         # GLM Code Plan
-        api_key = get_api_key("GLM_API_KEY", "Enter your GLM_API_KEY")
+        api_key = get_env_or_input("GLM_API_KEY", "Enter your GLM_API_KEY")
         env = GLM_ENV.copy()
         env["ANTHROPIC_AUTH_TOKEN"] = api_key
         update_settings_env(env)
     elif choice == "2":
         # MiniMax M2
-        api_key = get_api_key("MINIMAX_API_KEY", "Enter your MINIMAX_API_KEY")
+        api_key = get_env_or_input("MINIMAX_API_KEY", "Enter your MINIMAX_API_KEY")
         env = MINIMAX_ENV.copy()
         env["ANTHROPIC_AUTH_TOKEN"] = api_key
+        update_settings_env(env)
+    elif choice == "3":
+        # Custom provider
+        env = build_custom_env()
         update_settings_env(env)
     else:
         print("Invalid choice. Please run the script again.")
