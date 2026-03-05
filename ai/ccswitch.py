@@ -27,12 +27,12 @@ MINIMAX_ENV = {
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "MiniMax-M2.5"
 }
 
-def get_env_or_input(env_var, prompt):
+def get_env_or_input(env_var, prompt, allow_empty=False):
     """
     Get value from environment variable or prompt user for input.
     """
     value = os.environ.get(env_var)
-    if value:
+    if value or (allow_empty and env_var in os.environ):
         print(f"Found {env_var} in environment. Using it.")
     else:
         value = input(f"{prompt}: ").strip()
@@ -42,18 +42,34 @@ def build_custom_env():
     """
     Build custom provider env settings from env vars or interactive input.
     """
-    endpoint = get_env_or_input("CUSTOM_AI_ENDPOINT", "Enter your CUSTOM_AI_ENDPOINT")
-    model = get_env_or_input("CUSTOM_AI_MODEL", "Enter your CUSTOM_AI_MODEL")
-    api_key = get_env_or_input("CUSTOM_AI_API_KEY", "Enter your CUSTOM_AI_API_KEY")
+    endpoint = get_env_or_input("CC_CUSTOM_ENDPOINT", "Enter your CC_CUSTOM_ENDPOINT")
+    model = get_env_or_input("CC_CUSTOM_MODEL", "Enter your CC_CUSTOM_MODEL")
+    sonnet_model = get_env_or_input(
+        "CC_CUSTOM_DEFAULT_SONNET_MODEL",
+        "Enter your CC_CUSTOM_DEFAULT_SONNET_MODEL"
+    )
+    opus_model = get_env_or_input(
+        "CC_CUSTOM_DEFAULT_OPUS_MODEL",
+        "Enter your CC_CUSTOM_DEFAULT_OPUS_MODEL"
+    )
+    haiku_model = get_env_or_input(
+        "CC_CUSTOM_DEFAULT_HAIKU_MODEL",
+        "Enter your CC_CUSTOM_DEFAULT_HAIKU_MODEL"
+    )
+    api_key = get_env_or_input(
+        "CC_CUSTOM_API_KEY",
+        "Enter your CC_CUSTOM_API_KEY (can be empty)",
+        allow_empty=True
+    )
     return {
         "ANTHROPIC_AUTH_TOKEN": api_key,
         "ANTHROPIC_BASE_URL": endpoint,
         "API_TIMEOUT_MS": "3000000",
         "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1,
         "ANTHROPIC_MODEL": model,
-        "ANTHROPIC_DEFAULT_HAIKU_MODEL": model,
-        "ANTHROPIC_DEFAULT_SONNET_MODEL": model,
-        "ANTHROPIC_DEFAULT_OPUS_MODEL": model
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL": haiku_model,
+        "ANTHROPIC_DEFAULT_SONNET_MODEL": sonnet_model,
+        "ANTHROPIC_DEFAULT_OPUS_MODEL": opus_model
     }
 
 def update_settings_env(new_env):
