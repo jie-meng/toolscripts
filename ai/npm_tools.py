@@ -10,6 +10,7 @@ import shutil
 TOOLS = [
     "@github/copilot",
     "@google/gemini-cli",
+    "@openai/codex",
     "@iflow-ai/iflow-cli",
     "@qwen-code/qwen-code",
 ]
