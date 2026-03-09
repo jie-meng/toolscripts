@@ -93,7 +93,7 @@ def update_settings_env(new_env):
 def main():
     print("Select Claude Code Model:")
     print("1. GLM Code Plan")
-    print("2. MiniMax M2")
+    print("2. MiniMax Code Plan")
     print("3. Custom Endpoint/Model/API Key")
     choice = input("Enter 1, 2 or 3: ").strip()
     if choice == "1":
