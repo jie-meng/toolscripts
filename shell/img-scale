@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# Image resizing tool using ImageMagick
+# Usage: img-scale <file> <scale>
+# Example: img-scale photo.jpg 0.2
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+# Check arguments
+if [ $# -ne 2 ]; then
+    echo -e "${RED}Error: Invalid arguments. Usage: $0 <file> <scale>${NC}" >&2
+    exit 1
+fi
+
+FILE="$1"
+SCALE="$2"
+
+# Check if file exists
+if [ ! -f "$FILE" ]; then
+    echo -e "${RED}Error: File not found: $FILE${NC}" >&2
+    exit 1
+fi
+
+# Check if scale is a valid number
+if ! [[ "$SCALE" =~ ^[0-9]*\.?[0-9]+$ ]]; then
+    echo -e "${RED}Error: Invalid scale value: $SCALE. Must be a positive number.${NC}" >&2
+    exit 1
+fi
+
+# Check scale >= 1
+SCALE_NUM=$(echo "$SCALE >= 1" | bc -l)
+if [ "$SCALE_NUM" -eq 1 ]; then
+    echo -e "${RED}Error: Scale must be less than 1. Got: $SCALE${NC}" >&2
+    exit 1
+fi
+
+# Check scale > 0
+if (( $(echo "$SCALE <= 0" | bc -l) )); then
+    echo -e "${RED}Error: Scale must be greater than 0. Got: $SCALE${NC}" >&2
+    exit 1
+fi
+
+# Check if ImageMagick is installed
+if ! command -v magick &> /dev/null; then
+    echo -e "${RED}Error: ImageMagick (magick) is not installed.${NC}" >&2
+    exit 1
+fi
+
+# Get file extension
+EXT="${FILE##*.}"
+BASENAME="${FILE%.*}"
+
+# Output filename
+OUTPUT="${BASENAME}-output.${EXT}"
+
+# Resize image - convert 0.3 to 30%
+PERCENTAGE=$(echo "$SCALE * 100" | bc)
+CMD="magick \"$FILE\" -resize \"${PERCENTAGE}%\" \"$OUTPUT\""
+echo "$CMD"
+magick "$FILE" -resize "${PERCENTAGE}%" "$OUTPUT"
+
+echo "Output: $OUTPUT"
