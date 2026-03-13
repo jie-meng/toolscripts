@@ -52,10 +52,36 @@ if [ ! -d "$TARGET_SKILLS_DIR" ]; then
     mkdir -p "$TARGET_SKILLS_DIR"
 fi
 
+# Detect changed skills before copy
+added_skills=()
+updated_skills=()
+
+for source_skill in "$SOURCE_SKILLS_DIR"/*; do
+    [ -d "$source_skill" ] || continue
+    skill_name="$(basename "$source_skill")"
+    target_skill="$TARGET_SKILLS_DIR/$skill_name"
+
+    if [ ! -d "$target_skill" ]; then
+        added_skills+=("$skill_name")
+    elif ! diff -qr "$source_skill" "$target_skill" >/dev/null 2>&1; then
+        updated_skills+=("$skill_name")
+    fi
+done
+
 # Copy all skills from source to target
 echo "Copying skills from $SOURCE_SKILLS_DIR to $TARGET_SKILLS_DIR"
 cp -r "$SOURCE_SKILLS_DIR"/* "$TARGET_SKILLS_DIR/"
 
-# Count copied files
-COPIED_COUNT=$(find "$TARGET_SKILLS_DIR" -type f | wc -l | tr -d ' ')
-echo -e "${GREEN}✓ Successfully copied $COPIED_COUNT skill file(s) to $TARGET_SKILLS_DIR${NC}"
+echo -e "${GREEN}✓ Skills synced to $TARGET_SKILLS_DIR${NC}"
+
+if [ ${#added_skills[@]} -gt 0 ]; then
+    echo -e "${GREEN}Added skills:${NC} ${added_skills[*]}"
+fi
+
+if [ ${#updated_skills[@]} -gt 0 ]; then
+    echo -e "${YELLOW}Updated skills:${NC} ${updated_skills[*]}"
+fi
+
+if [ ${#added_skills[@]} -eq 0 ] && [ ${#updated_skills[@]} -eq 0 ]; then
+    echo "No skill changes detected."
+fi
