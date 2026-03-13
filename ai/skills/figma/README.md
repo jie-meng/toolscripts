@@ -23,6 +23,10 @@ Reload your shell or run `source ~/.zshrc`.
 
 ## Usage
 
+Two scripts are available. Both require Python 3.8+ (standard library only, zero dependencies).
+
+### figma_fetch.py — Fetch design specs
+
 ```bash
 # Inspect a specific node (URL with node-id)
 python3 scripts/figma_fetch.py "https://www.figma.com/design/ABC123/Name?node-id=1-2"
@@ -34,12 +38,39 @@ python3 scripts/figma_fetch.py "https://www.figma.com/design/ABC123/Name"
 python3 scripts/figma_fetch.py "https://..." --depth 3
 ```
 
-**Requirements**: Python 3.8+ (standard library only, zero dependencies).
+Outputs structured markdown to stdout with layout, colors, typography, effects, and component data.
+
+### figma_export.py — Export node as image
+
+Downloads a rendered image of a specific Figma node to disk and prints the saved file path.
+
+```bash
+# Download as PNG @2x (default)
+python3 scripts/figma_export.py "https://www.figma.com/design/ABC123/Name?node-id=1-2"
+
+# SVG export
+python3 scripts/figma_export.py "https://..." --format svg
+
+# Specify output path
+python3 scripts/figma_export.py "https://..." --format png --scale 1 --output /tmp/button.png
+```
+
+**Options**:
+
+| Flag | Default | Description |
+|---|---|---|
+| `--format` | `png` | `png`, `jpg`, `svg`, or `pdf` |
+| `--scale` | `2.0` | Export scale factor 0.01–4 (2.0 = @2x) |
+| `--output` | `./<node-name>.<format>` | Output file path |
+
+On success, prints the **absolute path** of the saved file. Use this path to open the image or pass it to the AI for visual analysis alongside the spec output from `figma_fetch.py`.
 
 **Supported URL formats**:
 - `https://www.figma.com/design/FILE_KEY/Name?node-id=1-2`
 - `https://www.figma.com/file/FILE_KEY/Name?node-id=1%3A2`
 - `https://www.figma.com/proto/FILE_KEY/Name`
+
+> `figma_export.py` requires a URL with a `node-id`. Right-click any layer in Figma → "Copy link to selection" to get one.
 
 ## Output Format
 
@@ -170,6 +201,8 @@ Rendered recursively up to `--depth` levels. Invisible nodes (`visible: false`) 
 | 1 | `Figma API 404` | File not found or no access | Check URL; ensure you have view access |
 | 2 | `Could not parse file key` | Malformed URL | Use a URL copied directly from Figma |
 | 1 | `Node not found` | node-id refers to deleted/moved node | Re-copy the link from Figma |
+| 2 | `URL has no node-id` | figma_export.py needs a node URL | Right-click layer → "Copy link to selection" |
+| 1 | `No image returned` | Node is empty or render failed | Try a different node; check it has visible content |
 | — | Script hangs | Network timeout | Check internet; try again |
 
 If the response is empty or truncated on large files, use `--depth 2` to limit traversal.

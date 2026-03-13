@@ -29,7 +29,9 @@ Requires `FIGMA_ACCESS_TOKEN` environment variable. See `README.md` in this skil
 
 ## Running the Script
 
-The script is at `scripts/figma_fetch.py` relative to this skill directory. It requires only Python 3.8+ standard library (zero dependencies).
+Two scripts are available in `scripts/` relative to this skill directory. Both require only Python 3.8+ standard library (zero dependencies).
+
+### Fetch design specs (figma_fetch.py)
 
 ```bash
 # Inspect a specific node (most common — URL contains node-id)
@@ -42,10 +44,29 @@ python3 scripts/figma_fetch.py "https://www.figma.com/design/ABC123/Name"
 python3 scripts/figma_fetch.py "https://..." --depth 3
 ```
 
+### Export node as image (figma_export.py)
+
+Downloads a rendered image of a specific node to disk and prints the saved file path.
+
+```bash
+# Download as PNG @2x (default)
+python3 scripts/figma_export.py "https://www.figma.com/design/ABC123/Name?node-id=1-2"
+
+# SVG export
+python3 scripts/figma_export.py "https://..." --format svg
+
+# Specify output path and scale
+python3 scripts/figma_export.py "https://..." --format png --scale 1 --output /tmp/button.png
+```
+
+Prints the absolute path of the saved file on success. Use that path to open the image or pass it to the user for visual inspection.
+
 Exit codes: 0 = success, 1 = API error, 2 = bad arguments. On error, surface the printed message to the user.
 
 ## Using the Output
 
-The script outputs structured markdown covering all visual and layout properties present on each node. The exact fields vary by node type — a FRAME with auto-layout produces different output than a TEXT node. Read what's there; don't expect every section to appear on every node.
+**figma_fetch.py** outputs structured markdown covering all visual and layout properties present on each node. The exact fields vary by node type — a FRAME with auto-layout produces different output than a TEXT node. Read what's there; don't expect every section to appear on every node.
 
 Typical sections include layout dimensions, fills/strokes, effects, typography (TEXT nodes), component metadata, and design token bindings. Use these values to generate accurate CSS or UI code matching the design. When a section is absent, the node doesn't have that property set.
+
+**figma_export.py** prints the absolute path of the saved image file. Use that path to open the image locally or pass it into context so the AI can analyze the visual appearance of the component alongside the structural spec from figma_fetch.py.
