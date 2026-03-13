@@ -77,12 +77,21 @@ def format_paint(paint):
         ]
         return f"{t}: {', '.join(stop_strs)}"
     elif t == "IMAGE":
-        return "image fill"
+        image_ref = paint.get("imageRef", "")
+        scale_mode = paint.get("scaleMode", "FILL")
+        suffix = f" (ref: {image_ref}, scale: {scale_mode})" if image_ref else ""
+        return f"image fill{suffix}"
+    elif t == "PATTERN":
+        source = paint.get("sourceNodeId", "")
+        return f"pattern fill (source: {source})" if source else "pattern fill"
     return t.lower().replace("_", " ")
 
 
 def simplify_node(node, depth=0, max_depth=5):
     if node is None:
+        return None
+
+    if not node.get("visible", True):
         return None
 
     result = {
@@ -91,7 +100,23 @@ def simplify_node(node, depth=0, max_depth=5):
         "type": node.get("type", ""),
     }
 
-    # absoluteBoundingBox is always present; "size" only exists with geometry=paths
+    blend = node.get("blendMode")
+    if blend and blend != "NORMAL" and blend != "PASS_THROUGH":
+        result["blendMode"] = blend
+    opacity = node.get("opacity")
+    if opacity is not None and opacity != 1.0:
+        result["opacity"] = round(opacity, 3)
+
+    if node.get("isMask"):
+        result["isMask"] = True
+
+    dev_status = node.get("devStatus")
+    if dev_status and dev_status.get("type") not in (None, "NONE"):
+        result["devStatus"] = dev_status.get("type")
+
+    # absoluteBoundingBox: layout bounds in absolute canvas coords (always present on visible nodes)
+    # absoluteRenderBounds: actual visual bounds incl. shadow/blur overflow
+    # "size" only exists when geometry=paths is passed — not used here
     bbox = node.get("absoluteBoundingBox")
     if bbox:
         result["size"] = {
@@ -102,10 +127,40 @@ def simplify_node(node, depth=0, max_depth=5):
             "x": round(bbox["x"], 2),
             "y": round(bbox["y"], 2),
         }
+    render_bounds = node.get("absoluteRenderBounds")
+    if render_bounds and render_bounds != bbox:
+        result["renderBounds"] = {
+            "width": round(render_bounds["width"], 2),
+            "height": round(render_bounds["height"], 2),
+            "x": round(render_bounds["x"], 2),
+            "y": round(render_bounds["y"], 2),
+        }
 
-    opacity = node.get("opacity")
-    if opacity is not None and opacity != 1.0:
-        result["opacity"] = round(opacity, 3)
+    rotation = node.get("rotation")
+    if rotation:
+        result["rotation"] = round(rotation, 3)
+
+    # layoutPositioning: ABSOLUTE means this node is taken out of auto-layout flow (like CSS position:absolute)
+    layout_pos = node.get("layoutPositioning")
+    if layout_pos == "ABSOLUTE":
+        result["layoutPositioning"] = "ABSOLUTE"
+
+    # layoutAlign / layoutGrow: how this child behaves inside a parent auto-layout frame
+    layout_align = node.get("layoutAlign")
+    if layout_align and layout_align != "INHERIT":
+        result["layoutAlign"] = layout_align
+    layout_grow = node.get("layoutGrow")
+    if layout_grow:
+        result["layoutGrow"] = layout_grow
+
+    constraints = node.get("constraints")
+    if constraints:
+        result["constraints"] = constraints
+
+    for key in ("minWidth", "maxWidth", "minHeight", "maxHeight"):
+        val = node.get(key)
+        if val is not None:
+            result[key] = val
 
     fills = node.get("fills", [])
     parsed_fills = [f for f in (format_paint(p) for p in fills) if f]
@@ -120,6 +175,14 @@ def simplify_node(node, depth=0, max_depth=5):
         if weight:
             result["strokeWeight"] = weight
         result["strokeAlign"] = node.get("strokeAlign", "CENTER")
+        stroke_cap = node.get("strokeCap")
+        if stroke_cap and stroke_cap != "NONE":
+            result["strokeCap"] = stroke_cap
+        stroke_join = node.get("strokeJoin")
+        if stroke_join and stroke_join != "MITER":
+            result["strokeJoin"] = stroke_join
+        if node.get("strokesIncludedInLayout"):
+            result["strokesIncludedInLayout"] = True
 
     cr = node.get("cornerRadius")
     if cr:
@@ -127,6 +190,9 @@ def simplify_node(node, depth=0, max_depth=5):
     per_corner = node.get("rectangleCornerRadii")
     if per_corner and per_corner != [cr, cr, cr, cr]:
         result["rectangleCornerRadii"] = per_corner
+    corner_smoothing = node.get("cornerSmoothing")
+    if corner_smoothing:
+        result["cornerSmoothing"] = round(corner_smoothing, 3)
 
     layout_mode = node.get("layoutMode", "NONE")
     if layout_mode != "NONE":
@@ -138,8 +204,19 @@ def simplify_node(node, depth=0, max_depth=5):
         result["itemSpacing"] = node.get("itemSpacing", 0)
         result["primaryAxisAlignItems"] = node.get("primaryAxisAlignItems", "MIN")
         result["counterAxisAlignItems"] = node.get("counterAxisAlignItems", "MIN")
+        layout_wrap = node.get("layoutWrap")
+        if layout_wrap and layout_wrap != "NO_WRAP":
+            result["layoutWrap"] = layout_wrap
+            counter_spacing = node.get("counterAxisSpacing")
+            if counter_spacing:
+                result["counterAxisSpacing"] = counter_spacing
         result["layoutSizingHorizontal"] = node.get("layoutSizingHorizontal")
         result["layoutSizingVertical"] = node.get("layoutSizingVertical")
+        if node.get("itemReverseZIndex"):
+            result["itemReverseZIndex"] = True
+        primary_sizing = node.get("primaryAxisSizingMode")
+        if primary_sizing:
+            result["primaryAxisSizingMode"] = primary_sizing
 
     effects = node.get("effects", [])
     visible_effects = [e for e in effects if e.get("visible", True)]
@@ -164,15 +241,33 @@ def simplify_node(node, depth=0, max_depth=5):
 
     if node.get("type") == "TEXT":
         style = node.get("style", {})
-        result["typography"] = {
+        typo = {
             "fontFamily": style.get("fontFamily"),
             "fontWeight": style.get("fontWeight"),
             "fontSize": style.get("fontSize"),
-            "lineHeightPx": style.get("lineHeightPx"),
-            "letterSpacing": style.get("letterSpacing"),
-            "textAlignHorizontal": style.get("textAlignHorizontal"),
             "italic": style.get("italic", False),
+            "textAlignHorizontal": style.get("textAlignHorizontal"),
+            "textAlignVertical": style.get("textAlignVertical"),
         }
+        if style.get("lineHeightPx"):
+            typo["lineHeightPx"] = style["lineHeightPx"]
+        if style.get("letterSpacing"):
+            typo["letterSpacing"] = style["letterSpacing"]
+        if style.get("textCase") and style["textCase"] != "ORIGINAL":
+            typo["textCase"] = style["textCase"]
+        if style.get("textDecoration") and style["textDecoration"] != "NONE":
+            typo["textDecoration"] = style["textDecoration"]
+        if style.get("paragraphSpacing"):
+            typo["paragraphSpacing"] = style["paragraphSpacing"]
+        if style.get("paragraphIndent"):
+            typo["paragraphIndent"] = style["paragraphIndent"]
+        truncation = node.get("textTruncation")
+        if truncation and truncation != "DISABLED":
+            typo["textTruncation"] = truncation
+            max_lines = node.get("maxLines")
+            if max_lines:
+                typo["maxLines"] = max_lines
+        result["typography"] = typo
         chars = node.get("characters", "")
         result["characters"] = chars[:200] + ("…" if len(chars) > 200 else "")
 
@@ -183,16 +278,36 @@ def simplify_node(node, depth=0, max_depth=5):
     if comp_props:
         result["componentProperties"] = comp_props
 
+    export_settings = node.get("exportSettings", [])
+    if export_settings:
+        result["exportSettings"] = [
+            {
+                "format": s.get("format"),
+                "suffix": s.get("suffix", ""),
+                "scale": s.get("constraint", {}).get("value", 1),
+            }
+            for s in export_settings
+        ]
+
+    # boundVariables: which property names are driven by design tokens/Variables
+    # Variable IDs are not shown — too noisy; use /variables/local to resolve them
+    bound_vars = node.get("boundVariables")
+    if bound_vars:
+        result["boundVariables"] = list(bound_vars.keys())
+
     children = node.get("children", [])
     if children:
         if depth >= max_depth:
             result["_children_truncated"] = len(children)
         else:
-            result["children"] = [
+            simplified_children = [
                 simplify_node(c, depth + 1, max_depth)
                 for c in children
                 if c is not None
             ]
+            visible_children = [c for c in simplified_children if c is not None]
+            if visible_children:
+                result["children"] = visible_children
 
     return result
 
@@ -216,6 +331,10 @@ def _render_node_section(lines, node, indent=0, top_level=False):
         name = node.get("name", "")
         lines.append(f"{prefix}### [{ntype}] {name}")
 
+    dev_status = node.get("devStatus")
+    if dev_status:
+        lines.append(f"{prefix}- Dev status: {dev_status}")
+
     size = node.get("size")
     pos = node.get("position")
     if size or pos:
@@ -225,12 +344,55 @@ def _render_node_section(lines, node, indent=0, top_level=False):
             lines.append(f"{prefix}- Size: {size['width']} × {size['height']}px")
         if pos and not top_level:
             lines.append(f"{prefix}- Position: x={pos['x']}, y={pos['y']}")
+    render_bounds = node.get("renderBounds")
+    if render_bounds:
+        lines.append(
+            f"{prefix}- Render bounds: {render_bounds['width']} × {render_bounds['height']}px "
+            f"(x={render_bounds['x']}, y={render_bounds['y']})"
+        )
+
+    rotation = node.get("rotation")
+    if rotation:
+        lines.append(f"{prefix}- Rotation: {rotation}°")
+
+    layout_pos = node.get("layoutPositioning")
+    if layout_pos:
+        lines.append(f"{prefix}- Layout positioning: {layout_pos}")
+
+    layout_align = node.get("layoutAlign")
+    layout_grow = node.get("layoutGrow")
+    if layout_align or layout_grow is not None:
+        parts = []
+        if layout_align:
+            parts.append(f"align={layout_align}")
+        if layout_grow:
+            parts.append(f"grow={layout_grow}")
+        lines.append(f"{prefix}- Layout (child): {', '.join(parts)}")
+
+    constraints = node.get("constraints")
+    if constraints:
+        h = constraints.get("horizontal", "")
+        v = constraints.get("vertical", "")
+        lines.append(f"{prefix}- Constraints: horizontal={h}, vertical={v}")
+
+    size_constraints = []
+    for key in ("minWidth", "maxWidth", "minHeight", "maxHeight"):
+        val = node.get(key)
+        if val is not None:
+            size_constraints.append(f"{key}={val}")
+    if size_constraints:
+        lines.append(f"{prefix}- Size constraints: {', '.join(size_constraints)}")
 
     layout = node.get("layoutMode")
     if layout:
-        lines.append(
-            f"{prefix}- Auto-layout: {layout}, gap: {node.get('itemSpacing', 0)}px"
-        )
+        gap_str = f", gap: {node.get('itemSpacing', 0)}px"
+        wrap = node.get("layoutWrap")
+        wrap_str = f", wrap: {wrap}" if wrap else ""
+        lines.append(f"{prefix}- Auto-layout: {layout}{gap_str}{wrap_str}")
+        if wrap:
+            counter_spacing = node.get("counterAxisSpacing")
+            if counter_spacing:
+                lines.append(f"{prefix}- Row gap: {counter_spacing}px")
         pt = node.get("paddingTop", 0)
         pr = node.get("paddingRight", 0)
         pb = node.get("paddingBottom", 0)
@@ -248,6 +410,8 @@ def _render_node_section(lines, node, indent=0, top_level=False):
         lines.append(
             f"{prefix}- Align (primary): {node.get('primaryAxisAlignItems')}, counter: {node.get('counterAxisAlignItems')}"
         )
+        if node.get("itemReverseZIndex"):
+            lines.append(f"{prefix}- Item reverse z-index: true")
 
     fills = node.get("fills")
     if fills:
@@ -258,16 +422,29 @@ def _render_node_section(lines, node, indent=0, top_level=False):
 
     strokes = node.get("strokes")
     if strokes:
+        if top_level:
+            lines.append(f"{prefix}### Borders")
         for stroke in strokes:
             weight = node.get("strokeWeight", "")
             align = node.get("strokeAlign", "")
-            lines.append(f"{prefix}- Stroke: {stroke} ({weight}px, {align})")
+            cap = node.get("strokeCap", "")
+            join = node.get("strokeJoin", "")
+            stroke_parts = [f"{stroke}", f"{weight}px", align]
+            if cap:
+                stroke_parts.append(f"cap={cap}")
+            if join:
+                stroke_parts.append(f"join={join}")
+            lines.append(f"{prefix}- Stroke: {', '.join(stroke_parts)}")
+        if node.get("strokesIncludedInLayout"):
+            lines.append(f"{prefix}- Strokes included in layout (border-box)")
 
     cr = node.get("cornerRadius")
     if cr:
-        if top_level:
+        if top_level and not strokes:
             lines.append(f"{prefix}### Borders")
-        lines.append(f"{prefix}- Corner radius: {cr}px")
+        cs = node.get("cornerSmoothing")
+        cs_str = f", smoothing: {cs}" if cs else ""
+        lines.append(f"{prefix}- Corner radius: {cr}px{cs_str}")
     per_corner = node.get("rectangleCornerRadii")
     if per_corner:
         lines.append(f"{prefix}- Corner radii (TL TR BR BL): {per_corner}")
@@ -275,6 +452,13 @@ def _render_node_section(lines, node, indent=0, top_level=False):
     opacity = node.get("opacity")
     if opacity is not None:
         lines.append(f"{prefix}- Opacity: {opacity}")
+
+    blend = node.get("blendMode")
+    if blend:
+        lines.append(f"{prefix}- Blend mode: {blend}")
+
+    if node.get("isMask"):
+        lines.append(f"{prefix}- Is mask: true")
 
     effects = node.get("effects")
     if effects:
@@ -290,17 +474,36 @@ def _render_node_section(lines, node, indent=0, top_level=False):
         lines.append(
             f"{prefix}- Font: {typo.get('fontFamily')}, {typo.get('fontSize')}px, weight {typo.get('fontWeight')}"
         )
+        style_parts = []
         if typo.get("italic"):
-            lines.append(f"{prefix}- Style: italic")
+            style_parts.append("italic")
+        if typo.get("textCase"):
+            style_parts.append(f"case: {typo['textCase']}")
+        if typo.get("textDecoration"):
+            style_parts.append(f"decoration: {typo['textDecoration']}")
+        if style_parts:
+            lines.append(f"{prefix}- Style: {', '.join(style_parts)}")
         lh = typo.get("lineHeightPx")
         if lh:
             lines.append(f"{prefix}- Line height: {lh}px")
         ls = typo.get("letterSpacing")
         if ls:
             lines.append(f"{prefix}- Letter spacing: {ls}px")
-        align = typo.get("textAlignHorizontal")
-        if align:
-            lines.append(f"{prefix}- Text align: {align}")
+        align_h = typo.get("textAlignHorizontal")
+        align_v = typo.get("textAlignVertical")
+        if align_h or align_v:
+            align_str = f"{align_h or ''}"
+            if align_v:
+                align_str += f" / {align_v}" if align_h else align_v
+            lines.append(f"{prefix}- Text align: {align_str}")
+        if typo.get("paragraphSpacing"):
+            lines.append(f"{prefix}- Paragraph spacing: {typo['paragraphSpacing']}px")
+        if typo.get("paragraphIndent"):
+            lines.append(f"{prefix}- Paragraph indent: {typo['paragraphIndent']}px")
+        if typo.get("textTruncation"):
+            max_l = typo.get("maxLines")
+            trunc_str = f" (max {max_l} lines)" if max_l else ""
+            lines.append(f"{prefix}- Truncation: {typo['textTruncation']}{trunc_str}")
 
     chars = node.get("characters")
     if chars:
@@ -311,6 +514,20 @@ def _render_node_section(lines, node, indent=0, top_level=False):
     comp_id = node.get("componentId")
     if comp_id:
         lines.append(f"{prefix}- Component ID: {comp_id}")
+
+    export_settings = node.get("exportSettings")
+    if export_settings:
+        exports = ", ".join(
+            f"{s['format']}@{s['scale']}x{('/' + s['suffix']) if s.get('suffix') else ''}"
+            for s in export_settings
+        )
+        lines.append(f"{prefix}- Export: {exports}")
+
+    bound_vars = node.get("boundVariables")
+    if bound_vars:
+        lines.append(
+            f"{prefix}- Bound variables (token fields): {', '.join(bound_vars)}"
+        )
 
     trunc = node.get("_children_truncated")
     if trunc:
