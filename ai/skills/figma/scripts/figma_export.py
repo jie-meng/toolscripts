@@ -103,7 +103,7 @@ def main():
         "--scale",
         type=float,
         default=2.0,
-        help="Export scale factor 0.01–4 (default: 2.0 for @2x)",
+        help="Export scale factor 0.01–4 (default: 2.0)",
     )
     parser.add_argument(
         "--output",
