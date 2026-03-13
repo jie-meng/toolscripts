@@ -2,6 +2,9 @@
 
 Fetch design specs (layout, colors, typography, components) from a Figma URL and output structured markdown for AI-assisted code generation.
 
+**Official Figma REST API spec**: [github.com/figma/rest-api-spec](https://github.com/figma/rest-api-spec) — OpenAPI YAML + TypeScript types  
+**Full API reference**: See [`API_REFERENCE.md`](./API_REFERENCE.md) in this directory.
+
 ## Prerequisites
 
 ### 1. Get a Figma Personal Access Token
@@ -40,25 +43,123 @@ python3 scripts/figma_fetch.py "https://..." --depth 3
 
 ## Output Format
 
-When a node is fetched, the script outputs structured markdown with these sections:
+The script outputs structured markdown. Fields are emitted only when present on the node — sections that don't apply to a given node type are omitted.
 
-| Section | Content |
+### Node-level metadata (always present)
+
+| Field | Description |
 |---|---|
-| **Layout** | Width × height, auto-layout mode, padding, gap |
-| **Colors** | Fill colors as hex (#RRGGBB), opacity if < 1.0, gradient descriptions |
-| **Borders** | Corner radius (uniform or per-corner), stroke color + weight + alignment |
-| **Effects** | Drop/inner shadows with color, offset, blur, spread; layer/background blurs |
-| **Typography** | Font family, size, weight, line height, letter spacing, alignment (TEXT nodes) |
-| **Content** | Text content (truncated at 200 chars) |
-| **Children** | Recursive tree of child nodes up to `--depth` levels |
+| `id` | Figma node ID |
+| `name` | Layer name |
+| `type` | Node type (FRAME, TEXT, RECTANGLE, COMPONENT, INSTANCE, etc.) |
+| `devStatus` | `READY_FOR_DEV` or `COMPLETED` if set in Dev Mode |
+
+### Visual
+
+| Field | Description |
+|---|---|
+| **Opacity** | Node-level opacity (omitted when 1.0) |
+| **Blend mode** | CSS mix-blend-mode equivalent (omitted when NORMAL/PASS_THROUGH) |
+| **Is mask** | Whether this layer is a clipping mask |
+
+### Layout
+
+| Field | Description |
+|---|---|
+| **Size** | `width × height` from `absoluteBoundingBox` (canvas-space layout dimensions) |
+| **Position** | `x, y` from `absoluteBoundingBox` (shown for child nodes) |
+| **Render bounds** | Actual visual extents including overflow effects (shadows, blur). Only shown when different from layout bounds. |
+| **Rotation** | Layer rotation in degrees |
+| **Layout positioning** | `ABSOLUTE` = taken out of auto-layout flow (CSS `position: absolute`) |
+| **Layout (child)** | `layoutAlign` + `layoutGrow` — how this child behaves inside a parent auto-layout frame |
+| **Constraints** | Horizontal + vertical resize constraints (`LEFT`, `RIGHT`, `CENTER`, `SCALE`, `STRETCH`) |
+| **Size constraints** | `minWidth`, `maxWidth`, `minHeight`, `maxHeight` |
+
+### Auto-layout (FRAME nodes with `layoutMode`)
+
+| Field | Description |
+|---|---|
+| `layoutMode` | `HORIZONTAL`, `VERTICAL`, or `GRID` |
+| `itemSpacing` | Gap between children |
+| `layoutWrap` | `WRAP` for flex-wrap behavior (omitted when `NO_WRAP`) |
+| `counterAxisSpacing` | Gap between wrapped rows/columns (when WRAP) |
+| `paddingTop/Right/Bottom/Left` | Inner padding |
+| `primaryAxisAlignItems` | Main axis alignment (`MIN`, `CENTER`, `MAX`, `SPACE_BETWEEN`) |
+| `counterAxisAlignItems` | Cross axis alignment (`MIN`, `CENTER`, `MAX`, `BASELINE`) |
+| `layoutSizingHorizontal/Vertical` | `FIXED`, `HUG`, or `FILL` |
+| `itemReverseZIndex` | If `true`, first child is drawn on top (CSS z-order reversal) |
+
+### Colors & Paints
+
+| Paint type | Output format |
+|---|---|
+| `SOLID` | `#RRGGBB` or `#RRGGBB (opacity: 0.XX)` |
+| `GRADIENT_*` | `GRADIENT_LINEAR: #HEX at 0%, #HEX at 100%, ...` |
+| `IMAGE` | `image fill (ref: <imageRef>, scale: <scaleMode>)` |
+| `PATTERN` | `pattern fill (source: <nodeId>)` |
+
+### Borders & Strokes
+
+| Field | Description |
+|---|---|
+| `cornerRadius` | Uniform border radius |
+| `rectangleCornerRadii` | Per-corner radii `[TL, TR, BR, BL]` (shown only when non-uniform) |
+| `cornerSmoothing` | 0–1 (0.6 = iOS squircle) |
+| `strokes` | Stroke paint(s) with weight, alignment, cap, join |
+| `strokesIncludedInLayout` | Present when `true` — equivalent to CSS `box-sizing: border-box` |
+
+### Effects
+
+| Effect type | Output format |
+|---|---|
+| `DROP_SHADOW` / `INNER_SHADOW` | `drop shadow: color=#HEX offset=(x,y) blur=N spread=N` |
+| `LAYER_BLUR` / `BACKGROUND_BLUR` | `layer blur: radius=N` |
+
+### Typography (TEXT nodes only)
+
+| Field | Description |
+|---|---|
+| `fontFamily`, `fontSize`, `fontWeight` | Core font identity |
+| `italic`, `textCase`, `textDecoration` | Font style modifiers |
+| `lineHeightPx` | Line height in pixels |
+| `letterSpacing` | Letter spacing |
+| `textAlignHorizontal` | `LEFT`, `CENTER`, `RIGHT`, `JUSTIFIED` |
+| `textAlignVertical` | `TOP`, `CENTER`, `BOTTOM` |
+| `paragraphSpacing`, `paragraphIndent` | Paragraph layout |
+| `textTruncation` + `maxLines` | Overflow truncation (ellipsis) |
+| `characters` | Text content (truncated at 200 chars) |
+
+### Component metadata (INSTANCE nodes)
+
+| Field | Description |
+|---|---|
+| `componentId` | ID of the master component |
+| `componentProperties` | Override values for component props |
+
+### Export settings
+
+Present when a node has configured export presets: `PNG@2x`, `SVG@1x/icon`, etc.
+
+### Design tokens
+
+| Field | Description |
+|---|---|
+| `boundVariables` | List of property names driven by Figma Variables (e.g. `fills`, `paddingLeft`). Use `/v1/files/:key/variables/local` to resolve variable values. |
+
+### Children
+
+Rendered recursively up to `--depth` levels. Invisible nodes (`visible: false`) are excluded. When the limit is reached, a truncation note shows the child count.
 
 ### Figma API Notes
 
 - Sizes come from `absoluteBoundingBox.width/height` (always present), not `size` (only with `geometry=paths`)
 - Colors are RGBA floats (0–1), converted to hex by the script
-- Auto-layout padding: `paddingTop/Right/Bottom/Left` and `itemSpacing`
+- `absoluteRenderBounds` is the actual visual extent (includes blur/shadow overflow); differs from `absoluteBoundingBox` when effects overflow the layout box
 - Text styles are on `node.style` (TypeStyle object), not directly on the node
 - `fills` and `strokes` are arrays of Paint objects; `type: SOLID` has a `color` sub-object
+- `layoutPositioning: ABSOLUTE` means a child is pinned inside an auto-layout frame without participating in the layout flow — equivalent to CSS `position: absolute`
+- `layoutGrow: 1` on a child = CSS `flex-grow: 1` (fills remaining space)
+- `constraints` define how a node resizes when its parent resizes (non-auto-layout frames)
 
 ## Error Handling
 

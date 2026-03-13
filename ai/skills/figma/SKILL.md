@@ -46,14 +46,6 @@ Exit codes: 0 = success, 1 = API error, 2 = bad arguments. On error, surface the
 
 ## Using the Output
 
-The script outputs structured markdown with design specs:
+The script outputs structured markdown covering all visual and layout properties present on each node. The exact fields vary by node type — a FRAME with auto-layout produces different output than a TEXT node. Read what's there; don't expect every section to appear on every node.
 
-- **Layout**: size, auto-layout mode, padding, gap
-- **Colors**: fills as hex (#RRGGBB), opacity, gradients
-- **Borders**: corner radius, strokes
-- **Effects**: shadows, blurs
-- **Typography**: font family, size, weight, line height, letter spacing (TEXT nodes)
-- **Content**: text content (truncated at 200 chars)
-- **Children**: recursive tree up to `--depth` levels
-
-Use these values directly to generate pixel-accurate CSS/code matching the design.
+Typical sections include layout dimensions, fills/strokes, effects, typography (TEXT nodes), component metadata, and design token bindings. Use these values to generate accurate CSS or UI code matching the design. When a section is absent, the node doesn't have that property set.
