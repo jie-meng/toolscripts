@@ -75,19 +75,6 @@ def safe_filename(name):
     return name or "figma_export"
 
 
-def get_node_name(file_key, node_id, token):
-    try:
-        data = figma_get(f"/v1/files/{file_key}/nodes", token, ids=node_id, depth=1)
-        nodes = data.get("nodes", {})
-        entry = nodes.get(node_id) or next(iter(nodes.values()), None)
-        if entry:
-            doc = entry.get("document", {})
-            return doc.get("name", "")
-    except SystemExit:
-        pass
-    return ""
-
-
 def main():
     parser = argparse.ArgumentParser(
         description="Export a Figma node as an image (PNG/JPG/SVG/PDF) and save to disk."
@@ -156,13 +143,7 @@ def main():
     if args.output:
         dest = args.output
     else:
-        node_name = get_node_name(file_key, node_id, token)
-        filename = (
-            safe_filename(node_name)
-            if node_name
-            else f"figma_{node_id.replace(':', '-')}"
-        )
-        dest = f"{filename}.{args.format}"
+        dest = f"figma_{node_id.replace(':', '-')}.{args.format}"
 
     dest = os.path.abspath(dest)
     download_file(image_url, dest)
