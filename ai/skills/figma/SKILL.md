@@ -67,7 +67,7 @@ python3 scripts/figma_export.py "https://..." --format png --scale 2 --output /t
 |---|---|---|
 | `--format` | `png` | Image format: `png`, `jpg`, `svg`, or `pdf` |
 | `--scale` | `2.0` | Export scale factor 0.01–4 (e.g. `2` for @2x retina) |
-| `--output PATH` | `./<node-name>.<format>` | Destination file path. Defaults to current directory. |
+| `--output PATH` | `./figma_<node-id>.<format>` | Destination file path. Defaults to current directory. |
 
 Prints the **absolute path** of the saved file on success. Pass that path to the user or use it to load the image for visual analysis.
 
