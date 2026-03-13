@@ -60,7 +60,7 @@ python3 scripts/figma_export.py "https://..." --format png --scale 1 --output /t
 | Flag | Default | Description |
 |---|---|---|
 | `--format` | `png` | `png`, `jpg`, `svg`, or `pdf` |
-| `--scale` | `2.0` | Export scale factor 0.01–4 (2.0 = @2x) |
+| `--scale` | `2.0` | Export scale factor 0.01–4 (1.0 = @1x, 2.0 = @2x) |
 | `--output` | `./<node-name>.<format>` | Output file path |
 
 On success, prints the **absolute path** of the saved file. Use this path to open the image or pass it to the AI for visual analysis alongside the spec output from `figma_fetch.py`.

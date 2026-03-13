@@ -44,22 +44,32 @@ python3 scripts/figma_fetch.py "https://www.figma.com/design/ABC123/Name"
 python3 scripts/figma_fetch.py "https://..." --depth 3
 ```
 
+| Flag | Default | Description |
+|---|---|---|
+| `--depth N` | `5` | Max recursion depth into child nodes. Use `2`–`3` for large frames to avoid truncation. |
+
 ### Export node as image (figma_export.py)
 
 Downloads a rendered image of a specific node to disk and prints the saved file path.
 
 ```bash
-# Download as PNG @2x (default)
+# Download as PNG @1x (default) — saved to current directory
 python3 scripts/figma_export.py "https://www.figma.com/design/ABC123/Name?node-id=1-2"
 
 # SVG export
 python3 scripts/figma_export.py "https://..." --format svg
 
-# Specify output path and scale
-python3 scripts/figma_export.py "https://..." --format png --scale 1 --output /tmp/button.png
+# High-res PNG and custom output path
+python3 scripts/figma_export.py "https://..." --format png --scale 2 --output /tmp/button.png
 ```
 
-Prints the absolute path of the saved file on success. Use that path to open the image or pass it to the user for visual inspection.
+| Flag | Default | Description |
+|---|---|---|
+| `--format` | `png` | Image format: `png`, `jpg`, `svg`, or `pdf` |
+| `--scale` | `2.0` | Export scale factor 0.01–4 (e.g. `2` for @2x retina) |
+| `--output PATH` | `./<node-name>.<format>` | Destination file path. Defaults to current directory. |
+
+Prints the **absolute path** of the saved file on success. Pass that path to the user or use it to load the image for visual analysis.
 
 Exit codes: 0 = success, 1 = API error, 2 = bad arguments. On error, surface the printed message to the user.
 
