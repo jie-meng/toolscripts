@@ -25,6 +25,17 @@ This file provides context, coding conventions, and architectural guidelines for
   - For anything taking more than one argument, use the built-in `argparse` module.
   - Provide a clear `--help` description.
   - Handle exceptions gracefully (e.g., catching `FileNotFoundError` or `subprocess.CalledProcessError`) and print human-readable error messages to `sys.stderr`.
+- **Output Colors**: Use colors for terminal output to improve readability:
+  - Green for success messages
+  - Red for error messages (print to stderr)
+  - Yellow for warning messages
+  - Use ANSI escape codes or a simple helper:
+    ```python
+    RED = '\033[0;31m'
+    GREEN = '\033[0;32m'
+    YELLOW = '\033[0;33m'
+    NC = '\033[0m'  # No Color
+    ```
 - **Formatting & Linting**: Follow PEP 8 guidelines. Keep code clean and readable.
 
 ## 4. Shell Scripting Standards
@@ -33,6 +44,17 @@ This file provides context, coding conventions, and architectural guidelines for
   - Use `set -e` to exit on errors.
   - Quote variables (e.g., `"$FILE"`) to prevent word splitting issues.
 - **Permissions**: New shell scripts must be made executable (`chmod +x`).
+- **Output Colors**: Use colors for terminal output to improve readability:
+  - Green for success messages
+  - Red for error messages (print to stderr)
+  - Yellow for warning messages
+  - Define color variables at the top of the script:
+    ```bash
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[0;33m'
+    NC='\033[0m' # No Color
+    ```
 
 ## 5. Modifying Existing Code
 - **Preserve Behavior**: Do not break the existing CLI interface of a script unless explicitly requested, as other scripts or user habits might depend on it.

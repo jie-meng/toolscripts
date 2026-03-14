@@ -1,0 +1,133 @@
+#!/bin/bash
+
+# Batch read/write git user config for all subdirectories
+
+set -e
+
+# Color definitions
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
+success() {
+    echo -e "${GREEN}$1${NC}"
+}
+
+error() {
+    echo -e "${RED}$1${NC}" >&2
+}
+
+warning() {
+    echo -e "${YELLOW}$1${NC}"
+}
+
+usage() {
+    echo "Usage: $(basename "$0") <read|write>"
+    echo ""
+    echo "Commands:"
+    echo "  read   - List git username and email for all git repos in subdirectories"
+    echo "  write  - Prompt for username and email, then batch update all git repos"
+    exit 1
+}
+
+is_git_repo() {
+    [ -d "$1/.git" ]
+}
+
+get_git_config() {
+    local dir="$1"
+    local name email
+    name=$(git -C "$dir" config user.name 2>/dev/null || echo "(not set)")
+    email=$(git -C "$dir" config user.email 2>/dev/null || echo "(not set)")
+    echo "$name|$email"
+}
+
+do_read() {
+    local found=0
+    echo ""
+    for dir in */; do
+        # Skip hidden directories
+        [ "${dir:0:1}" = "." ] && continue
+        dir="${dir%/}"
+        [ ! -d "$dir" ] && continue
+        
+        if is_git_repo "$dir"; then
+            found=1
+            result=$(get_git_config "$dir")
+            name="${result%%|*}"
+            email="${result##*|}"
+            echo -e "\033[1m$dir\033[0m"
+            echo "  Username: $name"
+            echo "  Email:    $email"
+        fi
+    done
+    
+    if [ "$found" -eq 0 ]; then
+        warning "No git repositories found in subdirectories."
+    fi
+}
+
+do_write() {
+    local repos=()
+    
+    # Collect all git repos
+    for dir in */; do
+        [ "${dir:0:1}" = "." ] && continue
+        dir="${dir%/}"
+        [ ! -d "$dir" ] && continue
+        if is_git_repo "$dir"; then
+            repos+=("$dir")
+        fi
+    done
+    
+    if [ ${#repos[@]} -eq 0 ]; then
+        warning "No git repositories found in subdirectories."
+        exit 0
+    fi
+    
+    echo ""
+    echo "Found ${#repos[@]} git repositories:"
+    printf '  - %s\n' "${repos[@]}"
+    echo ""
+    
+    read -p "Enter Git Username: " name
+    read -p "Enter Git Email: " email
+    
+    if [ -z "$name" ] || [ -z "$email" ]; then
+        error "Error: Username and email cannot be empty."
+        exit 1
+    fi
+    
+    echo ""
+    echo "Updating git config for all repositories..."
+    echo ""
+    
+    for dir in "${repos[@]}"; do
+        git -C "$dir" config user.name "$name"
+        git -C "$dir" config user.email "$email"
+        success "  ✓ $dir"
+    done
+    
+    echo ""
+    success "Done! All repositories updated."
+    echo "  Username: $name"
+    echo "  Email:    $email"
+}
+
+# Main
+if [ $# -ne 1 ]; then
+    usage
+fi
+
+case "$1" in
+    read)
+        do_read
+        ;;
+    write)
+        do_write
+        ;;
+    *)
+        usage
+        ;;
+esac
