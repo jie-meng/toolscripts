@@ -7,7 +7,7 @@ IGNORE_DIRS=(".claude/" ".cursor/" ".gemini/" ".iflow/" ".qwen/" ".specify/")
 AI_TOOL_DIRS=(".claude" ".cursor" ".gemini" ".iflow" ".qwen")
 
 # Main configuration files and directories
-MAIN_CONFIG_DIR=".ai-config"
+MAIN_CONFIG_DIR=".agents"
 MAIN_AGENTS_FILE="AGENTS.md"
 MAIN_SKILLS_DIR="${MAIN_CONFIG_DIR}/skills"
 GITIGNORE_FILE=".gitignore"
@@ -49,7 +49,7 @@ done
 # Step 3: Check if .git exists in current directory (AGENTS.md directory)
 if [ ! -d ".git" ]; then
   echo ""
-  echo "Note: .git directory not found. Skipping .ai-config and AI tool directories creation."
+  echo "Note: .git directory not found. Skipping .agents and AI tool directories creation."
   echo "Run this script in a git repository root to create skill directories."
   echo ""
   echo "✓ AGENTS.md symlinks created successfully!"
@@ -57,7 +57,7 @@ if [ ! -d ".git" ]; then
   exit 0
 fi
 
-# Step 4: Create .ai-config directory and skills subdirectory
+# Step 4: Create .agents directory and skills subdirectory
 if [ ! -d "$MAIN_CONFIG_DIR" ]; then
   mkdir -p "$MAIN_CONFIG_DIR"
   echo "Created ${MAIN_CONFIG_DIR}/"
