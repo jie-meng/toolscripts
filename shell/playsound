@@ -1,8 +1,7 @@
 #!/bin/bash
 #
 # Uses afplay (built-in audio file player on MacOS)
-# Uses ogg123 for OGG files (requires installation via 'brew install vorbis-tools')
-# Uses ffplay for PCM files
+# Uses ffplay for OGG/PCM files (fallback to ogg123 for OGG if ffplay is unavailable)
 
 soundfile=$1
 # The second parameter defines the number of loops; default is 1 if not provided.
@@ -56,10 +55,27 @@ if [ "$ext" = "pcm" ]; then
     fi
 fi
 
+# Validate required players for the target format
+if [ "$ext" = "pcm" ]; then
+    if ! command -v ffplay >/dev/null 2>&1; then
+        echo "ffplay is required to play .pcm files (install ffmpeg)."
+        exit 1
+    fi
+elif [ "$ext" = "ogg" ]; then
+    if ! command -v ffplay >/dev/null 2>&1 && ! command -v ogg123 >/dev/null 2>&1; then
+        echo "To play .ogg files, install ffplay (ffmpeg) or ogg123 (vorbis-tools)."
+        exit 1
+    fi
+fi
+
 # Function to play the audio file based on its extension.
 play_sound() {
     if [ "$ext" = "ogg" ]; then
-        ogg123 "$soundfile"
+        if command -v ffplay >/dev/null 2>&1; then
+            ffplay -nodisp -autoexit "$soundfile"
+        else
+            ogg123 "$soundfile"
+        fi
     elif [ "$ext" = "pcm" ]; then
         ffplay -f "$pcm_format" -ar "$pcm_rate" -nodisp -autoexit "$soundfile"
     else
@@ -76,4 +92,3 @@ else
         play_sound
     done
 fi
-
