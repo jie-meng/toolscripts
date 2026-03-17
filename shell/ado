@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+opencode run "$*" -m opencode/minimax-m2.5-free
