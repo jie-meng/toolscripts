@@ -2,9 +2,9 @@
 set -e
 
 # Configuration: Add or remove AI tools from these arrays
-SYMLINK_FILES=("CLAUDE.md" "GEMINI.md" "IFLOW.md" "QWEN.md")
-IGNORE_DIRS=(".claude/" ".cursor/" ".gemini/" ".iflow/" ".qwen/" ".specify/")
-AI_TOOL_DIRS=(".claude" ".cursor" ".gemini" ".iflow" ".qwen")
+SYMLINK_FILES=("CLAUDE.md" "GEMINI.md" "QWEN.md")
+IGNORE_DIRS=(".claude/" ".cursor/" ".gemini/" ".qwen/" ".specify/")
+AI_TOOL_DIRS=(".claude" ".cursor" ".gemini" ".qwen")
 
 # Main configuration files and directories
 MAIN_CONFIG_DIR=".agents"

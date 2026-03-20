@@ -141,7 +141,7 @@ class BaseAgentsIntegration(AIToolIntegration):
                 agent_file = agents_dir / f"{agent['name']}.md"
 
                 # Read original source file content
-                source_content = agent['source_path'].read_text(encoding="utf-8")
+                source_content = agent["source_path"].read_text(encoding="utf-8")
 
                 agent_file.write_text(source_content, encoding="utf-8")
                 installed.append(agent["name"])
@@ -168,14 +168,6 @@ class CursorIntegration(BaseAgentsIntegration):
     config_dir_name = ".cursor"
 
 
-class IFlowIntegration(BaseAgentsIntegration):
-    """Integration for iFlow CLI."""
-
-    tool_id = "iflow"
-    tool_name = "iFlow"
-    config_dir_name = ".iflow"
-
-
 class QwenIntegration(BaseAgentsIntegration):
     """Integration for Qwen."""
 
@@ -188,7 +180,6 @@ class QwenIntegration(BaseAgentsIntegration):
 INTEGRATIONS: List[AIToolIntegration] = [
     ClaudeCodeIntegration(),
     CursorIntegration(),
-    IFlowIntegration(),
     QwenIntegration(),
 ]
 
@@ -242,19 +233,19 @@ def parse_args():
         description="Setup AI agents integration with AI tools"
     )
     parser.add_argument(
-        "--all", "-a",
+        "--all",
+        "-a",
         action="store_true",
-        help="Auto-setup all detected tools (non-interactive)"
+        help="Auto-setup all detected tools (non-interactive)",
     )
     parser.add_argument(
-        "--tool", "-t",
+        "--tool",
+        "-t",
         type=str,
-        help="Setup specific tool by ID (e.g., claude-code, cursor)"
+        help="Setup specific tool by ID (e.g., claude-code, cursor)",
     )
     parser.add_argument(
-        "--list", "-l",
-        action="store_true",
-        help="List available tools and agents"
+        "--list", "-l", action="store_true", help="List available tools and agents"
     )
     return parser.parse_args()
 
@@ -264,7 +255,11 @@ def list_info(agents: List[Dict]) -> None:
     print(color_text("\nAvailable AI Tools:", BOLD))
     for integration in INTEGRATIONS:
         tool_id, tool_name = integration.get_tool_info()
-        status = color_text("[Installed]", GREEN) if integration.is_installed() else color_text("[Not Detected]", YELLOW)
+        status = (
+            color_text("[Installed]", GREEN)
+            if integration.is_installed()
+            else color_text("[Not Detected]", YELLOW)
+        )
         print(f"  {tool_id}: {tool_name} {status}")
 
     print(color_text("\nAvailable Agents:", BOLD))
@@ -313,7 +308,9 @@ def run_interactive(agents: List[Dict]) -> None:
             selected = INTEGRATIONS[option - 1]
             run_setup(selected, agents)
         else:
-            print(color_text(f"Invalid option, please enter 0-{len(INTEGRATIONS)}", RED))
+            print(
+                color_text(f"Invalid option, please enter 0-{len(INTEGRATIONS)}", RED)
+            )
             sys.exit(1)
 
     except ValueError:
@@ -338,7 +335,11 @@ def main():
 
     print(f"Found {len(agents)} agent(s):")
     for agent in agents:
-        desc = agent['description'][:50] + "..." if len(agent['description']) > 50 else agent['description']
+        desc = (
+            agent["description"][:50] + "..."
+            if len(agent["description"]) > 50
+            else agent["description"]
+        )
         print(f"  - {agent['name']}: {desc}")
     print()
 
