@@ -30,6 +30,7 @@ class AIToolIntegration:
     tool_id: str = ""
     tool_name: str = ""
     config_dir_name: str = ""
+    instructions_filename: str = "AGENTS.md"
 
     def get_config_path(self) -> Path:
         return Path.home() / self.config_dir_name
@@ -40,9 +41,18 @@ class AIToolIntegration:
     def get_agents_dir(self) -> Path:
         return self.get_config_path() / "agents"
 
+    def get_instructions_path(self) -> Path:
+        return self.get_config_path() / self.instructions_filename
+
     def has_agents(self) -> bool:
         agents_dir = self.get_agents_dir()
         return agents_dir.exists() and any(agents_dir.glob("*.md"))
+
+    def has_instructions(self) -> bool:
+        return self.get_instructions_path().exists()
+
+    def has_anything(self) -> bool:
+        return self.has_agents() or self.has_instructions()
 
     def get_agent_count(self) -> int:
         agents_dir = self.get_agents_dir()
@@ -54,47 +64,65 @@ class AIToolIntegration:
         return (self.tool_id, self.tool_name)
 
     def cleanup(self) -> Tuple[bool, str]:
+        results = []
+
         agents_dir = self.get_agents_dir()
-        if not agents_dir.exists():
-            return (True, "No agents directory")
-        try:
+        if agents_dir.exists():
             count = self.get_agent_count()
-            if count == 0:
-                return (True, "No agents to clean")
-            shutil.rmtree(agents_dir)
-            return (True, f"Removed {count} agent(s)")
-        except Exception as e:
-            return (False, f"Failed: {str(e)}")
+            if count > 0:
+                try:
+                    shutil.rmtree(agents_dir)
+                    results.append(f"Removed {count} agent(s)")
+                except Exception as e:
+                    return (False, f"Failed to remove agents: {e}")
+
+        instructions = self.get_instructions_path()
+        if instructions.exists():
+            try:
+                instructions.unlink()
+                results.append(f"Removed {self.instructions_filename}")
+            except Exception as e:
+                return (False, f"Failed to remove {self.instructions_filename}: {e}")
+
+        if not results:
+            return (True, "Nothing to clean")
+
+        return (True, ", ".join(results))
 
 
 class ClaudeCodeIntegration(AIToolIntegration):
     tool_id = "claude-code"
     tool_name = "Claude Code"
     config_dir_name = ".claude"
+    instructions_filename = "CLAUDE.md"
 
 
 class CursorIntegration(AIToolIntegration):
     tool_id = "cursor"
     tool_name = "Cursor"
     config_dir_name = ".cursor"
+    instructions_filename = "AGENTS.md"
 
 
 class QwenIntegration(AIToolIntegration):
     tool_id = "qwen"
     tool_name = "Qwen"
     config_dir_name = ".qwen"
+    instructions_filename = "QWEN.md"
 
 
 class CopilotIntegration(AIToolIntegration):
     tool_id = "copilot"
     tool_name = "GitHub Copilot"
     config_dir_name = ".copilot"
+    instructions_filename = "copilot-instructions.md"
 
 
 class OpencodeIntegration(AIToolIntegration):
     tool_id = "opencode"
     tool_name = "OpenCode"
     config_dir_name = ".config/opencode"
+    instructions_filename = "AGENTS.md"
 
 
 INTEGRATIONS: List[AIToolIntegration] = [
@@ -110,31 +138,35 @@ def print_header():
     print(color_text("\n=== AI Agents Cleanup ===\n", BOLD))
 
 
+def _status_label(integration: AIToolIntegration) -> str:
+    parts = []
+    if integration.has_agents():
+        parts.append(f"{integration.get_agent_count()} agent(s)")
+    if integration.has_instructions():
+        parts.append(integration.instructions_filename)
+    if parts:
+        return color_text(f"[{', '.join(parts)}]", GREEN)
+    if integration.is_installed():
+        return color_text("[Nothing installed]", YELLOW)
+    return color_text("[Not Installed]", RED)
+
+
 def print_menu():
     print(color_text("Select AI tool to cleanup:", BOLD))
     for i, integration in enumerate(INTEGRATIONS, 1):
-        tool_id, tool_name = integration.get_tool_info()
-        if integration.has_agents():
-            count = integration.get_agent_count()
-            status = color_text(f"[{count} agent(s)]", GREEN)
-        elif integration.is_installed():
-            status = color_text("[No agents]", YELLOW)
-        else:
-            status = color_text("[Not Installed]", RED)
-        print(f"  {i}. {tool_name} {status}")
-    print(f"  0. {color_text('All (cleanup all tools with agents)', BOLD)}")
+        _, tool_name = integration.get_tool_info()
+        print(f"  {i}. {tool_name} {_status_label(integration)}")
+    print(f"  0. {color_text('All (cleanup everything)', BOLD)}")
     print()
 
 
 def run_cleanup(integration: AIToolIntegration) -> None:
-    tool_id, tool_name = integration.get_tool_info()
-    agents_dir = integration.get_agents_dir()
+    _, tool_name = integration.get_tool_info()
 
     print(f"\n{color_text('Cleaning up', BOLD)} {tool_name}...")
-    print(f"  Agents directory: {agents_dir}")
 
-    if not integration.has_agents():
-        print(color_text(f"  No agents to clean", YELLOW))
+    if not integration.has_anything():
+        print(color_text("  Nothing to clean", YELLOW))
         return
 
     success, message = integration.cleanup()
@@ -154,24 +186,17 @@ def parse_args():
 
 
 def list_status():
-    print(color_text("\nTools with agents:", BOLD))
+    print(color_text("\nTools status:", BOLD))
     for integration in INTEGRATIONS:
         tool_id, tool_name = integration.get_tool_info()
-        if integration.has_agents():
-            count = integration.get_agent_count()
-            status = color_text(f"[{count} agent(s)]", GREEN)
-        elif integration.is_installed():
-            status = color_text("[No agents]", YELLOW)
-        else:
-            status = color_text("[Not Installed]", RED)
-        print(f"  {tool_id}: {tool_name} {status}")
+        print(f"  {tool_id}: {tool_name} {_status_label(integration)}")
 
 
 def run_all():
     cleaned = []
     for integration in INTEGRATIONS:
-        if integration.has_agents():
-            tool_id, tool_name = integration.get_tool_info()
+        if integration.has_anything():
+            _, tool_name = integration.get_tool_info()
             success, message = integration.cleanup()
             if success:
                 cleaned.append(f"{tool_name}: {message}")
@@ -183,7 +208,7 @@ def run_all():
         for item in cleaned:
             print(f"  - {item}")
     else:
-        print(color_text("No agents to clean", YELLOW))
+        print(color_text("Nothing to clean", YELLOW))
 
 
 def main():

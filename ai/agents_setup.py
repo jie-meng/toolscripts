@@ -40,6 +40,12 @@ def get_agents_dir() -> Path:
     return get_script_dir() / "agents"
 
 
+def get_instructions_source() -> Optional[Path]:
+    """Get the source AGENTS.md (user-level coding principles) path."""
+    path = get_script_dir() / "AGENTS.md"
+    return path if path.exists() else None
+
+
 def load_agent_definition(agent_path: Path) -> Optional[Dict]:
     """
     Load agent definition from a markdown file.
@@ -125,9 +131,13 @@ class BaseAgentsIntegration(AIToolIntegration):
     """Base class for tools that use ~/.<tool>/agents/ directory structure."""
 
     agents_subdir = "agents"
+    instructions_filename = "AGENTS.md"
 
     def get_config_path(self) -> Path:
         return Path.home() / self.config_dir_name
+
+    def get_instructions_path(self) -> Path:
+        return self.get_config_path() / self.instructions_filename
 
     def setup_agents(self, agents: List[Dict]) -> Tuple[bool, str]:
         config_path = self.get_config_path()
@@ -151,6 +161,19 @@ class BaseAgentsIntegration(AIToolIntegration):
         except Exception as e:
             return (False, f"Failed to setup: {str(e)}")
 
+    def setup_instructions(self, source_path: Path) -> Tuple[bool, str]:
+        """Deploy user-level instructions file (AGENTS.md / CLAUDE.md / etc.)."""
+        config_path = self.get_config_path()
+        target = self.get_instructions_path()
+
+        try:
+            config_path.mkdir(parents=True, exist_ok=True)
+            content = source_path.read_text(encoding="utf-8")
+            target.write_text(content, encoding="utf-8")
+            return (True, f"Installed {self.instructions_filename} -> {target}")
+        except Exception as e:
+            return (False, f"Failed to install {self.instructions_filename}: {e}")
+
 
 class ClaudeCodeIntegration(BaseAgentsIntegration):
     """Integration for Claude Code CLI."""
@@ -158,6 +181,7 @@ class ClaudeCodeIntegration(BaseAgentsIntegration):
     tool_id = "claude-code"
     tool_name = "Claude Code"
     config_dir_name = ".claude"
+    instructions_filename = "CLAUDE.md"
 
 
 class CursorIntegration(BaseAgentsIntegration):
@@ -166,6 +190,7 @@ class CursorIntegration(BaseAgentsIntegration):
     tool_id = "cursor"
     tool_name = "Cursor"
     config_dir_name = ".cursor"
+    instructions_filename = "AGENTS.md"
 
 
 class QwenIntegration(BaseAgentsIntegration):
@@ -174,6 +199,7 @@ class QwenIntegration(BaseAgentsIntegration):
     tool_id = "qwen"
     tool_name = "Qwen"
     config_dir_name = ".qwen"
+    instructions_filename = "QWEN.md"
 
 
 class OpencodeIntegration(BaseAgentsIntegration):
@@ -182,6 +208,7 @@ class OpencodeIntegration(BaseAgentsIntegration):
     tool_id = "opencode"
     tool_name = "OpenCode"
     config_dir_name = ".config/opencode"
+    instructions_filename = "AGENTS.md"
 
 
 class CopilotIntegration(BaseAgentsIntegration):
@@ -190,6 +217,7 @@ class CopilotIntegration(BaseAgentsIntegration):
     tool_id = "copilot"
     tool_name = "GitHub Copilot"
     config_dir_name = ".copilot"
+    instructions_filename = "copilot-instructions.md"
 
 
 # Registry of all integrations
@@ -243,6 +271,14 @@ def run_setup(integration: AIToolIntegration, agents: List[Dict]) -> None:
         print(f"  Installed to: {agents_dir}")
     else:
         print(color_text(f"  ✗ {message}", RED))
+
+    instructions_src = get_instructions_source()
+    if instructions_src:
+        ok, msg = integration.setup_instructions(instructions_src)
+        if ok:
+            print(color_text(f"  ✓ {msg}", GREEN))
+        else:
+            print(color_text(f"  ✗ {msg}", RED))
 
 
 def parse_args():
