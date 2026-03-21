@@ -214,7 +214,7 @@ def print_menu():
     for i, integration in enumerate(INTEGRATIONS, 1):
         tool_id, tool_name = integration.get_tool_info()
         if integration.is_installed():
-            status = color_text("[Installed]", GREEN)
+            status = color_text("[Detected]", GREEN)
         else:
             status = color_text("[Not Detected]", YELLOW)
         print(f"  {i}. {tool_name} {status}")
@@ -274,7 +274,7 @@ def list_info(agents: List[Dict]) -> None:
     for integration in INTEGRATIONS:
         tool_id, tool_name = integration.get_tool_info()
         status = (
-            color_text("[Installed]", GREEN)
+            color_text("[Detected]", GREEN)
             if integration.is_installed()
             else color_text("[Not Detected]", YELLOW)
         )
