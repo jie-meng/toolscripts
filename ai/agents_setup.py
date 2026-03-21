@@ -176,11 +176,29 @@ class QwenIntegration(BaseAgentsIntegration):
     config_dir_name = ".qwen"
 
 
+class OpencodeIntegration(BaseAgentsIntegration):
+    """Integration for opencode."""
+
+    tool_id = "opencode"
+    tool_name = "OpenCode"
+    config_dir_name = ".config/opencode"
+
+
+class CopilotIntegration(BaseAgentsIntegration):
+    """Integration for GitHub Copilot."""
+
+    tool_id = "copilot"
+    tool_name = "GitHub Copilot"
+    config_dir_name = ".copilot"
+
+
 # Registry of all integrations
 INTEGRATIONS: List[AIToolIntegration] = [
     ClaudeCodeIntegration(),
     CursorIntegration(),
     QwenIntegration(),
+    CopilotIntegration(),
+    OpencodeIntegration(),
 ]
 
 
