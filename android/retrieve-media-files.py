@@ -3,10 +3,11 @@
 import os
 import sys
 import subprocess
+from android_utils import select_device
 
 
-def pull_files(remote_dir, local_dir, pattern_filter):
-    result = subprocess.getoutput(f"adb shell ls {remote_dir}")
+def pull_files(device, remote_dir, local_dir, pattern_filter):
+    result = subprocess.getoutput(f"adb -s {device} shell ls {remote_dir}")
     items = result.split("\n")
     items = list(filter(lambda x: pattern_filter(x), items))
     items.sort(reverse=True)
@@ -24,10 +25,15 @@ def pull_files(remote_dir, local_dir, pattern_filter):
         src = f"{remote_dir}/{f}"
         dst = f"{local_dir}/{f}"
         print(f"Pulling: {f}")
-        os.system(f'adb pull "{src}" "{dst}"')
+        os.system(f'adb -s {device} pull "{src}" "{dst}"')
 
 
 def main():
+    selected_device = select_device()
+    if not selected_device:
+        print("No device selected.")
+        sys.exit(-1)
+
     print("Select media type:")
     print("1. Image (jpg/png from DCIM/Camera)")
     print("2. Video (mp4 from DCIM/Camera)")
@@ -36,11 +42,26 @@ def main():
     choice = input("\nEnter choice (1/2/3): ").strip()
 
     if choice == "1":
-        pull_files("/sdcard/DCIM/Camera", "./", lambda x: x.endswith((".jpg", ".png")))
+        pull_files(
+            selected_device,
+            "/sdcard/DCIM/Camera",
+            "./",
+            lambda x: x.startswith("IMG_") and x.endswith((".jpg", ".png")),
+        )
     elif choice == "2":
-        pull_files("/sdcard/DCIM/Camera", "./", lambda x: x.endswith(".mp4"))
+        pull_files(
+            selected_device,
+            "/sdcard/DCIM/Camera",
+            "./",
+            lambda x: x.startswith("VID_") and x.endswith(".mp4"),
+        )
     elif choice == "3":
-        pull_files("/sdcard/DCIM/ScreenRecorder", "./", lambda x: x.endswith(".mp4"))
+        pull_files(
+            selected_device,
+            "/sdcard/DCIM/ScreenRecorder",
+            "./",
+            lambda x: x.endswith(".mp4"),
+        )
     else:
         print("Invalid choice.")
 
