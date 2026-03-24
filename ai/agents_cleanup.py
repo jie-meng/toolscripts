@@ -15,6 +15,9 @@ import sys
 from pathlib import Path
 from typing import List, Tuple
 
+import curses
+from curses_ui import run_curses_select
+
 RED = "\033[91m"
 GREEN = "\033[92m"
 YELLOW = "\033[93m"
@@ -151,15 +154,6 @@ def _status_label(integration: AIToolIntegration) -> str:
     return color_text("[Not Installed]", RED)
 
 
-def print_menu():
-    print(color_text("Select AI tool to cleanup:", BOLD))
-    for i, integration in enumerate(INTEGRATIONS, 1):
-        _, tool_name = integration.get_tool_info()
-        print(f"  {i}. {tool_name} {_status_label(integration)}")
-    print(f"  0. {color_text('All (cleanup everything)', BOLD)}")
-    print()
-
-
 def run_cleanup(integration: AIToolIntegration) -> None:
     _, tool_name = integration.get_tool_info()
 
@@ -232,26 +226,48 @@ def main():
         print("Use --list to see available tools")
         sys.exit(1)
 
-    print_menu()
-    try:
-        user_input = input("Enter option (0-{}): ".format(len(INTEGRATIONS))).strip()
-        if not user_input:
-            print("Cancelled")
-            sys.exit(0)
-        option = int(user_input)
-        if option == 0:
-            run_all()
-        elif 1 <= option <= len(INTEGRATIONS):
-            run_cleanup(INTEGRATIONS[option - 1])
+    items = []
+    preselected = []
+
+    for i, integration in enumerate(INTEGRATIONS):
+        _, tool_name = integration.get_tool_info()
+        if integration.has_anything():
+            agent_count = integration.get_agent_count()
+            inst_file = (
+                integration.instructions_filename
+                if integration.has_instructions()
+                else ""
+            )
+            parts = []
+            if agent_count > 0:
+                parts.append(f"{agent_count} agent(s)")
+            if inst_file:
+                parts.append(inst_file)
+            status = f"[{', '.join(parts)}]"
+            items.append(f"{tool_name} {status}")
+        elif integration.is_installed():
+            items.append(f"{tool_name} [nothing installed]")
         else:
-            print(color_text(f"Invalid option", RED))
-            sys.exit(1)
-    except ValueError:
-        print(color_text("Please enter a valid number", RED))
-        sys.exit(1)
-    except KeyboardInterrupt:
-        print("\nCancelled")
+            items.append(f"{tool_name} [not installed]")
+        preselected.append(False)
+
+    indices = run_curses_select(
+        "Select AI tools to cleanup:",
+        items,
+        preselected=preselected,
+        selected_color=2,
+    )
+
+    if indices is None:
+        print("Cancelled")
         sys.exit(0)
+
+    if not indices:
+        print("No tools selected")
+        sys.exit(0)
+
+    for idx in indices:
+        run_cleanup(INTEGRATIONS[idx])
 
 
 if __name__ == "__main__":

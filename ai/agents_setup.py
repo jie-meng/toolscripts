@@ -17,6 +17,8 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from curses_ui import run_curses_select
+
 # ANSI color codes
 RED = "\033[91m"
 GREEN = "\033[92m"
@@ -234,11 +236,6 @@ def print_header():
     """Print script header."""
     print(color_text("\n=== AI Agents Setup ===\n", BOLD))
 
-
-def print_menu():
-    """Print the tool selection menu."""
-    print(color_text("Select AI tool to setup:", BOLD))
-
     for i, integration in enumerate(INTEGRATIONS, 1):
         tool_id, tool_name = integration.get_tool_info()
         if integration.is_installed():
@@ -344,35 +341,38 @@ def run_non_interactive(agents: List[Dict]) -> None:
 
 
 def run_interactive(agents: List[Dict]) -> None:
-    """Run setup in interactive mode."""
-    print_menu()
+    """Run setup in interactive mode with curses UI."""
+    items = []
+    preselected = []
+    disabled = set()
 
-    try:
-        user_input = input("Enter option (0-{}): ".format(len(INTEGRATIONS))).strip()
-
-        if not user_input:
-            print("Cancelled")
-            sys.exit(0)
-
-        option = int(user_input)
-
-        if option == 0:
-            run_non_interactive(agents)
-        elif 1 <= option <= len(INTEGRATIONS):
-            selected = INTEGRATIONS[option - 1]
-            run_setup(selected, agents)
+    for i, integration in enumerate(INTEGRATIONS):
+        tool_id, tool_name = integration.get_tool_info()
+        if integration.is_installed():
+            items.append(f"{tool_name} (~/{integration.config_dir_name})")
+            preselected.append(True)
         else:
-            print(
-                color_text(f"Invalid option, please enter 0-{len(INTEGRATIONS)}", RED)
-            )
-            sys.exit(1)
+            items.append(f"{tool_name} (not installed)")
+            preselected.append(False)
+            disabled.add(i)
 
-    except ValueError:
-        print(color_text("Please enter a valid number", RED))
-        sys.exit(1)
-    except KeyboardInterrupt:
-        print("\nCancelled")
+    indices = run_curses_select(
+        "Select AI tools to setup agents:",
+        items,
+        preselected=preselected,
+        disabled=disabled,
+    )
+
+    if indices is None:
+        print("Cancelled")
         sys.exit(0)
+
+    if not indices:
+        print("No tools selected")
+        sys.exit(0)
+
+    for idx in indices:
+        run_setup(INTEGRATIONS[idx], agents)
 
 
 def main():
