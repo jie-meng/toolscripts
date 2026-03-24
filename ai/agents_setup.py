@@ -237,7 +237,7 @@ class GeminiIntegration(BaseAgentsIntegration):
     tool_id = "gemini"
     tool_name = "Gemini CLI"
     config_dir_name = ".gemini"
-    instructions_filename = "AGENTS.md"
+    instructions_filename = "GEMINI.md"
 
 
 class GrokIntegration(BaseAgentsIntegration):
