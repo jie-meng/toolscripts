@@ -128,12 +128,36 @@ class OpencodeIntegration(AIToolIntegration):
     instructions_filename = "AGENTS.md"
 
 
+class CodexIntegration(AIToolIntegration):
+    tool_id = "codex"
+    tool_name = "Codex"
+    config_dir_name = ".codex"
+    instructions_filename = "AGENTS.md"
+
+
+class GeminiIntegration(AIToolIntegration):
+    tool_id = "gemini"
+    tool_name = "Gemini CLI"
+    config_dir_name = ".gemini"
+    instructions_filename = "AGENTS.md"
+
+
+class GrokIntegration(AIToolIntegration):
+    tool_id = "grok"
+    tool_name = "Grok CLI"
+    config_dir_name = ".grok"
+    instructions_filename = "AGENTS.md"
+
+
 INTEGRATIONS: List[AIToolIntegration] = [
     ClaudeCodeIntegration(),
     CursorIntegration(),
     QwenIntegration(),
     CopilotIntegration(),
     OpencodeIntegration(),
+    CodexIntegration(),
+    GeminiIntegration(),
+    GrokIntegration(),
 ]
 
 

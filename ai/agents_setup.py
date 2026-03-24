@@ -222,6 +222,33 @@ class CopilotIntegration(BaseAgentsIntegration):
     instructions_filename = "copilot-instructions.md"
 
 
+class CodexIntegration(BaseAgentsIntegration):
+    """Integration for Codex."""
+
+    tool_id = "codex"
+    tool_name = "Codex"
+    config_dir_name = ".codex"
+    instructions_filename = "AGENTS.md"
+
+
+class GeminiIntegration(BaseAgentsIntegration):
+    """Integration for Gemini CLI."""
+
+    tool_id = "gemini"
+    tool_name = "Gemini CLI"
+    config_dir_name = ".gemini"
+    instructions_filename = "AGENTS.md"
+
+
+class GrokIntegration(BaseAgentsIntegration):
+    """Integration for Grok CLI."""
+
+    tool_id = "grok"
+    tool_name = "Grok CLI"
+    config_dir_name = ".grok"
+    instructions_filename = "AGENTS.md"
+
+
 # Registry of all integrations
 INTEGRATIONS: List[AIToolIntegration] = [
     ClaudeCodeIntegration(),
@@ -229,6 +256,9 @@ INTEGRATIONS: List[AIToolIntegration] = [
     QwenIntegration(),
     CopilotIntegration(),
     OpencodeIntegration(),
+    CodexIntegration(),
+    GeminiIntegration(),
+    GrokIntegration(),
 ]
 
 
