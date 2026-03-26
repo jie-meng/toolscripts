@@ -1,0 +1,24 @@
+#!/bin/bash
+#
+# Stop any sound playing via playsound (afplay, ffplay, ogg123)
+
+stopped=0
+
+if pkill -x afplay 2>/dev/null; then
+    echo "Stopped afplay"
+    stopped=1
+fi
+
+if pkill -x ffplay 2>/dev/null; then
+    echo "Stopped ffplay"
+    stopped=1
+fi
+
+if pkill -x ogg123 2>/dev/null; then
+    echo "Stopped ogg123"
+    stopped=1
+fi
+
+if [ "$stopped" -eq 0 ]; then
+    echo "No sound is playing."
+fi
