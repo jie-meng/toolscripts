@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 
 opencode run "$*" -m opencode/minimax-m2.5-free
+# opencode run "$*" -m openrouter/stepfun/step-3.5-flash:free
