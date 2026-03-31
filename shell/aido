@@ -1,4 +1,16 @@
 #!/usr/bin/env bash
+set -e
 
-opencode run "$*" -m opencode/minimax-m2.5-free
-# opencode run "$*" -m openrouter/stepfun/step-3.5-flash:free
+CONFIG_FILE="$HOME/.config/toolscripts/config.json"
+
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo "No model configured. Run 'aido-models' to select one." >&2
+    exit 1
+fi
+
+MODEL=$(python3 -c "import json,sys; c=json.load(open('$CONFIG_FILE')); v=c.get('aido_model',''); print(v) if v else sys.exit(1)" 2>/dev/null) || {
+    echo "No model configured. Run 'aido-models' to select one." >&2
+    exit 1
+}
+
+opencode run "$*" -m "$MODEL"

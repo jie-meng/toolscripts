@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -e
+
+python3 "$(dirname "$0")/../ai/aido_models.py" "$@"
