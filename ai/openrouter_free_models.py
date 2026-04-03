@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """List all free models from OpenRouter in a table format."""
 
+import argparse
+import datetime as dt
 import json
 import sys
 import urllib.error
@@ -21,7 +23,27 @@ def format_modality(modality: str | None) -> str:
     return modality.replace("->", " → ")
 
 
+def parse_knowledge_cutoff(value: str | None) -> dt.date | None:
+    if not value or value == "-":
+        return None
+    try:
+        return dt.date.fromisoformat(value)
+    except ValueError:
+        return None
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="List free OpenRouter models in a table.",
+    )
+    parser.add_argument(
+        "--sort",
+        choices=["context", "knowledge", "name"],
+        default="context",
+        help="Sort order (default: context).",
+    )
+    args = parser.parse_args()
+
     url = "https://openrouter.ai/api/v1/models"
     try:
         with urllib.request.urlopen(url, timeout=30) as response:
@@ -39,7 +61,21 @@ def main() -> None:
         if pricing.get("prompt", "0") == "0" and pricing.get("completion", "0") == "0":
             free_models.append(model)
 
-    free_models.sort(key=lambda m: m.get("context_length", 0) or 0, reverse=True)
+    if args.sort == "context":
+        free_models.sort(
+            key=lambda m: (m.get("context_length", 0) or 0, m.get("id", "")),
+            reverse=True,
+        )
+    elif args.sort == "knowledge":
+        free_models.sort(
+            key=lambda m: (
+                parse_knowledge_cutoff(m.get("knowledge_cutoff")) or dt.date.min,
+                m.get("id", ""),
+            ),
+            reverse=True,
+        )
+    else:
+        free_models.sort(key=lambda m: m.get("id", ""))
 
     col_name = "Model"
     col_context = "Context"
