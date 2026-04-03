@@ -43,6 +43,13 @@ Universal guidelines that apply to all my projects.
 - Group related functions together. Separate public interface from internal helpers.
 - Avoid deep nesting. Extract early returns and guard clauses to flatten control flow.
 
+## Git & Version Control
+
+- **Always write commit messages in English.** This ensures a universally readable history for any developer, regardless of their native language.
+- **Follow standard commit message formatting.** Use the imperative mood in the subject line (e.g., "Add feature" instead of "Added feature" or "Adds feature"). Keep the subject line concise (under 50 characters) and do not end it with a period.
+- **Explain the "why", not the "how".** Use the commit body to explain the context, the problem being solved, and why this specific solution was chosen. The code already shows *how* it was done.
+- **Keep commits atomic.** Each commit should represent a single logical change. Don't mix refactoring, bug fixes, and new features in a single commit.
+
 ## Communication
 
 - Respond in the same language the user is using.
