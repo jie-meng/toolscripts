@@ -43,8 +43,10 @@ def main() -> None:
 
     col_name = "Model"
     col_context = "Context"
-    col_max_out = "Max Out"
+    col_max_out = "MaxOut"
     col_modality = "Modality"
+    col_known = "Knowledge"
+    col_moderated = "Mod"
     col_params = "Params"
 
     rows = [
@@ -53,6 +55,8 @@ def main() -> None:
             format_context_length(model.get("context_length")),
             str(model.get("top_provider", {}).get("max_completion_tokens") or "-"),
             format_modality(model.get("architecture", {}).get("modality")),
+            model.get("knowledge_cutoff", "-") or "-",
+            "✓" if model.get("top_provider", {}).get("is_moderated") else "-",
             str(len(model.get("supported_parameters", []))),
         ]
         for model in free_models
@@ -63,6 +67,8 @@ def main() -> None:
         len(col_context),
         len(col_max_out),
         len(col_modality),
+        len(col_known),
+        len(col_moderated),
         len(col_params),
     ]
     for row in rows:
@@ -72,7 +78,16 @@ def main() -> None:
     header = "  ".join(
         s.ljust(w)
         for s, w in zip(
-            [col_name, col_context, col_max_out, col_modality, col_params], col_widths
+            [
+                col_name,
+                col_context,
+                col_max_out,
+                col_modality,
+                col_known,
+                col_moderated,
+                col_params,
+            ],
+            col_widths,
         )
     )
     separator = "  ".join("-" * w for w in col_widths)
