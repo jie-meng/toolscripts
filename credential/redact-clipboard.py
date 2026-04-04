@@ -332,6 +332,10 @@ def main():
     print()
     print(masked)
     print()
+    print(
+        f"[Note: {count} sensitive value(s) above have been masked with [REDACTED] for security.]"
+    )
+    print()
 
     # Build clipboard output with trailing note
     clipboard_text = masked.rstrip() + "\n\n"
