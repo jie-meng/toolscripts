@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-mask_secrets.py - Mask credentials and secrets from clipboard text.
+redact-clipboard.py - Mask credentials and secrets from clipboard text.
 
 Reads the current clipboard content, replaces sensitive values (API keys,
 secrets, tokens, passwords, etc.) with a masked placeholder, prints the
 result, and copies it back to the clipboard.
 
 Usage:
-    mask-secrets
+    redact-clipboard
 """
 
 import argparse
