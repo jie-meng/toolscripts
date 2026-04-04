@@ -18,7 +18,7 @@ import sys
 import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from utils.clipboard import copy_to_clipboard, paste_from_clipboard
+from libs.clipboard import copy_to_clipboard, paste_from_clipboard
 
 RED = "\033[0;31m"
 GREEN = "\033[0;32m"

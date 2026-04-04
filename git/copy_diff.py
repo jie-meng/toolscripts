@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 
 # Add project root to path so we can import utils.clipboard
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from utils.clipboard import copy_to_clipboard
+from libs.clipboard import copy_to_clipboard
 
 
 def run_cmd(cmd):

@@ -6,7 +6,7 @@ Provides copy_to_clipboard() and paste_from_clipboard() functions that work
 on macOS, Linux, and Windows using the best available method for each platform.
 
 Usage:
-    from utils.clipboard import copy_to_clipboard, paste_from_clipboard
+    from libs.clipboard import copy_to_clipboard, paste_from_clipboard
 
     copy_to_clipboard("Hello, world!")
     text = paste_from_clipboard()
