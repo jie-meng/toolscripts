@@ -16,64 +16,11 @@ Usage:
 import argparse
 import curses
 import os
-import platform
-import shutil
-import subprocess
 import sys
 
-
-def copy_to_clipboard(text: str) -> bool:
-    """Copy text to clipboard using the best available method."""
-    # Try pyperclip first
-    try:
-        import pyperclip
-
-        pyperclip.copy(text)
-        return True
-    except ImportError:
-        pass
-
-    # Try platform-specific tools
-    system = platform.system()
-
-    if system == "Darwin":
-        # macOS
-        pbcopy = shutil.which("pbcopy")
-        if pbcopy:
-            subprocess.run([pbcopy], input=text, text=True, check=True)
-            return True
-
-    elif system == "Linux":
-        # Try wl-copy (Wayland), then xclip/xsel (X11)
-        for cmd in ("wl-copy", "xclip", "xsel"):
-            tool = shutil.which(cmd)
-            if tool:
-                if cmd == "xclip":
-                    subprocess.run(
-                        [tool, "-selection", "clipboard"],
-                        input=text,
-                        text=True,
-                        check=True,
-                    )
-                elif cmd == "xsel":
-                    subprocess.run(
-                        [tool, "--clipboard", "--input"],
-                        input=text,
-                        text=True,
-                        check=True,
-                    )
-                else:
-                    subprocess.run([tool], input=text, text=True, check=True)
-                return True
-
-    elif system == "Windows":
-        # Try clip
-        clip = shutil.which("clip")
-        if clip:
-            subprocess.run([clip], input=text, text=True, check=True)
-            return True
-
-    return False
+# Add project root to path so we can import utils.clipboard
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from utils.clipboard import copy_to_clipboard
 
 
 def main():
