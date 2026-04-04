@@ -59,14 +59,30 @@ def decode_url_params(param_str):
 
 def main():
     if len(sys.argv) != 2:
-        print(f"{RED}Usage: url-decode-params <url_encoded_string> or <full_url>{NC}")
+        print(f"{RED}Error: Missing input{NC}")
+        print(f'Usage: url-decode-params "<url_encoded_string>"')
         print(
-            f"Example: {sys.argv[0]} 'timestamp=2026-04-04+22%3A28%3A44&biz_content=%7B%22body%22%3A%22...%22%7D'"
+            f'Example: url-decode-params "timestamp=2026-04-04+22%3A28%3A44&biz_content=%7B...%7D"'
         )
-        print(f"Example: {sys.argv[0]} 'https://example.com?foo=bar&baz=qux'")
+        print(f'Example: url-decode-params "https://example.com?foo=bar&baz=qux"')
+        print(
+            f"{YELLOW}Note: Always wrap input in quotes to avoid shell parsing issues with & characters{NC}"
+        )
         sys.exit(1)
 
     input_str = sys.argv[1]
+
+    # 检测可能的截断输入（包含 & 但被 shell 截断）
+    if "?" in input_str:
+        query_string = input_str.split("?", 1)[1]
+    else:
+        query_string = input_str
+
+    if "&" not in query_string and "=" in query_string and len(query_string) < 100:
+        print(
+            f"{YELLOW}Warning: Input looks like it might be truncated by the shell{NC}"
+        )
+        print(f"{YELLOW}Did you forget to wrap the input in quotes?{NC}")
 
     # 如果是完整URL，提取查询部分
     if "?" in input_str:

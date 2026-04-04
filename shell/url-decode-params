@@ -1,13 +1,4 @@
-#!/bin/sh
-
+#!/usr/bin/env bash
 set -e
-DIR=$(dirname $0)
-
-if [ $# -ne 1 ]; then
-    echo "Usage: $0 <url_encoded_string> or <full_url>"
-    echo "Example: $0 'timestamp=2026-04-04+22%3A28%3A44&biz_content=%7B%22body%22%3A%22...%22%7D'"
-    echo "Example: $0 'https://example.com?foo=bar'"
-    exit 1
-fi
-
-python ${DIR}/../codec/url-params-decode.py $1
+DIR=$(dirname "$0")
+python "${DIR}/../codec/url-params-decode.py" "$@"
