@@ -296,6 +296,32 @@ def mask_text(text: str) -> tuple[str, int]:
 
     text = unquoted_value_regex.sub(unquoted_value_replacer, text)
 
+    # 7. Handle "Bearer <token>" pattern (common in curl headers, HTTP requests)
+    bearer_regex = re.compile(
+        rf"(Bearer\s+)([A-Za-z0-9\-_]+(?:\.[A-Za-z0-9\-_]+){{2,}})",
+        re.IGNORECASE,
+    )
+
+    def bearer_replacer(m):
+        nonlocal count
+        count += 1
+        return f"{m.group(1)}{sentinel}"
+
+    text = bearer_regex.sub(bearer_replacer, text)
+
+    # 8. Handle standalone JWT-like tokens (eyJ...xxx.yyy.zzz pattern)
+    #    Matches base64url strings with exactly 2+ dots, typical of JWT structure
+    jwt_regex = re.compile(
+        r"\b(eyJ[A-Za-z0-9\-_]+(?:\.[A-Za-z0-9\-_]+){2,})\b",
+    )
+
+    def jwt_replacer(m):
+        nonlocal count
+        count += 1
+        return sentinel
+
+    text = jwt_regex.sub(jwt_replacer, text)
+
     # Replace sentinel with final mask
     text = text.replace(sentinel, MASK)
 
