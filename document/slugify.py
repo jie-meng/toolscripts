@@ -16,6 +16,7 @@ Usage:
 import argparse
 import curses
 import os
+import re
 import sys
 
 # Add project root to path so we can import utils.clipboard
@@ -38,6 +39,9 @@ def main():
 
     # Normalize whitespace: collapse multiple spaces into one
     phrase = " ".join(phrase.split())
+
+    # Remove punctuation characters that shouldn't appear in filenames
+    phrase = re.sub(r'[!,:.?;\'"()\[\]{}/\\|*<>@#$%^&+=~`]', "", phrase)
 
     separator = "-"
     case_mode = "unchanged"  # default: unchanged
