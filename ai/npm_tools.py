@@ -1,47 +1,63 @@
 #!/usr/bin/env python3
+import curses
+import json
 import os
 import subprocess
-import json
-from pathlib import Path
 import sys
 import shutil
-
-# --- Configuration ---
-TOOLS = [
-    "@github/copilot",
-    "@google/gemini-cli",
-    "@openai/codex",
-    "@qwen-code/qwen-code",
-]
+import threading
+from pathlib import Path
 
 
-# --- Colors ---
+TOOLS = {
+    "AI CLI": [
+        {"name": "@github/copilot", "desc": "GitHub Copilot - AI pair programmer"},
+        {
+            "name": "@google/gemini-cli",
+            "desc": "Google Gemini CLI - AI coding assistant",
+        },
+        {"name": "@openai/codex", "desc": "OpenAI Codex - AI code generation"},
+        {
+            "name": "@qwen-code/qwen-code",
+            "desc": "Qwen Code - Alibaba's AI coding tool",
+        },
+        {"name": "@fly-ai/flyai-cli", "desc": "FlyAI - Travel booking CLI"},
+    ],
+    "Dev Tools": [
+        {"name": "pnpm", "desc": "Fast, disk space efficient package manager"},
+        {"name": "appium", "desc": "Mobile app automation testing framework"},
+    ],
+}
+
+
 class Colors:
     RED = "\033[0;31m"
     GREEN = "\033[0;32m"
     YELLOW = "\033[1;33m"
     BLUE = "\033[0;34m"
+    CYAN = "\033[0;36m"
     NC = "\033[0m"
 
 
-# --- Logging ---
+# Curses color pair IDs
+CP_GREEN = 1
+CP_RED = 2
+CP_YELLOW = 3
+CP_CYAN = 4
+CP_SEL = 5   # black text on green background — selected row highlight
+
+# Sentinel for "not yet fetched" — distinct from "" (fetch failed) or a version string
+_PENDING = object()
+
+
 def log_info(msg):
     print(f"{Colors.BLUE}[INFO]{Colors.NC} {msg}")
 
 
-def log_success(msg):
-    print(f"{Colors.GREEN}[SUCCESS]{Colors.NC} {msg}")
-
-
-def log_warning(msg):
-    print(f"{Colors.YELLOW}[WARNING]{Colors.NC} {msg}")
-
-
 def log_error(msg):
-    print(f"{Colors.RED}[ERROR]{Colors.NC} {msg}")
+    print(f"{Colors.RED}[ERROR]{Colors.NC} {msg}", file=sys.stderr)
 
 
-# --- Command Execution ---
 def run_command(command, shell=False, check=False, stream=False):
     if stream:
         process = subprocess.Popen(
@@ -52,7 +68,7 @@ def run_command(command, shell=False, check=False, stream=False):
             shell=shell,
         )
         output = []
-        for line in iter(process.stdout.readline, " "):
+        for line in iter(process.stdout.readline, ""):
             if not line:
                 break
             sys.stdout.write(line)
@@ -69,7 +85,6 @@ def run_command(command, shell=False, check=False, stream=False):
         return e.returncode, e.stdout.strip()
 
 
-# --- Core Logic ---
 _npm_root = None
 
 
@@ -81,21 +96,25 @@ def get_npm_root(reset=False):
     return _npm_root
 
 
+def get_all_tool_names():
+    return [tool["name"] for tools in TOOLS.values() for tool in tools]
+
+
 def get_installed_tools(reset_cache=False):
     installed = {}
     npm_root = get_npm_root(reset=reset_cache)
     if not npm_root:
         log_error("Could not determine npm root directory.")
         return {}
-    for tool in TOOLS:
-        pkg_path = Path(npm_root) / tool / "package.json"
+    for tool_name in get_all_tool_names():
+        pkg_path = Path(npm_root) / tool_name / "package.json"
         if pkg_path.is_file():
             try:
                 with pkg_path.open("r") as f:
                     data = json.load(f)
-                    installed[tool] = data.get("version", "unknown")
+                    installed[tool_name] = data.get("version", "unknown")
             except (json.JSONDecodeError, IOError):
-                installed[tool] = "error"
+                installed[tool_name] = "error"
     return installed
 
 
@@ -104,288 +123,302 @@ def get_latest_version(package_name):
     return stdout
 
 
-def show_status(reset_cache=False):
-    log_info("Checking tool status for current node version...")
+class VersionFetcher:
+    """Fetches latest npm versions in background daemon threads.
+
+    get(name) returns:
+      _PENDING  — still fetching
+      ""        — fetch completed but returned nothing (network error, unknown pkg)
+      "x.y.z"   — fetched successfully
+    """
+
+    def __init__(self, tool_names):
+        self._versions = {name: _PENDING for name in tool_names}
+        self._lock = threading.Lock()
+        for name in tool_names:
+            t = threading.Thread(target=self._fetch, args=(name,), daemon=True)
+            t.start()
+
+    def _fetch(self, name):
+        version = get_latest_version(name) or ""
+        with self._lock:
+            self._versions[name] = version
+
+    def get(self, name):
+        with self._lock:
+            return self._versions.get(name, _PENDING)
+
+    def all_done(self):
+        with self._lock:
+            return all(v is not _PENDING for v in self._versions.values())
+
+
+def build_display_list():
+    """Flat list of ("header", category) or ("tool", category, name, desc) entries."""
+    items = []
+    for category, tools in TOOLS.items():
+        items.append(("header", category))
+        for tool in tools:
+            items.append(("tool", category, tool["name"], tool["desc"]))
+    return items
+
+
+def get_tool_indices(display_list):
+    """Indices of tool entries in display_list (the navigable items)."""
+    return [i for i, item in enumerate(display_list) if item[0] == "tool"]
+
+
+def init_curses_colors():
+    curses.start_color()
+    curses.use_default_colors()
+    curses.init_pair(CP_GREEN,  curses.COLOR_GREEN,  -1)
+    curses.init_pair(CP_RED,    curses.COLOR_RED,    -1)
+    curses.init_pair(CP_YELLOW, curses.COLOR_YELLOW, -1)
+    curses.init_pair(CP_CYAN,   curses.COLOR_CYAN,   -1)
+    curses.init_pair(CP_SEL,    curses.COLOR_BLACK,  curses.COLOR_GREEN)
+
+
+def _addstr(stdscr, y, x, text, attr=0):
+    try:
+        stdscr.addstr(y, x, text, attr)
+    except curses.error:
+        pass
+
+
+def _run_ops_outside_curses(stdscr, ops):
+    """Temporarily exit curses, run npm ops, re-enter. ops: list of (action, tool_name)."""
+    curses.def_prog_mode()
+    curses.endwin()
     print()
-    installed_tools = get_installed_tools(reset_cache=reset_cache)
-    for tool in TOOLS:
-        if tool in installed_tools:
-            version = installed_tools[tool]
-            print(f"  {Colors.GREEN}✓{Colors.NC} {tool}@{version}")
-        else:
-            print(f"  {Colors.RED}✗{Colors.NC} {tool} (not installed)")
-    print()
-
-
-def select_from_list(title, items):
-    log_info(title)
-    if not items:
-        log_warning("No items to select from.")
-        return None
-
-    for i, item in enumerate(items, 1):
-        print(f"{i}. {item}")
-    print("0. Back to main menu")
-
-    while True:
-        try:
-            choice = int(input("Enter your choice: "))
-            if 0 <= choice <= len(items):
-                return items[choice - 1] if choice > 0 else None
-        except ValueError:
-            pass
-        log_error("Invalid selection.")
-
-
-# --- Menu Actions ---
-def install_missing_tools():
-    installed = get_installed_tools()
-    missing = [tool for tool in TOOLS if tool not in installed]
-    if not missing:
-        log_success("All tools are already installed.")
-        return
-
-    log_info(f"Installing {len(missing)} missing tool(s)...")
-    for tool in missing:
-        log_info(f"Installing {tool}...")
-        run_command(["npm", "install", "-g", f"{tool}@latest"], stream=True)
-
-
-def install_specific_tool():
-    installed = get_installed_tools()
-    missing = [tool for tool in TOOLS if tool not in installed]
-    if not missing:
-        log_success("All tools are already installed.")
-        return
-
-    tool_to_install = select_from_list("Select a tool to install:", missing)
-    if tool_to_install:
-        log_info(f"Installing {tool_to_install}...")
-        run_command(["npm", "install", "-g", f"{tool_to_install}@latest"], stream=True)
-
-
-def upgrade_all_tools():
-    installed = get_installed_tools()
-    if not installed:
-        log_warning("No tools are installed. Nothing to upgrade.")
-        return
-
-    log_info(f"Checking for updates for {len(installed)} installed tool(s)...")
-    for tool, current_version in installed.items():
-        log_info(f"Checking {tool}...")
-        latest_version = get_latest_version(tool)
-        if not latest_version:
-            log_error(f"Could not get latest version for {tool}")
-            continue
-
-        log_info(f"Installed version: {current_version}")
-        log_info(f"Latest version: {latest_version}")
-
-        if current_version == latest_version:
-            log_success(f"{tool} is already up to date.")
-        else:
-            log_info(f"Updating {tool} from {current_version} to {latest_version}...")
+    for action, tool in ops:
+        if action == "install":
+            log_info(f"Installing {tool}...")
             run_command(["npm", "install", "-g", f"{tool}@latest"], stream=True)
-        print()
+        elif action == "uninstall":
+            log_info(f"Uninstalling {tool}...")
+            run_command(["npm", "uninstall", "-g", tool], stream=True)
+        elif action == "update":
+            log_info(f"Updating {tool}...")
+            run_command(["npm", "install", "-g", f"{tool}@latest"], stream=True)
+    print()
+    input("Press Enter to return to the menu...")
+    curses.reset_prog_mode()
+    stdscr.keypad(True)   # re-enable keypad after returning from shell
+    stdscr.refresh()
 
 
-def uninstall_specific_tool():
-    installed = list(get_installed_tools().keys())
-    if not installed:
-        log_warning("No tools are installed.")
-        return
+def _render_tool_row(stdscr, row, w, tool_name, is_current, is_selected, installed_ver, latest):
+    """Render one tool row.
 
-    tool_to_uninstall = select_from_list("Select a tool to uninstall:", installed)
-    if tool_to_uninstall:
-        log_info(f"Uninstalling {tool_to_uninstall}...")
-        run_command(["npm", "uninstall", "-g", tool_to_uninstall], stream=True)
+    installed_ver: version string if installed, "" if not.
+    latest: _PENDING | "" | "x.y.z"  (from VersionFetcher)
 
+    Priority: cursor (A_REVERSE) > selected (green bg) > normal
+    Sub-elements (✓/✗, ↑ version) keep their natural accent color only on
+    normal rows; on highlighted rows they inherit the row's base attribute so
+    they don't clash with the background.
+    """
+    checkbox = "[*]" if is_selected else "[ ]"
+    is_installed = bool(installed_ver)
+    ver_col = f"{installed_ver:<13}" if installed_ver else f"{'—':<13}"
 
-def uninstall_all_tools():
-    installed = list(get_installed_tools().keys())
-    if not installed:
-        log_warning("No tools are installed.")
-        return
+    if is_current:
+        base = curses.A_REVERSE
+    elif is_selected:
+        base = curses.color_pair(CP_SEL)
+    else:
+        base = curses.A_NORMAL
+
+    # accent(): natural color on normal rows, base attribute on highlighted rows
+    def accent(cp, extra=0):
+        if is_current or is_selected:
+            return base | extra
+        return curses.color_pair(cp) | extra
+
+    status_char = "✓" if is_installed else "✗"
+    status_attr = accent(CP_GREEN if is_installed else CP_RED)
+
+    if latest is _PENDING:
+        latest_text = "⟳"
+        latest_attr = accent(CP_YELLOW, curses.A_DIM)
+    elif not latest:
+        latest_text = "?"
+        latest_attr = base | curses.A_DIM
+    elif not is_installed:
+        latest_text = latest
+        latest_attr = base
+    elif installed_ver == latest:
+        latest_text = "✓"
+        latest_attr = accent(CP_GREEN)
+    else:
+        latest_text = f"↑ {latest}"
+        latest_attr = accent(CP_YELLOW, curses.A_BOLD)
 
     try:
-        confirm = input(
-            f"Are you sure you want to uninstall all {len(installed)} tools? (y/N) "
-        )
-        if confirm.lower() != "y":
-            log_info("Uninstallation cancelled.")
-            return
-    except (EOFError, KeyboardInterrupt):
-        log_info("\nUninstallation cancelled.")
-        return
-
-    for tool in installed:
-        log_info(f"Uninstalling {tool}...")
-        run_command(["npm", "uninstall", "-g", tool], stream=True)
+        x = 2
+        stdscr.addstr(row, x, f"  {checkbox} ", base)
+        x += 6
+        stdscr.addstr(row, x, status_char, status_attr)
+        x += 1
+        stdscr.addstr(row, x, f" {tool_name:<32} {ver_col}", base)
+        x += 1 + 32 + 1 + 13
+        stdscr.addstr(row, x, latest_text[:max(0, w - x - 1)], latest_attr)
+    except curses.error:
+        pass
 
 
-# --- Node Version Management ---
-def manage_versions_with_fnm():
-    log_info("Using fnm to manage Node.js versions.")
+def run_curses(stdscr):
+    init_curses_colors()
+    curses.curs_set(0)
+    stdscr.timeout(200)  # unblock getch() every 200ms for async version updates
 
-    ret_code, stdout = run_command(["fnm", "list"])
+    display_list = build_display_list()
+    tool_indices = get_tool_indices(display_list)
+    all_names = get_all_tool_names()
 
-    if ret_code != 0 or not stdout:
-        log_warning("No Node.js versions found by fnm.")
-        log_info(
-            "You can install a Node.js version using a command like: 'fnm install lts'"
-        )
-        return
+    nav_pos = 0
+    selected = set()
+    scroll_top = 0
+    installed = get_installed_tools()
+    fetcher = VersionFetcher(all_names)
 
-    versions = [
-        line.replace("*", "").replace("(default)", "").strip().split()[0]
-        for line in stdout.splitlines()
-        if line.strip()
-    ]
+    # Fixed chrome rows
+    HEADER_ROWS = 7   # title, blank, help×2, blank, col-hdr, separator
+    FOOTER_ROWS = 3   # separator, description, status-bar
 
-    if not versions:
-        log_warning("No Node.js versions found by fnm.")
-        log_info(
-            "You can install a Node.js version using a command like: 'fnm install lts'"
-        )
-        return
+    col_hdr = f"{'':8}{'Package':<33}{'Installed':<13}Latest"
 
-    _, original_version_str = run_command(["fnm", "current"])
-    original_version = original_version_str.strip()
-
-    display_versions = [
-        f"{v} (current)" if v == original_version else v for v in versions
-    ]
-    selected_display = select_from_list(
-        "Select a Node.js version to manage:", display_versions
-    )
-    if not selected_display:
-        return
-
-    selected_version = selected_display.split(" ")[0]
-    log_info(f"Managing tools for node version {selected_version}...")
-
-    script_path = Path(__file__).resolve()
-    os.environ["_AI_CLI_INSTALL_CHILD"] = "true"
-
-    command_to_run = [
-        "fnm",
-        "exec",
-        f"--using={selected_version}",
-        sys.executable,
-        str(script_path),
-    ]
-
-    run_command(command_to_run, stream=True)
-
-    if "_AI_CLI_INSTALL_CHILD" in os.environ:
-        del os.environ["_AI_CLI_INSTALL_CHILD"]
-
-
-def manage_versions_with_nvm():
-    nvm_dir = os.environ.get("NVM_DIR", Path.home() / ".nvm")
-    nvm_sh = Path(nvm_dir) / "nvm.sh"
-    if not nvm_sh.is_file():
-        log_error("nvm.sh not found.")
-        return
-
-    log_info("Using nvm to manage Node.js versions.")
-
-    def run_nvm_command(cmd):
-        return subprocess.run(
-            f'. "{nvm_sh}"; {cmd}',
-            shell=True,
-            capture_output=True,
-            text=True,
-            executable="/bin/bash",
-        )
-
-    result = run_nvm_command("nvm ls")
-    versions = [
-        line.split()[0]
-        for line in result.stdout.splitlines()
-        if "->" not in line and line.strip()
-    ]
-    original_version = run_nvm_command("nvm current").stdout.strip()
-
-    display_versions = [
-        f"{v} (current)" if v == original_version else v for v in versions
-    ]
-    selected_display = select_from_list(
-        "Select a Node.js version to manage:", display_versions
-    )
-    if not selected_display:
-        return
-
-    selected_version = selected_display.split(" ")[0]
-    log_info(f"Managing tools for node version {selected_version}...")
-
-    script_path = Path(__file__).resolve()
-    os.environ["_AI_CLI_INSTALL_CHILD"] = "true"
-    run_nvm_command(f"nvm exec {selected_version} {sys.executable} {script_path}")
-    if "_AI_CLI_INSTALL_CHILD" in os.environ:
-        del os.environ["_AI_CLI_INSTALL_CHILD"]
-
-
-def manage_all_node_versions():
-    if shutil.which("fnm"):
-        manage_versions_with_fnm()
-    elif (Path.home() / ".nvm" / "nvm.sh").is_file():
-        manage_versions_with_nvm()
-    else:
-        log_error("This feature requires 'fnm' or 'nvm' to manage Node.js versions.")
-        log_info("Please install one of these tools to use this feature.")
-
-
-# --- Main Loop ---
-def main_loop(reset_cache=False):
     while True:
-        show_status(reset_cache=reset_cache)
-        reset_cache = False
+        h, w = stdscr.getmaxyx()
+        list_height = max(1, h - HEADER_ROWS - FOOTER_ROWS)
+        current_disp_idx = tool_indices[nav_pos] if tool_indices else -1
+        current_item = display_list[current_disp_idx] if current_disp_idx >= 0 else None
+        current_name = current_item[2] if current_item else ""
+        current_desc = current_item[3] if current_item else ""
 
-        print("Please choose an option:")
-        menu = {
-            "1": "Install all missing tools",
-            "2": "Install a specific tool",
-            "3": "Upgrade all installed tools",
-            "4": "Uninstall a specific tool",
-            "5": "Uninstall all tools",
-        }
-        if not os.environ.get("_AI_CLI_INSTALL_CHILD"):
-            menu["6"] = "Manage tools across all node versions (fnm or nvm)"
+        # Keep the focused item inside the visible scroll window
+        if current_disp_idx < scroll_top:
+            scroll_top = current_disp_idx
+        elif current_disp_idx >= scroll_top + list_height:
+            scroll_top = current_disp_idx - list_height + 1
 
-        menu["0"] = "Exit"
+        stdscr.clear()
 
-        for k, v in menu.items():
-            print(f"{k}. {v}")
+        # ── Header ────────────────────────────────────────────────────────────
+        title = " NPM Tools Manager "
+        _addstr(stdscr, 0, max(0, (w - len(title)) // 2), title, curses.A_BOLD | curses.A_UNDERLINE)
+        _addstr(stdscr, 2, 2, "[i/k/↑] Up  [j/↓] Down  [Space] Select  [s] Select All/None", curses.A_DIM)
+        _addstr(stdscr, 3, 2, "[a] Install  [d] Delete  [u] Update  [r] Refresh  [q] Quit", curses.A_DIM)
+        _addstr(stdscr, 5, 2, col_hdr[:w - 4], curses.A_BOLD)
+        _addstr(stdscr, 6, 2, "─" * min(len(col_hdr), w - 4), curses.A_DIM)
 
-        try:
-            choice = input("\nEnter your choice: ")
-        except (EOFError, KeyboardInterrupt):
-            choice = "0"
+        # ── List ──────────────────────────────────────────────────────────────
+        row = HEADER_ROWS
+        for disp_idx in range(scroll_top, len(display_list)):
+            if row >= h - FOOTER_ROWS:
+                break
+            item = display_list[disp_idx]
+            if item[0] == "header":
+                _, category = item
+                _addstr(stdscr, row, 2, f"── {category} ", curses.A_BOLD | curses.color_pair(CP_CYAN))
+            else:
+                _, _, tool_name, _ = item
+                _render_tool_row(
+                    stdscr, row, w, tool_name,
+                    is_current=(disp_idx == current_disp_idx),
+                    is_selected=(tool_name in selected),
+                    installed_ver=installed.get(tool_name, ""),
+                    latest=fetcher.get(tool_name),
+                )
+            row += 1
 
-        print()
+        # ── Footer ────────────────────────────────────────────────────────────
+        sep_row = h - FOOTER_ROWS
+        _addstr(stdscr, sep_row, 2, "─" * min(len(col_hdr), w - 4), curses.A_DIM)
+        _addstr(stdscr, sep_row + 1, 2, f"→ {current_desc}"[:w - 4] if current_desc else "", curses.A_DIM)
 
-        if choice == "1":
-            install_missing_tools()
-        elif choice == "2":
-            install_specific_tool()
-        elif choice == "3":
-            upgrade_all_tools()
-        elif choice == "4":
-            uninstall_specific_tool()
-        elif choice == "5":
-            uninstall_all_tools()
-        elif choice == "6" and "6" in menu:
-            manage_all_node_versions()
-        elif choice == "0":
-            log_success("Operations complete. Exiting.")
+        fetching = "" if fetcher.all_done() else "  ⟳ fetching latest…"
+        status = f" {len(selected)} selected · {len(installed)}/{len(all_names)} installed{fetching} "
+        _addstr(stdscr, h - 1, max(0, (w - len(status)) // 2), status[:w], curses.A_REVERSE)
+
+        stdscr.refresh()
+        key = stdscr.getch()
+
+        if key == -1:
+            continue  # timeout — redraw to pick up fresh version data
+        elif key in (ord("q"), ord("Q")):
             break
-        else:
-            log_error("Invalid option. Please try again.")
+        elif key in (ord("r"), ord("R")):
+            installed = get_installed_tools(reset_cache=True)
+            fetcher = VersionFetcher(all_names)  # restart background fetches
+        elif key in (curses.KEY_UP, ord("i"), ord("k")):
+            nav_pos = max(0, nav_pos - 1)
+        elif key in (curses.KEY_DOWN, ord("j")):
+            nav_pos = min(len(tool_indices) - 1, nav_pos + 1)
+        elif key in (ord("s"), ord("S")):
+            if len(selected) == len(all_names):
+                selected.clear()
+            else:
+                selected = set(all_names)
+        elif key == ord(" ") and tool_indices:
+            if current_name in selected:
+                selected.remove(current_name)
+            else:
+                selected.add(current_name)
+        elif key in (ord("a"), ord("A")) and selected:
+            ops = [("install", t) for t in selected if t not in installed]
+            if ops:
+                _run_ops_outside_curses(stdscr, ops)
+                installed = get_installed_tools(reset_cache=True)
+                fetcher = VersionFetcher(all_names)
+                selected.clear()
+        elif key in (ord("d"), ord("D")) and selected:
+            ops = [("uninstall", t) for t in selected if t in installed]
+            if ops:
+                _run_ops_outside_curses(stdscr, ops)
+                installed = get_installed_tools(reset_cache=True)
+                selected.clear()
+        elif key in (ord("u"), ord("U")) and selected:
+            ops = []
+            for t in selected:
+                if t not in installed:
+                    continue  # not installed, nothing to update
+                latest = fetcher.get(t)
+                if latest is not _PENDING and latest and latest == installed.get(t):
+                    continue  # already at latest version, skip
+                ops.append(("update", t))
+            if ops:
+                _run_ops_outside_curses(stdscr, ops)
+                installed = get_installed_tools(reset_cache=True)
+                fetcher = VersionFetcher(all_names)
+                selected.clear()
 
-        if os.environ.get("_AI_CLI_INSTALL_CHILD"):
-            break
-        print()
+
+def show_status_text_mode():
+    log_info("Checking tool status...")
+    print()
+    installed_tools = get_installed_tools()
+    for category, tools in TOOLS.items():
+        print(f"\n{Colors.CYAN}{category}:{Colors.NC}")
+        for tool in tools:
+            tool_name = tool["name"]
+            tool_desc = tool["desc"]
+            if tool_name in installed_tools:
+                version = installed_tools[tool_name]
+                print(
+                    f"  {Colors.GREEN}✓{Colors.NC} {tool_name}@{version} - {tool_desc}"
+                )
+            else:
+                print(f"  {Colors.RED}✗{Colors.NC} {tool_name} - {tool_desc}")
+    print()
+
+
+def main_loop():
+    try:
+        curses.wrapper(run_curses)
+    except Exception as e:
+        log_error(f"Interactive UI failed: {e}. Falling back to text mode.")
+        show_status_text_mode()
 
 
 if __name__ == "__main__":
