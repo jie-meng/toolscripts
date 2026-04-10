@@ -1,33 +1,13 @@
 #!/usr/bin/env python3
 import curses
 import json
-import os
 import subprocess
 import sys
 import shutil
 import threading
-from pathlib import Path
 
-
-TOOLS = {
-    "AI CLI": [
-        {"name": "@github/copilot", "desc": "GitHub Copilot - AI pair programmer"},
-        {
-            "name": "@google/gemini-cli",
-            "desc": "Google Gemini CLI - AI coding assistant",
-        },
-        {"name": "@openai/codex", "desc": "OpenAI Codex - AI code generation"},
-        {
-            "name": "@qwen-code/qwen-code",
-            "desc": "Qwen Code - Alibaba's AI coding tool",
-        },
-        {"name": "@fly-ai/flyai-cli", "desc": "FlyAI - Travel booking CLI"},
-    ],
-    "Dev Tools": [
-        {"name": "pnpm", "desc": "Fast, disk space efficient package manager"},
-        {"name": "appium", "desc": "Mobile app automation testing framework"},
-    ],
-}
+# Packages bundled with Node.js — skip these
+BUILTIN_PACKAGES = {"npm", "corepack"}
 
 
 class Colors:
@@ -41,10 +21,8 @@ class Colors:
 
 # Curses color pair IDs
 CP_GREEN = 1
-CP_RED = 2
-CP_YELLOW = 3
-CP_CYAN = 4
-CP_SEL = 5   # black text on green background — selected row highlight
+CP_YELLOW = 2
+CP_SEL = 3   # black text on green background — selected row highlight
 
 # Sentinel for "not yet fetched" — distinct from "" (fetch failed) or a version string
 _PENDING = object()
@@ -88,37 +66,21 @@ def run_command(command, shell=False, check=False, stream=False, timeout=None):
         return e.returncode, e.stdout.strip()
 
 
-_npm_root = None
-
-
-def get_npm_root(reset=False):
-    global _npm_root
-    if _npm_root is None or reset:
-        _, stdout = run_command(["npm", "root", "-g"])
-        _npm_root = stdout
-    return _npm_root
-
-
-def get_all_tool_names():
-    return [tool["name"] for tools in TOOLS.values() for tool in tools]
-
-
-def get_installed_tools(reset_cache=False):
-    installed = {}
-    npm_root = get_npm_root(reset=reset_cache)
-    if not npm_root:
-        log_error("Could not determine npm root directory.")
+def get_installed_packages():
+    """Returns dict of {package_name: version} for all global npm packages, excluding builtins."""
+    _, stdout = run_command(["npm", "list", "-g", "--depth=0", "--json"], timeout=30)
+    if not stdout:
         return {}
-    for tool_name in get_all_tool_names():
-        pkg_path = Path(npm_root) / tool_name / "package.json"
-        if pkg_path.is_file():
-            try:
-                with pkg_path.open("r") as f:
-                    data = json.load(f)
-                    installed[tool_name] = data.get("version", "unknown")
-            except (json.JSONDecodeError, IOError):
-                installed[tool_name] = "error"
-    return installed
+    try:
+        data = json.loads(stdout)
+        deps = data.get("dependencies", {})
+        return {
+            name: info.get("version", "unknown")
+            for name, info in deps.items()
+            if name not in BUILTIN_PACKAGES
+        }
+    except json.JSONDecodeError:
+        return {}
 
 
 def get_latest_version(package_name):
@@ -135,10 +97,10 @@ class VersionFetcher:
       "x.y.z"   — fetched successfully
     """
 
-    def __init__(self, tool_names):
-        self._versions = {name: _PENDING for name in tool_names}
+    def __init__(self, package_names):
+        self._versions = {name: _PENDING for name in package_names}
         self._lock = threading.Lock()
-        for name in tool_names:
+        for name in package_names:
             t = threading.Thread(target=self._fetch, args=(name,), daemon=True)
             t.start()
 
@@ -156,28 +118,11 @@ class VersionFetcher:
             return all(v is not _PENDING for v in self._versions.values())
 
 
-def build_display_list():
-    """Flat list of ("header", category) or ("tool", category, name, desc) entries."""
-    items = []
-    for category, tools in TOOLS.items():
-        items.append(("header", category))
-        for tool in tools:
-            items.append(("tool", category, tool["name"], tool["desc"]))
-    return items
-
-
-def get_tool_indices(display_list):
-    """Indices of tool entries in display_list (the navigable items)."""
-    return [i for i, item in enumerate(display_list) if item[0] == "tool"]
-
-
 def init_curses_colors():
     curses.start_color()
     curses.use_default_colors()
     curses.init_pair(CP_GREEN,  curses.COLOR_GREEN,  -1)
-    curses.init_pair(CP_RED,    curses.COLOR_RED,    -1)
     curses.init_pair(CP_YELLOW, curses.COLOR_YELLOW, -1)
-    curses.init_pair(CP_CYAN,   curses.COLOR_CYAN,   -1)
     curses.init_pair(CP_SEL,    curses.COLOR_BLACK,  curses.COLOR_GREEN)
 
 
@@ -189,41 +134,27 @@ def _addstr(stdscr, y, x, text, attr=0):
 
 
 def _run_ops_outside_curses(stdscr, ops):
-    """Temporarily exit curses, run npm ops, re-enter. ops: list of (action, tool_name)."""
+    """Temporarily exit curses, run npm ops, re-enter. ops: list of (action, pkg_name)."""
     curses.def_prog_mode()
     curses.endwin()
     print()
-    for action, tool in ops:
-        if action == "install":
-            log_info(f"Installing {tool}...")
-            run_command(["npm", "install", "-g", f"{tool}@latest"], stream=True)
-        elif action == "uninstall":
-            log_info(f"Uninstalling {tool}...")
-            run_command(["npm", "uninstall", "-g", tool], stream=True)
+    for action, pkg in ops:
+        if action == "uninstall":
+            log_info(f"Uninstalling {pkg}...")
+            run_command(["npm", "uninstall", "-g", pkg], stream=True)
         elif action == "update":
-            log_info(f"Updating {tool}...")
-            run_command(["npm", "install", "-g", f"{tool}@latest"], stream=True)
+            log_info(f"Updating {pkg}...")
+            run_command(["npm", "install", "-g", f"{pkg}@latest"], stream=True)
     print()
     input("Press Enter to return to the menu...")
     curses.reset_prog_mode()
-    stdscr.keypad(True)   # re-enable keypad after returning from shell
+    stdscr.keypad(True)
     stdscr.refresh()
 
 
-def _render_tool_row(stdscr, row, w, tool_name, is_current, is_selected, installed_ver, latest):
-    """Render one tool row.
-
-    installed_ver: version string if installed, "" if not.
-    latest: _PENDING | "" | "x.y.z"  (from VersionFetcher)
-
-    Priority: cursor (A_REVERSE) > selected (green bg) > normal
-    Sub-elements (✓/✗, ↑ version) keep their natural accent color only on
-    normal rows; on highlighted rows they inherit the row's base attribute so
-    they don't clash with the background.
-    """
+def _render_package_row(stdscr, row, w, pkg_name, is_current, is_selected, installed_ver, latest):
     checkbox = "[*]" if is_selected else "[ ]"
-    is_installed = bool(installed_ver)
-    ver_col = f"{installed_ver:<13}" if installed_ver else f"{'—':<13}"
+    ver_col = f"{installed_ver:<13}"
 
     if is_current:
         base = curses.A_REVERSE
@@ -232,14 +163,10 @@ def _render_tool_row(stdscr, row, w, tool_name, is_current, is_selected, install
     else:
         base = curses.A_NORMAL
 
-    # accent(): natural color on normal rows, base attribute on highlighted rows
     def accent(cp, extra=0):
         if is_current or is_selected:
             return base | extra
         return curses.color_pair(cp) | extra
-
-    status_char = "✓" if is_installed else "✗"
-    status_attr = accent(CP_GREEN if is_installed else CP_RED)
 
     if latest is _PENDING:
         latest_text = "⟳"
@@ -247,9 +174,6 @@ def _render_tool_row(stdscr, row, w, tool_name, is_current, is_selected, install
     elif not latest:
         latest_text = "?"
         latest_attr = base | curses.A_DIM
-    elif not is_installed:
-        latest_text = latest
-        latest_attr = base
     elif installed_ver == latest:
         latest_text = "✓"
         latest_attr = accent(CP_GREEN)
@@ -259,12 +183,8 @@ def _render_tool_row(stdscr, row, w, tool_name, is_current, is_selected, install
 
     try:
         x = 2
-        stdscr.addstr(row, x, f"  {checkbox} ", base)
-        x += 6
-        stdscr.addstr(row, x, status_char, status_attr)
-        x += 1
-        stdscr.addstr(row, x, f" {tool_name:<32} {ver_col}", base)
-        x += 1 + 32 + 1 + 13
+        stdscr.addstr(row, x, f"  {checkbox} {pkg_name:<38} {ver_col}", base)
+        x += 6 + 38 + 1 + 13
         stdscr.addstr(row, x, latest_text[:max(0, w - x - 1)], latest_attr)
     except curses.error:
         pass
@@ -275,73 +195,65 @@ def run_curses(stdscr):
     curses.curs_set(0)
     stdscr.timeout(200)  # unblock getch() every 200ms for async version updates
 
-    display_list = build_display_list()
-    tool_indices = get_tool_indices(display_list)
-    all_names = get_all_tool_names()
+    installed = get_installed_packages()
+    pkg_names = sorted(installed.keys())
+    fetcher = VersionFetcher(pkg_names)
 
     nav_pos = 0
     selected = set()
     scroll_top = 0
-    installed = get_installed_tools()
-    fetcher = VersionFetcher(all_names)
 
-    # Fixed chrome rows
-    HEADER_ROWS = 7   # title, blank, help×2, blank, col-hdr, separator
-    FOOTER_ROWS = 3   # separator, description, status-bar
+    # Fixed chrome rows: title, blank, help×2, blank, col-hdr, separator
+    HEADER_ROWS = 7
+    FOOTER_ROWS = 1  # status bar only
 
-    col_hdr = f"{'':8}{'Package':<33}{'Installed':<13}Latest"
+    col_hdr = f"{'':8}{'Package':<39}{'Installed':<13}Latest"
 
     while True:
         h, w = stdscr.getmaxyx()
         list_height = max(1, h - HEADER_ROWS - FOOTER_ROWS)
-        current_disp_idx = tool_indices[nav_pos] if tool_indices else -1
-        current_item = display_list[current_disp_idx] if current_disp_idx >= 0 else None
-        current_name = current_item[2] if current_item else ""
-        current_desc = current_item[3] if current_item else ""
+
+        if pkg_names:
+            nav_pos = max(0, min(nav_pos, len(pkg_names) - 1))
+            current_name = pkg_names[nav_pos]
+        else:
+            nav_pos = 0
+            current_name = ""
 
         # Keep the focused item inside the visible scroll window
-        if current_disp_idx < scroll_top:
-            scroll_top = current_disp_idx
-        elif current_disp_idx >= scroll_top + list_height:
-            scroll_top = current_disp_idx - list_height + 1
+        if nav_pos < scroll_top:
+            scroll_top = nav_pos
+        elif nav_pos >= scroll_top + list_height:
+            scroll_top = nav_pos - list_height + 1
 
         stdscr.clear()
 
         # ── Header ────────────────────────────────────────────────────────────
-        title = " NPM Tools Manager "
+        title = " NPM Global Packages "
         _addstr(stdscr, 0, max(0, (w - len(title)) // 2), title, curses.A_BOLD | curses.A_UNDERLINE)
         _addstr(stdscr, 2, 2, "[i/k/↑] Up  [j/↓] Down  [Space] Select  [s] Select All/None", curses.A_DIM)
-        _addstr(stdscr, 3, 2, "[a] Install  [d] Delete  [u] Update  [r] Refresh  [q] Quit", curses.A_DIM)
+        _addstr(stdscr, 3, 2, "[d] Uninstall  [u] Update  [r] Refresh  [q] Quit", curses.A_DIM)
         _addstr(stdscr, 5, 2, col_hdr[:w - 4], curses.A_BOLD)
         _addstr(stdscr, 6, 2, "─" * min(len(col_hdr), w - 4), curses.A_DIM)
 
         # ── List ──────────────────────────────────────────────────────────────
         row = HEADER_ROWS
-        for disp_idx in range(scroll_top, len(display_list)):
+        for idx in range(scroll_top, len(pkg_names)):
             if row >= h - FOOTER_ROWS:
                 break
-            item = display_list[disp_idx]
-            if item[0] == "header":
-                _, category = item
-                _addstr(stdscr, row, 2, f"── {category} ", curses.A_BOLD | curses.color_pair(CP_CYAN))
-            else:
-                _, _, tool_name, _ = item
-                _render_tool_row(
-                    stdscr, row, w, tool_name,
-                    is_current=(disp_idx == current_disp_idx),
-                    is_selected=(tool_name in selected),
-                    installed_ver=installed.get(tool_name, ""),
-                    latest=fetcher.get(tool_name),
-                )
+            name = pkg_names[idx]
+            _render_package_row(
+                stdscr, row, w, name,
+                is_current=(idx == nav_pos),
+                is_selected=(name in selected),
+                installed_ver=installed.get(name, ""),
+                latest=fetcher.get(name),
+            )
             row += 1
 
         # ── Footer ────────────────────────────────────────────────────────────
-        sep_row = h - FOOTER_ROWS
-        _addstr(stdscr, sep_row, 2, "─" * min(len(col_hdr), w - 4), curses.A_DIM)
-        _addstr(stdscr, sep_row + 1, 2, f"→ {current_desc}"[:w - 4] if current_desc else "", curses.A_DIM)
-
         fetching = "" if fetcher.all_done() else "  ⟳ fetching latest…"
-        status = f" {len(selected)} selected · {len(installed)}/{len(all_names)} installed{fetching} "
+        status = f" {len(selected)} selected · {len(pkg_names)} packages{fetching} "
         _addstr(stdscr, h - 1, max(0, (w - len(status)) // 2), status[:w], curses.A_REVERSE)
 
         stdscr.refresh()
@@ -352,67 +264,57 @@ def run_curses(stdscr):
         elif key in (ord("q"), ord("Q")):
             break
         elif key in (ord("r"), ord("R")):
-            installed = get_installed_tools(reset_cache=True)
-            fetcher = VersionFetcher(all_names)  # restart background fetches
+            installed = get_installed_packages()
+            pkg_names = sorted(installed.keys())
+            fetcher = VersionFetcher(pkg_names)
+            nav_pos = min(nav_pos, max(0, len(pkg_names) - 1))
+            selected.clear()
         elif key in (curses.KEY_UP, ord("i"), ord("k")):
             nav_pos = max(0, nav_pos - 1)
         elif key in (curses.KEY_DOWN, ord("j")):
-            nav_pos = min(len(tool_indices) - 1, nav_pos + 1)
+            nav_pos = min(len(pkg_names) - 1, nav_pos + 1)
         elif key in (ord("s"), ord("S")):
-            if len(selected) == len(all_names):
+            if len(selected) == len(pkg_names):
                 selected.clear()
             else:
-                selected = set(all_names)
-        elif key == ord(" ") and tool_indices:
+                selected = set(pkg_names)
+        elif key == ord(" ") and pkg_names:
             if current_name in selected:
                 selected.remove(current_name)
             else:
                 selected.add(current_name)
-        elif key in (ord("a"), ord("A")) and selected:
-            ops = [("install", t) for t in selected if t not in installed]
-            if ops:
-                _run_ops_outside_curses(stdscr, ops)
-                installed = get_installed_tools(reset_cache=True)
-                fetcher = VersionFetcher(all_names)
-                selected.clear()
         elif key in (ord("d"), ord("D")) and selected:
-            ops = [("uninstall", t) for t in selected if t in installed]
-            if ops:
-                _run_ops_outside_curses(stdscr, ops)
-                installed = get_installed_tools(reset_cache=True)
-                selected.clear()
+            ops = [("uninstall", t) for t in selected]
+            _run_ops_outside_curses(stdscr, ops)
+            installed = get_installed_packages()
+            pkg_names = sorted(installed.keys())
+            fetcher = VersionFetcher(pkg_names)
+            nav_pos = min(nav_pos, max(0, len(pkg_names) - 1))
+            selected.clear()
         elif key in (ord("u"), ord("U")) and selected:
             ops = []
             for t in selected:
-                if t not in installed:
-                    continue  # not installed, nothing to update
                 latest = fetcher.get(t)
                 if latest is not _PENDING and latest and latest == installed.get(t):
-                    continue  # already at latest version, skip
+                    continue  # already up to date
                 ops.append(("update", t))
             if ops:
                 _run_ops_outside_curses(stdscr, ops)
-                installed = get_installed_tools(reset_cache=True)
-                fetcher = VersionFetcher(all_names)
+                installed = get_installed_packages()
+                pkg_names = sorted(installed.keys())
+                fetcher = VersionFetcher(pkg_names)
                 selected.clear()
 
 
 def show_status_text_mode():
-    log_info("Checking tool status...")
+    log_info("Checking globally installed npm packages...")
     print()
-    installed_tools = get_installed_tools()
-    for category, tools in TOOLS.items():
-        print(f"\n{Colors.CYAN}{category}:{Colors.NC}")
-        for tool in tools:
-            tool_name = tool["name"]
-            tool_desc = tool["desc"]
-            if tool_name in installed_tools:
-                version = installed_tools[tool_name]
-                print(
-                    f"  {Colors.GREEN}✓{Colors.NC} {tool_name}@{version} - {tool_desc}"
-                )
-            else:
-                print(f"  {Colors.RED}✗{Colors.NC} {tool_name} - {tool_desc}")
+    installed = get_installed_packages()
+    if not installed:
+        print(f"  {Colors.YELLOW}No globally installed packages found.{Colors.NC}")
+        return
+    for name, version in sorted(installed.items()):
+        print(f"  {Colors.GREEN}✓{Colors.NC} {name}@{version}")
     print()
 
 
