@@ -58,7 +58,7 @@ def log_error(msg):
     print(f"{Colors.RED}[ERROR]{Colors.NC} {msg}", file=sys.stderr)
 
 
-def run_command(command, shell=False, check=False, stream=False):
+def run_command(command, shell=False, check=False, stream=False, timeout=None):
     if stream:
         process = subprocess.Popen(
             command,
@@ -78,9 +78,12 @@ def run_command(command, shell=False, check=False, stream=False):
 
     try:
         process = subprocess.run(
-            command, capture_output=True, text=True, shell=shell, check=check
+            command, capture_output=True, text=True, shell=shell, check=check,
+            timeout=timeout,
         )
         return process.returncode, process.stdout.strip()
+    except subprocess.TimeoutExpired:
+        return 1, ""
     except subprocess.CalledProcessError as e:
         return e.returncode, e.stdout.strip()
 
@@ -119,7 +122,7 @@ def get_installed_tools(reset_cache=False):
 
 
 def get_latest_version(package_name):
-    _, stdout = run_command(["npm", "view", package_name, "version"])
+    _, stdout = run_command(["npm", "view", package_name, "version"], timeout=15)
     return stdout
 
 
