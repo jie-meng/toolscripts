@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -e
+
+if [ -z "$1" ]; then
+    echo "Usage: convert-oneline <file>" >&2
+    exit 1
+fi
+
+if [ ! -f "$1" ]; then
+    echo "Error: File not found: $1" >&2
+    exit 1
+fi
+
+output=$(awk '{printf "%s", $0}' "$1")
+
+os=$(uname -s)
+
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+copy_and_print() {
+    local copied=false
+    if [ "$os" = "Darwin" ]; then
+        if command -v pbcopy >/dev/null 2>&1; then
+            printf "%s" "$output" | pbcopy
+            copied=true
+        fi
+    elif [ "$os" = "Linux" ]; then
+        if command -v xclip >/dev/null 2>&1; then
+            printf "%s" "$output" | xclip -selection clipboard
+            copied=true
+        elif command -v xsel >/dev/null 2>&1; then
+            printf "%s" "$output" | xsel --clipboard --input
+            copied=true
+        fi
+    fi
+
+    printf "%s" "$output"
+
+    if [ "$copied" = true ]; then
+        echo ""
+        echo -e "${GREEN}Copied to clipboard!${NC}"
+    else
+        echo ""
+        echo "(Not copied to clipboard - clipboard tools not available)"
+    fi
+}
+
+copy_and_print
