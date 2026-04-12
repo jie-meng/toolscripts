@@ -22,7 +22,7 @@ class Colors:
 # Curses color pair IDs
 CP_GREEN = 1
 CP_YELLOW = 2
-CP_SEL = 3   # black text on green background — selected row highlight
+CP_SEL = 3  # black text on green background — selected row highlight
 
 # Sentinel for "not yet fetched" — distinct from "" (fetch failed) or a version string
 _PENDING = object()
@@ -56,7 +56,11 @@ def run_command(command, shell=False, check=False, stream=False, timeout=None):
 
     try:
         process = subprocess.run(
-            command, capture_output=True, text=True, shell=shell, check=check,
+            command,
+            capture_output=True,
+            text=True,
+            shell=shell,
+            check=check,
             timeout=timeout,
         )
         return process.returncode, process.stdout.strip()
@@ -121,9 +125,9 @@ class VersionFetcher:
 def init_curses_colors():
     curses.start_color()
     curses.use_default_colors()
-    curses.init_pair(CP_GREEN,  curses.COLOR_GREEN,  -1)
+    curses.init_pair(CP_GREEN, curses.COLOR_GREEN, -1)
     curses.init_pair(CP_YELLOW, curses.COLOR_YELLOW, -1)
-    curses.init_pair(CP_SEL,    curses.COLOR_BLACK,  curses.COLOR_GREEN)
+    curses.init_pair(CP_SEL, curses.COLOR_BLACK, curses.COLOR_GREEN)
 
 
 def _addstr(stdscr, y, x, text, attr=0):
@@ -152,7 +156,9 @@ def _run_ops_outside_curses(stdscr, ops):
     stdscr.refresh()
 
 
-def _render_package_row(stdscr, row, w, pkg_name, is_current, is_selected, installed_ver, latest):
+def _render_package_row(
+    stdscr, row, w, pkg_name, is_current, is_selected, installed_ver, latest
+):
     checkbox = "[*]" if is_selected else "[ ]"
     ver_col = f"{installed_ver:<13}"
 
@@ -185,7 +191,7 @@ def _render_package_row(stdscr, row, w, pkg_name, is_current, is_selected, insta
         x = 2
         stdscr.addstr(row, x, f"  {checkbox} {pkg_name:<38} {ver_col}", base)
         x += 6 + 38 + 1 + 13
-        stdscr.addstr(row, x, latest_text[:max(0, w - x - 1)], latest_attr)
+        stdscr.addstr(row, x, latest_text[: max(0, w - x - 1)], latest_attr)
     except curses.error:
         pass
 
@@ -230,10 +236,28 @@ def run_curses(stdscr):
 
         # ── Header ────────────────────────────────────────────────────────────
         title = " NPM Global Packages "
-        _addstr(stdscr, 0, max(0, (w - len(title)) // 2), title, curses.A_BOLD | curses.A_UNDERLINE)
-        _addstr(stdscr, 2, 2, "[i/k/↑] Up  [j/↓] Down  [Space] Select  [s] Select All/None", curses.A_DIM)
-        _addstr(stdscr, 3, 2, "[d] Uninstall  [u] Update  [r] Refresh  [q] Quit", curses.A_DIM)
-        _addstr(stdscr, 5, 2, col_hdr[:w - 4], curses.A_BOLD)
+        _addstr(
+            stdscr,
+            0,
+            max(0, (w - len(title)) // 2),
+            title,
+            curses.A_BOLD | curses.A_UNDERLINE,
+        )
+        _addstr(
+            stdscr,
+            2,
+            2,
+            "[i/k/↑] Up  [j/↓] Down  [Space] Select  [s] Select All/None",
+            curses.A_DIM,
+        )
+        _addstr(
+            stdscr,
+            3,
+            2,
+            "[d] Uninstall  [u] Update  [a] Update All  [r] Refresh  [q] Quit",
+            curses.A_DIM,
+        )
+        _addstr(stdscr, 5, 2, col_hdr[: w - 4], curses.A_BOLD)
         _addstr(stdscr, 6, 2, "─" * min(len(col_hdr), w - 4), curses.A_DIM)
 
         # ── List ──────────────────────────────────────────────────────────────
@@ -243,7 +267,10 @@ def run_curses(stdscr):
                 break
             name = pkg_names[idx]
             _render_package_row(
-                stdscr, row, w, name,
+                stdscr,
+                row,
+                w,
+                name,
                 is_current=(idx == nav_pos),
                 is_selected=(name in selected),
                 installed_ver=installed.get(name, ""),
@@ -254,7 +281,9 @@ def run_curses(stdscr):
         # ── Footer ────────────────────────────────────────────────────────────
         fetching = "" if fetcher.all_done() else "  ⟳ fetching latest…"
         status = f" {len(selected)} selected · {len(pkg_names)} packages{fetching} "
-        _addstr(stdscr, h - 1, max(0, (w - len(status)) // 2), status[:w], curses.A_REVERSE)
+        _addstr(
+            stdscr, h - 1, max(0, (w - len(status)) // 2), status[:w], curses.A_REVERSE
+        )
 
         stdscr.refresh()
         key = stdscr.getch()
@@ -291,12 +320,27 @@ def run_curses(stdscr):
             fetcher = VersionFetcher(pkg_names)
             nav_pos = min(nav_pos, max(0, len(pkg_names) - 1))
             selected.clear()
-        elif key in (ord("u"), ord("U")) and selected:
+        elif key == ord("u") and selected:
             ops = []
             for t in selected:
                 latest = fetcher.get(t)
                 if latest is not _PENDING and latest and latest == installed.get(t):
-                    continue  # already up to date
+                    continue
+                ops.append(("update", t))
+            if ops:
+                _run_ops_outside_curses(stdscr, ops)
+                installed = get_installed_packages()
+                pkg_names = sorted(installed.keys())
+                fetcher = VersionFetcher(pkg_names)
+                selected.clear()
+        elif key == ord("a"):
+            if not fetcher.all_done():
+                continue
+            ops = []
+            for t in pkg_names:
+                latest = fetcher.get(t)
+                if latest is not _PENDING and latest and latest == installed.get(t):
+                    continue
                 ops.append(("update", t))
             if ops:
                 _run_ops_outside_curses(stdscr, ops)
