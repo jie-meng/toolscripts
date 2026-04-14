@@ -74,12 +74,13 @@ def main():
     print(f"Deleting the video file {video_file} from the device...")
     os.system(f"adb -s {selected_device} shell rm {video_file}")
 
-
-if ret == 0:
     print("Done.")
+
     response = input("Compress video? (Y/n, default Y, quality 1): ").strip().lower()
     if response in ("", "y"):
         compress_video(local_file, quality=1)
+    elif response in ("2", "3"):
+        compress_video(local_file, quality=int(response))
 
 
 if __name__ == "__main__":

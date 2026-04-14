@@ -115,6 +115,8 @@ def main():
     response = input("Compress video? (Y/n, default Y, quality 1): ").strip().lower()
     if response in ("", "y"):
         compress_video(video_file, quality=1)
+    elif response in ("2", "3"):
+        compress_video(video_file, quality=int(response))
 
 
 if __name__ == "__main__":
