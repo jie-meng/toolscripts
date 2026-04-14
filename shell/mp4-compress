@@ -1,16 +1,18 @@
 #!/bin/bash
 
 # Script to compress MP4 files with selectable quality
-# Usage: mp4-compress /path/to/file.mp4
+# Usage: mp4-compress /path/to/file.mp4 [quality]
 
 set -e
 
-if [ "$#" -ne 1 ]; then
-    echo "Usage: mp4-compress /path/to/file.mp4"
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+    echo "Usage: mp4-compress /path/to/file.mp4 [quality]"
+    echo "  quality: 1 (low), 2 (medium), 3 (high) - optional, will prompt if not provided"
     exit 1
 fi
 
 INPUT_FILE="$1"
+QUALITY_ARG="$2"
 EXT="${INPUT_FILE##*.}"
 BASENAME="$(basename "$INPUT_FILE" .mp4)"
 DIRNAME="$(dirname "$INPUT_FILE")"
@@ -26,11 +28,16 @@ if [ "$EXT" != "mp4" ]; then
     exit 1
 fi
 
-echo "Select compression quality:"
-echo "  1) Low (smallest size, lower quality) [Default]"
-echo "  2) Medium (balanced)"
-echo "  3) High (larger size, best quality)"
-read -p "Enter choice [1-3] (default: 1): " QUALITY
+if [ -n "$QUALITY_ARG" ]; then
+    QUALITY="$QUALITY_ARG"
+else
+    echo "Select compression quality:"
+    echo "  1) Low (smallest size, lower quality) [Default]"
+    echo "  2) Medium (balanced)"
+    echo "  3) High (larger size, best quality)"
+    read -p "Enter choice [1-3] (default: 1): " QUALITY
+    [ -z "$QUALITY" ] && QUALITY=1
+fi
 
 case "$QUALITY" in
     1|"")
