@@ -14,7 +14,8 @@ fi
 INPUT_FILE="$1"
 QUALITY_ARG="$2"
 EXT="${INPUT_FILE##*.}"
-BASENAME="$(basename "$INPUT_FILE" .mp4)"
+EXT_LOWER=$(echo "$EXT" | tr '[:upper:]' '[:lower:]')
+BASENAME="$(basename "$INPUT_FILE" | sed 's/\.[^.]*$//')"
 DIRNAME="$(dirname "$INPUT_FILE")"
 OUTPUT_FILE="$DIRNAME/${BASENAME}_compressed.mp4"
 
@@ -23,7 +24,7 @@ if [ ! -f "$INPUT_FILE" ]; then
     exit 1
 fi
 
-if [ "$EXT" != "mp4" ]; then
+if [ "$EXT_LOWER" != "mp4" ]; then
     echo "Error: Input file must have .mp4 extension."
     exit 1
 fi
