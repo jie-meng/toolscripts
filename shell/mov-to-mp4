@@ -27,23 +27,23 @@ if [ "$EXT" != "mov" ]; then
 fi
 
 echo "Select quality:"
-echo "  1) High (larger size, best quality)"
+echo "  1) Low (smallest size, lower quality)"
 echo "  2) Medium (balanced)"
-echo "  3) Low (smallest size, lower quality)"
+echo "  3) High (larger size, best quality)"
 read -p "Enter choice [1-3]: " QUALITY
 
 case "$QUALITY" in
-    1)
-        CRF=18
-        PRESET=slow
+    1|"")
+        CRF=28
+        PRESET=fast
         ;;
     2)
         CRF=23
         PRESET=medium
         ;;
     3)
-        CRF=28
-        PRESET=fast
+        CRF=18
+        PRESET=slow
         ;;
     *)
         echo "Invalid choice."
