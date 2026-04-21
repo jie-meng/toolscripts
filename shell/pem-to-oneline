@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+import sys
+import os
+import re
+import subprocess
+
+if len(sys.argv) != 2:
+    print("Usage: pem-to-oneline <pem-file>", file=sys.stderr)
+    sys.exit(1)
+
+pem_file = sys.argv[1]
+
+if not os.path.isfile(pem_file):
+    print(f"Error: File not found: {pem_file}", file=sys.stderr)
+    sys.exit(1)
+
+with open(pem_file, 'r') as f:
+    content = f.read()
+
+content = content.replace('\n', '').replace('\r', '')
+
+matches = re.findall(
+    r'-----BEGIN\s+(?:RSA\s+)?(PUBLIC|PRIVATE)\s+KEY-----([A-Za-z0-9+/=]+)-----END\s+(?:RSA\s+)?\1\s+KEY-----',
+    content
+)
+
+if not matches:
+    print("Error: No valid PEM key found in file", file=sys.stderr)
+    sys.exit(1)
+
+key_type, key_data = matches[0]
+oneline = f"-----BEGIN {key_type} KEY-----\n{key_data}\n-----END {key_type} KEY-----"
+oneline_no_header = key_data.replace(' ', '')
+
+print(oneline_no_header)
+
+try:
+    if sys.platform == 'darwin':
+        subprocess.run(['pbcopy'], input=oneline_no_header.encode(), check=True)
+    elif sys.platform == 'linux':
+        subprocess.run(['xclip', '-selection', 'c'], input=oneline_no_header.encode(), check=True)
+except FileNotFoundError:
+    pass
