@@ -113,7 +113,7 @@ def main():
     print(f"Size: {size_mb:.1f} MB")
 
     response = input("Compress video? (Y/n, default Y, quality 1): ").strip().lower()
-    if response in ("", "y"):
+    if response in ("", "y", "1"):
         compress_video(video_file, quality=1)
     elif response in ("2", "3"):
         compress_video(video_file, quality=int(response))
