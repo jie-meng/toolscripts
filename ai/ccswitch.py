@@ -5,6 +5,7 @@ from pathlib import Path
 # Path to Claude settings file
 SETTINGS_PATH = Path.home() / ".claude" / "settings.json"
 
+# https://docs.bigmodel.cn/cn/coding-plan/quick-start
 # GLM and MiniMax configuration templates
 GLM_ENV = {
     "ANTHROPIC_AUTH_TOKEN": None,  # To be filled
@@ -14,17 +15,31 @@ GLM_ENV = {
     "ANTHROPIC_MODEL": "glm-4.7",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5"
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.1"
 }
+
+# https://platform.minimax.io/docs/guides/text-ai-coding-tools
 MINIMAX_ENV = {
     "ANTHROPIC_AUTH_TOKEN": None,  # To be filled
     "ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic",
     "API_TIMEOUT_MS": "3000000",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1,
-    "ANTHROPIC_MODEL": "MiniMax-M2.5",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "MiniMax-M2.5",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "MiniMax-M2.5",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "MiniMax-M2.5"
+    "ANTHROPIC_MODEL": "MiniMax-M2.7",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "MiniMax-M2.7",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "MiniMax-M2.7",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "MiniMax-M2.7"
+}
+
+# https://api-docs.deepseek.com/zh-cn/guides/coding_agents
+DEEPSEEK_ENV = {
+    "ANTHROPIC_AUTH_TOKEN": None,  # To be filled
+    "ANTHROPIC_BASE_URL": "https://api.deepseek.com/anthropic",
+    "API_TIMEOUT_MS": "3000000",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1,
+    "ANTHROPIC_MODEL": "deepseek-v4-pro",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-v4-flash",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-v4-pro",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "deepseek-v4-pro"
 }
 
 def get_env_or_input(env_var, prompt, allow_empty=False):
@@ -94,8 +109,9 @@ def main():
     print("Select Claude Code Model:")
     print("1. GLM Code Plan")
     print("2. MiniMax Code Plan")
-    print("3. Custom Endpoint/Model/API Key")
-    choice = input("Enter 1, 2 or 3: ").strip()
+    print("3. DeepSeek")
+    print("4. Custom Endpoint/Model/API Key")
+    choice = input("Enter 1, 2, 3 or 4: ").strip()
     if choice == "1":
         # GLM Code Plan
         api_key = get_env_or_input("GLM_API_KEY", "Enter your GLM_API_KEY")
@@ -103,12 +119,18 @@ def main():
         env["ANTHROPIC_AUTH_TOKEN"] = api_key
         update_settings_env(env)
     elif choice == "2":
-        # MiniMax M2
+        # MiniMax M2.7
         api_key = get_env_or_input("MINIMAX_API_KEY", "Enter your MINIMAX_API_KEY")
         env = MINIMAX_ENV.copy()
         env["ANTHROPIC_AUTH_TOKEN"] = api_key
         update_settings_env(env)
     elif choice == "3":
+        # DeepSeek
+        api_key = get_env_or_input("DEEPSEEK_API_KEY", "Enter your DEEPSEEK_API_KEY")
+        env = DEEPSEEK_ENV.copy()
+        env["ANTHROPIC_AUTH_TOKEN"] = api_key
+        update_settings_env(env)
+    elif choice == "4":
         # Custom provider
         env = build_custom_env()
         update_settings_env(env)
