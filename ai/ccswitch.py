@@ -42,6 +42,17 @@ MINIMAX_ENV = {
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "MiniMax-M2.7"
 }
 
+MIMO_ENV = {
+    "ANTHROPIC_AUTH_TOKEN": None,
+    "ANTHROPIC_BASE_URL": "https://api.xiaomimimo.com/anthropic",
+    "API_TIMEOUT_MS": "3000000",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1,
+    "ANTHROPIC_MODEL": "mimo-v2-flash",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "mimo-v2-flash",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "mimo-v2-flash",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "mimo-v2-flash"
+}
+
 DEEPSEEK_ENV = {
     "ANTHROPIC_AUTH_TOKEN": None,
     "ANTHROPIC_BASE_URL": "https://api.deepseek.com/anthropic",
@@ -56,6 +67,7 @@ DEEPSEEK_ENV = {
 PROVIDERS = {
     "GLM": ("GLM Code Plan", "https://docs.bigmodel.cn/cn/coding-plan/quick-start", GLM_ENV),
     "MiniMax": ("MiniMax Code Plan", "https://platform.minimax.io/docs/guides/text-ai-coding-tools", MINIMAX_ENV),
+    "MiMo": ("Xiaomi MiMo", "https://platform.xiaomimimo.com/docs/integration/claudecode", None),
     "DeepSeek": ("DeepSeek", "https://api-docs.deepseek.com/zh-cn/guides/coding_agents", DEEPSEEK_ENV),
     "Custom": ("Custom Endpoint", None, None),
 }
@@ -104,6 +116,8 @@ def get_current_provider():
             return "GLM"
         elif base_url == "https://api.minimax.io/anthropic":
             return "MiniMax"
+        elif base_url == "https://api.xiaomimimo.com/anthropic":
+            return "MiMo"
         elif base_url == "https://api.deepseek.com/anthropic":
             return "DeepSeek"
         elif base_url:
@@ -251,6 +265,11 @@ def main():
     elif selected_key == "MiniMax":
         api_key = get_env_or_input("MINIMAX_API_KEY", "Enter your MINIMAX_API_KEY")
         env = MINIMAX_ENV.copy()
+        env["ANTHROPIC_AUTH_TOKEN"] = api_key
+        update_settings_env(env)
+    elif selected_key == "MiMo":
+        api_key = get_env_or_input("MIMO_API_KEY", "Enter your MIMO_API_KEY")
+        env = MIMO_ENV.copy()
         env["ANTHROPIC_AUTH_TOKEN"] = api_key
         update_settings_env(env)
     elif selected_key == "DeepSeek":
