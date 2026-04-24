@@ -170,6 +170,7 @@ def update_settings_env(new_env):
 
 def curses_select(stdscr, items, current_idx, title):
     """Interactive single-select UI."""
+    import curses
     curses.curs_set(0)
     curses.use_default_colors()
     curses.init_pair(1, curses.COLOR_CYAN, -1)
