@@ -25,6 +25,9 @@ GLM_ENV = {
     "ANTHROPIC_BASE_URL": "https://open.bigmodel.cn/api/anthropic",
     "API_TIMEOUT_MS": "3000000",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1,
+    "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK": 1,
+    "CLAUDE_CODE_EFFORT_LEVEL": "max",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "glm-4.7",
     "ANTHROPIC_MODEL": "glm-4.7",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
@@ -36,6 +39,9 @@ MINIMAX_ENV = {
     "ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic",
     "API_TIMEOUT_MS": "3000000",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1,
+    "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK": 1,
+    "CLAUDE_CODE_EFFORT_LEVEL": "max",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "MiniMax-M2.7",
     "ANTHROPIC_MODEL": "MiniMax-M2.7",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "MiniMax-M2.7",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "MiniMax-M2.7",
@@ -47,10 +53,13 @@ MIMO_ENV = {
     "ANTHROPIC_BASE_URL": "https://api.xiaomimimo.com/anthropic",
     "API_TIMEOUT_MS": "3000000",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1,
-    "ANTHROPIC_MODEL": "mimo-v2-flash",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "mimo-v2-flash",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "mimo-v2-flash",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "mimo-v2-flash"
+    "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK": 1,
+    "CLAUDE_CODE_EFFORT_LEVEL": "max",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "mimo-v2.5-pro",
+    "ANTHROPIC_MODEL": "mimo-v2.5-pro",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "mimo-v2.5-pro",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "mimo-v2.5-pro",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "mimo-v2.5-pro"
 }
 
 DEEPSEEK_ENV = {
@@ -58,6 +67,9 @@ DEEPSEEK_ENV = {
     "ANTHROPIC_BASE_URL": "https://api.deepseek.com/anthropic",
     "API_TIMEOUT_MS": "3000000",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1,
+    "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK": 1,
+    "CLAUDE_CODE_EFFORT_LEVEL": "max",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "deepseek-v4-pro",
     "ANTHROPIC_MODEL": "deepseek-v4-pro",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-v4-flash",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-v4-pro",
@@ -155,17 +167,23 @@ def build_custom_env():
     sonnet_model = get_env_or_input("CC_CUSTOM_DEFAULT_SONNET_MODEL", "Enter your CC_CUSTOM_DEFAULT_SONNET_MODEL")
     opus_model = get_env_or_input("CC_CUSTOM_DEFAULT_OPUS_MODEL", "Enter your CC_CUSTOM_DEFAULT_OPUS_MODEL")
     haiku_model = get_env_or_input("CC_CUSTOM_DEFAULT_HAIKU_MODEL", "Enter your CC_CUSTOM_DEFAULT_HAIKU_MODEL")
+    subagent_model = get_env_or_input("CC_CUSTOM_SUBAGENT_MODEL", "Enter your CC_CUSTOM_SUBAGENT_MODEL (optional)", allow_empty=True)
     api_key = get_env_or_input("CC_CUSTOM_API_KEY", "Enter your CC_CUSTOM_API_KEY (can be empty)", allow_empty=True)
-    return {
+    env = {
         "ANTHROPIC_AUTH_TOKEN": api_key,
         "ANTHROPIC_BASE_URL": endpoint,
         "API_TIMEOUT_MS": "3000000",
         "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1,
+        "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK": 1,
+        "CLAUDE_CODE_EFFORT_LEVEL": "max",
         "ANTHROPIC_MODEL": model,
         "ANTHROPIC_DEFAULT_HAIKU_MODEL": haiku_model,
         "ANTHROPIC_DEFAULT_SONNET_MODEL": sonnet_model,
         "ANTHROPIC_DEFAULT_OPUS_MODEL": opus_model
     }
+    if subagent_model:
+        env["CLAUDE_CODE_SUBAGENT_MODEL"] = subagent_model
+    return env
 
 
 def update_settings_env(new_env):
