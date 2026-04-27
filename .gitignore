@@ -108,3 +108,13 @@ venv.bak/
 .mypy_cache/
 
 .DS_Store
+
+# AI tools config
+CLAUDE.md
+GEMINI.md
+QWEN.md
+.claude/
+.cursor/
+.gemini/
+.qwen/
+.specify/

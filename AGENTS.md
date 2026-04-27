@@ -265,3 +265,44 @@ Mark it executable (`chmod +x`).
 - If a tool requires an external binary (`adb`, `ffmpeg`, ...), state that
   in the module docstring and use `core.shell.require(...)` to fail fast
   with a clear message.
+
+---
+
+## 10. Bundled skills for command lifecycle
+
+This repo ships three project-scoped skills under `.agents/skills/` that
+encode the workflows above. Use them whenever you can — they handle the
+fiddly bits (entry-point alignment, both-READMEs sync, overlap checks,
+deprecation aliases) so you don't have to reinvent the procedure.
+
+| Skill | Purpose | Triggers on |
+|---|---|---|
+| `toolscripts-command-add`    | Add a brand-new command. **Includes a mandatory overlap check** against existing commands and proposes refactoring the closest match instead of creating a duplicate. | "add a command", "新增命令", "create a tool", "I want a command that..." |
+| `toolscripts-command-modify` | Fix, debug, or change behavior of an existing command. Preserves the public CLI contract by default; renames, default changes, and output-format changes require explicit confirmation. | "fix the command", "调整一下命令", "X command is broken", "rename this command" |
+| `toolscripts-command-remove` | Cleanly delete a command (entry point + module + README rows + any bundled data) and optionally leave a deprecation alias for a release. | "remove this command", "删除命令", "下线命令" |
+
+All three reference a shared cheat sheet at
+`.agents/skills/_shared/CONVENTIONS.md`, which is a tight, copy-friendly
+distillation of this very file. If you change the conventions in this
+document, **update that cheat sheet too** so the skills don't fall out of
+sync. The skills are also responsible for keeping `pyproject.toml`,
+`README.md`, and `README.zh-CN.md` consistent — never edit only one of
+those three when touching the public command surface.
+
+### Tool-specific skill discovery
+
+Different AI tools look for skills at different paths. To avoid maintaining
+three copies, this repo keeps the canonical content under `.agents/skills/`
+and creates symlinks for each tool:
+
+```
+.agents/skills/                          # canonical location (the real files)
+.cursor/skills  → ../.agents/skills      # symlink for Cursor
+.claude/skills  → ../.agents/skills      # symlink for Claude Code
+CLAUDE.md       → AGENTS.md              # symlink so Claude Code finds this file
+```
+
+When adding a skill, write it under `.agents/skills/<skill-name>/`. Both
+Cursor and Claude Code will pick it up automatically through their
+respective symlinks. Don't add new top-level tool-specific skills folders
+— extend the symlink set instead.
