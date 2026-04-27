@@ -91,7 +91,15 @@ candidates you may want to remove manually after a `--pip` uninstall.
 
 ## Usage
 
-Every command supports `--help` and respects two global flags:
+Start by discovering what's available:
+
+```bash
+toolscripts-list                          # all commands, grouped by domain
+toolscripts-list -i                       # interactive curses browser
+toolscripts-list -i <domain>              # jump straight to a domain (e.g. git)
+```
+
+Each command also supports `--help` and respects two global flags:
 
 ```
 -v, --verbose   enable debug logging
@@ -127,13 +135,8 @@ full options.
 | system     | `toolscripts-list`, `myip`, `checkspace`, `lsdevcu`, `rm-ds-store`, `rm-meta`, `dirdiff`, `intellij`, `pycharm`, `xcode`, `venv-create`, `uv-venv-create`, `uvcmd`, `iterm-setup` |
 | misc       | `axios-audit`, `extract-games`, `list-include-dirs-from-here`, `list-include-dirs-clang`, `dockercmd`, `docker-linux-env`, `docker-registry`, `mongo-tool` |
 
-The complete list lives in `[project.scripts]` inside `pyproject.toml`.
-
-For an always-up-to-date, browsable view, run `toolscripts-list` (plain text,
-grouped by domain) or `toolscripts-list -i` (curses browser: pick a domain,
-then a command, then read its `--help` in a side pane). Both are populated
-dynamically from the installed entry points, so newly added commands appear
-automatically — no static list to maintain.
+The complete list lives in `[project.scripts]` inside `pyproject.toml` — but
+it's easier to run `toolscripts-list` as shown above.
 
 ## Project layout
 

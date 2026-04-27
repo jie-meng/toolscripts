@@ -85,7 +85,15 @@ pip install -e ".[all]"                # 等价于 ./manage.py install --pip
 
 ## 使用
 
-每个命令都支持 `--help`，并遵循两个全局参数：
+先通过 `toolscripts-list` 查看可用的命令：
+
+```bash
+toolscripts-list                          # 按领域分组，纯文本输出
+toolscripts-list -i                       # 交互模式（curses 浏览器）
+toolscripts-list -i <domain>              # 直接跳转到某个领域（如 git）
+```
+
+每个命令也支持 `--help`，并遵循两个全局参数：
 
 ```
 -v, --verbose   开启 debug 日志
@@ -120,12 +128,8 @@ pip install -e ".[all]"                # 等价于 ./manage.py install --pip
 | 系统       | `toolscripts-list`、`myip`、`checkspace`、`lsdevcu`、`rm-ds-store`、`rm-meta`、`dirdiff`、`intellij`、`pycharm`、`xcode`、`venv-create`、`uv-venv-create`、`uvcmd`、`iterm-setup` |
 | 杂项       | `axios-audit`、`extract-games`、`list-include-dirs-from-here`、`list-include-dirs-clang`、`dockercmd`、`docker-linux-env`、`docker-registry`、`mongo-tool` |
 
-完整列表见 `pyproject.toml` 中的 `[project.scripts]`。
-
-想随时查看一份 **始终最新** 的命令清单,可以跑 `toolscripts-list`(按 domain
-分组的纯文本输出),或者 `toolscripts-list -i` 进入交互模式(curses 浏览器:
-先选 domain,再选命令,右侧实时显示该命令的 `--help`)。两种模式都从已安装的
-entry points 动态读取 —— 新增的命令会自动出现,无需手工维护任何清单。
+完整列表见 `pyproject.toml` 中的 `[project.scripts]` —— 但更方便的做法是
+直接跑上面的 `toolscripts-list`。
 
 ## 项目结构
 
