@@ -11,14 +11,29 @@ run anywhere — macOS, Linux, Windows.
 
 ## Install
 
+The repo ships a tiny helper script that wraps `pipx` and `pip` so you don't
+have to remember the exact flags:
+
 ```bash
 git clone <repo-url>
 cd toolscripts
-pipx install -e ".[all]"
+./manage.py install
 ```
 
 That's it — every command in `[project.scripts]` is now on your `$PATH` with
-**no further configuration**. Updates are just `git pull && pipx reinstall toolscripts`.
+**no further configuration**. Updates are just `git pull && ./manage.py install`
+(it auto-reinstalls if already present).
+
+### `manage.py` cheat sheet
+
+```bash
+./manage.py install                    # pipx + [all]   (recommended default)
+./manage.py install --extras media,git # pipx, only those extras
+./manage.py install --pip              # pip into the active Python env
+./manage.py install --force            # force reinstall
+./manage.py uninstall                  # try both pipx and pip, skip whichever is absent
+./manage.py status                     # show install state on both pipx and pip
+```
 
 ### Why `pipx` instead of `pip`?
 
@@ -30,13 +45,20 @@ that case `pipx` is the right tool:
   projects' dependencies.
 - **`pipx install`** creates a dedicated, isolated venv for the package and
   symlinks just its commands into `~/.local/bin`. No dependency conflicts,
-  no manual `$PATH` setup, clean uninstall via `pipx uninstall toolscripts`.
+  no manual `$PATH` setup, clean uninstall via `./manage.py uninstall`.
 
 If you don't have `pipx` yet:
 
 ```bash
 brew install pipx          # macOS
 python3 -m pip install --user pipx && python3 -m pipx ensurepath
+```
+
+### Manual install (without `manage.py`)
+
+```bash
+pipx install -e ".[all]"               # equivalent to ./manage.py install
+pip install -e ".[all]"                # equivalent to ./manage.py install --pip
 ```
 
 ### Optional dependency groups
@@ -46,15 +68,26 @@ Install only what you need:
 
 | Extra        | What it pulls in                              | Used by                            |
 | ------------ | --------------------------------------------- | ---------------------------------- |
-| `clipboard`  | `pyperclip`                                   | `git-copydiff`, `slugify`, ...     |
+| `clipboard`  | `pyperclip`                                   | `git-copy-diff`, `slugify`, ...    |
 | `media`      | `pillow`, `matplotlib`                        | `img-resize`, `img-scale`, ...     |
-| `office`     | `openpyxl`                                    | `convert-text2num`                 |
-| `text`       | `markdownify`, `translate`, `binaryornot`     | `web2md`, `trans`, ...             |
+| `office`     | `openpyxl`                                    | `xlsx-text2num`                    |
+| `text`       | `markdownify`, `translate`, `binaryornot`     | `web2md`, `translate`, ...         |
 | `windows`    | `windows-curses` (Windows only)               | curses-based pickers               |
 | `all`        | everything above                              | —                                  |
 | `dev`        | `ruff`, `pytest`, `mypy`                      | development                        |
 
-Example: `pipx install -e ".[clipboard,media]"`.
+Example: `./manage.py install --extras clipboard,media`.
+
+## Uninstall
+
+```bash
+./manage.py uninstall          # try both pipx and pip
+./manage.py uninstall --pipx   # only pipx
+./manage.py uninstall --pip    # only pip
+```
+
+`pip` does not auto-remove dependencies — `manage.py` will print the list of
+candidates you may want to remove manually after a `--pip` uninstall.
 
 ## Usage
 

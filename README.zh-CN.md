@@ -10,14 +10,28 @@
 
 ## 安装
 
+仓库自带一个零依赖的小脚本 `manage.py`，封装了 `pipx` 和 `pip`，让你不用记
+具体命令参数：
+
 ```bash
 git clone <repo-url>
 cd toolscripts
-pipx install -e ".[all]"
+./manage.py install
 ```
 
 完事 —— `[project.scripts]` 中的所有命令都已经在你的 `$PATH` 上了，**无需任何额外配置**。
-更新只要 `git pull && pipx reinstall toolscripts`。
+更新只要 `git pull && ./manage.py install`（已安装时会自动重装）。
+
+### `manage.py` 速查
+
+```bash
+./manage.py install                    # pipx + [all]   （推荐默认）
+./manage.py install --extras media,git # pipx，只装指定 extras
+./manage.py install --pip              # 用 pip 装到当前 Python 环境
+./manage.py install --force            # 强制重装
+./manage.py uninstall                  # 两边都尝试卸载，没装的那边自动跳过
+./manage.py status                     # 同时查看 pipx 和 pip 的安装状态
+```
 
 ### 为什么用 `pipx` 而不是 `pip`？
 
@@ -26,13 +40,20 @@ pipx install -e ".[all]"
 - **`pip install`** 把包装到当前激活的 Python 环境（system / user / venv）里，
   容易污染环境并跟其他项目的依赖冲突。
 - **`pipx install`** 为每个包创建独立的 venv，并把命令 symlink 到 `~/.local/bin`。
-  没有依赖冲突、不用手动配 `$PATH`，卸载也干脆 —— `pipx uninstall toolscripts` 即可。
+  没有依赖冲突、不用手动配 `$PATH`，卸载也干脆 —— `./manage.py uninstall` 即可。
 
 如果你还没装 `pipx`：
 
 ```bash
 brew install pipx          # macOS
 python3 -m pip install --user pipx && python3 -m pipx ensurepath
+```
+
+### 不用 `manage.py` 的手动安装
+
+```bash
+pipx install -e ".[all]"               # 等价于 ./manage.py install
+pip install -e ".[all]"                # 等价于 ./manage.py install --pip
 ```
 
 ### 可选依赖分组
@@ -49,7 +70,18 @@ python3 -m pip install --user pipx && python3 -m pipx ensurepath
 | `all`        | 以上全部                                      | —                                  |
 | `dev`        | `ruff`、`pytest`、`mypy`                      | 开发                               |
 
-例如：`pipx install -e ".[clipboard,media]"`。
+例如：`./manage.py install --extras clipboard,media`。
+
+## 卸载
+
+```bash
+./manage.py uninstall          # 两边都尝试卸载
+./manage.py uninstall --pipx   # 仅 pipx
+./manage.py uninstall --pip    # 仅 pip
+```
+
+`pip` 不会自动清理依赖 —— 用 `--pip` 卸载后，`manage.py` 会列出可能想要手动
+卸载的相关依赖。
 
 ## 使用
 
