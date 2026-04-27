@@ -165,7 +165,7 @@ dirdiff                   = "toolscripts.commands.system.dirdiff:main"
 intellij                  = "toolscripts.commands.system.ide:intellij_main"
 pycharm                   = "toolscripts.commands.system.ide:pycharm_main"
 xcode                     = "toolscripts.commands.system.ide:xcode_main"
-cleanup                   = "toolscripts.commands.system.cleanup:main"
+
 venv-create               = "toolscripts.commands.system.venv_create:main"
 uv-venv-create            = "toolscripts.commands.system.uv_venv_create:main"
 uvcmd                     = "toolscripts.commands.system.uvcmd:main"
