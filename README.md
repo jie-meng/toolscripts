@@ -1,43 +1,136 @@
-# ToolScripts
+# toolscripts
 
-A comprehensive collection of utility scripts (primarily Python and Bash) to streamline development, system administration, and daily workflows across various platforms.
+English | [中文](./README.zh-CN.md)
 
-## 🚀 Overview
+A monorepo of cross-platform CLI utilities to **make work simple**.
 
-ToolScripts acts as a personal "Swiss Army Knife" for developers. It categorizes scripts by domain (Android, iOS, Git, Database, Text processing, AI tooling) so that they can be easily executed or linked via the `shell/` directory.
+It bundles 90+ small, single-purpose commands (`timestamp-now`,
+`android-record`, `git-copy-diff`, `json-format`, ...) into one installable
+Python package. Every command is a real Python entry point: install once,
+run anywhere — macOS, Linux, Windows.
 
-## 📂 Project Structure
+## Install
 
-- `ai/`: Tools for managing and integrating AI agents and LLM providers.
-- `android/` & `ios/`: Mobile development utilities (ADB sync, screen recording, logcat, simulator management).
-- `calc/` & `time/`: Hex/Dec/Bin calculators and Unix timestamp conversions.
-- `codec/` & `file/`: Format converters (JSON decoding, text-to-numbers, Markdown).
-- `git/`: Git workflow enhancements (patch applications, branch cleanup).
-- `docker/`: Docker registry scripts and custom environments.
-- `plot/`: Charting and visualization scripts (Mermaid generation).
-- `shell/`: Executable wrappers and shell aliases that expose these scripts globally.
-- *...and many more domain-specific directories.*
+```bash
+git clone <repo-url>
+cd toolscripts
+pipx install -e ".[all]"
+```
 
-## 🛠️ Installation & Usage
+That's it — every command in `[project.scripts]` is now on your `$PATH` with
+**no further configuration**. Updates are just `git pull && pipx reinstall toolscripts`.
 
-1. **Clone the repository:**
-   ```bash
-   git clone <repository-url>
-   cd toolscripts
-   ```
+### Why `pipx` instead of `pip`?
 
-2. **Install dependencies:**
-   Some Python scripts require external libraries (e.g., Pillow, openpyxl, matplotlib).
-   ```bash
-   pip install -r requirements.txt
-   ```
+`toolscripts` is a collection of CLI tools, not a library you `import`. For
+that case `pipx` is the right tool:
 
-3. **Configure the Environment:**
-   You can add the `shell/` directory to your system `PATH` to access these utilities from anywhere:
-   ```bash
-   export PATH="/path/to/toolscripts/shell:$PATH"
-   ```
+- **`pip install`** drops the package into whatever Python environment is
+  active (system / user / venv). Easy to pollute and conflict with other
+  projects' dependencies.
+- **`pipx install`** creates a dedicated, isolated venv for the package and
+  symlinks just its commands into `~/.local/bin`. No dependency conflicts,
+  no manual `$PATH` setup, clean uninstall via `pipx uninstall toolscripts`.
 
-## 📜 License
+If you don't have `pipx` yet:
 
-This project is licensed under the terms provided in the [LICENSE](./LICENSE) file.
+```bash
+brew install pipx          # macOS
+python3 -m pip install --user pipx && python3 -m pipx ensurepath
+```
+
+### Optional dependency groups
+
+To keep the install lean, third-party dependencies are split into extras.
+Install only what you need:
+
+| Extra        | What it pulls in                              | Used by                            |
+| ------------ | --------------------------------------------- | ---------------------------------- |
+| `clipboard`  | `pyperclip`                                   | `git-copydiff`, `slugify`, ...     |
+| `media`      | `pillow`, `matplotlib`                        | `img-resize`, `img-scale`, ...     |
+| `office`     | `openpyxl`                                    | `convert-text2num`                 |
+| `text`       | `markdownify`, `translate`, `binaryornot`     | `web2md`, `trans`, ...             |
+| `windows`    | `windows-curses` (Windows only)               | curses-based pickers               |
+| `all`        | everything above                              | —                                  |
+| `dev`        | `ruff`, `pytest`, `mypy`                      | development                        |
+
+Example: `pipx install -e ".[clipboard,media]"`.
+
+## Usage
+
+Every command supports `--help` and respects two global flags:
+
+```
+-v, --verbose   enable debug logging
+-q, --quiet     only show warnings and errors
+```
+
+A few environment variables tweak output:
+
+| Variable                  | Effect                                         |
+| ------------------------- | ---------------------------------------------- |
+| `TOOLSCRIPTS_LOG_LEVEL`   | override the log level (`DEBUG`/`INFO`/...)    |
+| `TOOLSCRIPTS_LOG_TIME=1`  | prefix log lines with a timestamp              |
+| `NO_COLOR=1`              | disable ANSI colors (https://no-color.org/)    |
+| `FORCE_COLOR=1`           | force ANSI colors even when stderr is not a TTY |
+
+## Available commands
+
+A non-exhaustive tour, grouped by domain. Run any command with `--help` for
+full options.
+
+| Domain     | Commands |
+| ---------- | -------- |
+| time       | `timestamp-now`, `timestamp2date`, `date2timestamp`, `timestamp-offset` |
+| calc       | `dec2bin`, `dec2hex`, `hex2bin`, `hex2dec`, `hex2rgb` |
+| codec      | `json-format`, `decode-format-json`, `url-params-decode`, `convert-oneline` |
+| credential | `jwt-decode`, `basic-auth`, `uuid-gen`, `redact-clipboard`, `pem-to-oneline`, `oauth-code` |
+| git        | `git-copy-diff`, `git-delete-branch`, `git-delete-local-branches`, `git-make-patches`, `git-apply-patches`, `git-install-sensitive-hook`, `git-user`, `git-user-batch` |
+| android    | `android-record`, `android-deeplink`, `android-input-text`, `android-screencast`, `android-logcat`, `android-emulator`, `android-batch-install`, `android-retrieve-media`, `android-rename-project`, `android-adbsync`, `android-cp-drawable`, `android-keystore-generate`, `android-studio` |
+| ios        | `ios-log`, `ios-record`, `ios-simulator`, `xcode-terminal` |
+| media      | `img-resize`, `img-scale`, `imgcat`, `playsound`, `stopsound`, `mp4-compress`, `mov-to-mp4`, `mp4cut`, `mp4togif`, `mp3-to-pcm`, `remove-watermark`, `pdf-merge`, `kindle-pdf-cropper` |
+| ai         | `ccswitch`, `aido`, `aido-models`, `free-models-openrouter`, `free-models-nvidia`, `agents-setup`, `agents-cleanup`, `ai-links`, `npm-tools` |
+| text/docs  | `markdown-snippet`, `slugify`, `web2md`, `translate`, `mermaid`, `statcounter-os-coverage`, `xlsx-text2num` |
+| system     | `myip`, `checkspace`, `lsdevcu`, `rm-ds-store`, `rm-meta`, `dirdiff`, `intellij`, `pycharm`, `xcode`, `cleanup`, `venv-create`, `uv-venv-create`, `uvcmd`, `iterm-setup` |
+| misc       | `axios-audit`, `extract-games`, `list-include-dirs-from-here`, `list-include-dirs-clang`, `dockercmd`, `docker-linux-env`, `docker-registry`, `mongo-tool` |
+
+The complete list lives in `[project.scripts]` inside `pyproject.toml`.
+
+## Project layout
+
+```
+toolscripts/
+├── pyproject.toml              # project metadata, extras, console scripts
+├── src/
+│   └── toolscripts/
+│       ├── core/               # pure utilities (log, colors, shell, ...)
+│       ├── adb/                # ADB device helpers
+│       ├── git_utils/          # shared git helpers
+│       ├── data/               # bundled non-code resources (agents, configs)
+│       └── commands/           # CLI implementations, by domain
+│           ├── android/
+│           ├── ios/
+│           ├── git/
+│           ├── time/
+│           └── ...
+├── tests/
+└── AGENTS.md                   # conventions for AI/human contributors
+```
+
+The `core/` layer has zero business logic. The `adb/` and `git_utils/` layers
+provide cross-domain helpers. Everything in `commands/` is a thin orchestration
+layer — one file per command, each exposing `def main()`.
+
+## Cross-platform behavior
+
+Some commands are inherently platform-specific (e.g. `xcode`, `iterm-setup`).
+Running them on an unsupported platform prints a yellow warning and exits
+cleanly (status `0`) — they are intentional no-ops, not failures:
+
+```
+WARN  iterm.setup  this command is only supported on macos, current platform: linux
+```
+
+## License
+
+MIT — see [LICENSE](./LICENSE).

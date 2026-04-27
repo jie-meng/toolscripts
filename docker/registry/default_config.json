@@ -1,5 +1,0 @@
-{
-    "port": 5000,
-    "host": "registry.domain.com",
-    "prefix": "https"
-}

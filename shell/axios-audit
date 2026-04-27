@@ -1,9 +1,0 @@
-#!/bin/bash
-
-set -e
-
-# Get the directory of the script
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Execute the python script
-python3 "${DIR}/../security/axios-audit.py" "$@"

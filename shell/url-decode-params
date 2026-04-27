@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-set -e
-DIR=$(dirname "$0")
-python "${DIR}/../codec/url-params-decode.py" "$@"

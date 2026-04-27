@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-set -e
-
-python3 "$(dirname "$0")/../ai/free_models_nvidia.py" "$@"

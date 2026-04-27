@@ -1,9 +1,0 @@
-#!/bin/sh
-
-if [ $# -lt 4 ]; then
-  echo "Usage: mp4cut input.mp4 00:00:00 00:00:10 output.mp4"
-  exit 1
-fi
-
-ffmpeg -i $1 -ss $2 -to $3 $4
-
