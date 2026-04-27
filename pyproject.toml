@@ -155,6 +155,7 @@ statcounter-os-coverage   = "toolscripts.commands.text.statcounter:main"
 xlsx-text2num             = "toolscripts.commands.text.text2num:main"
 
 # system / files
+toolscripts-list          = "toolscripts.commands.system.list_commands:main"
 myip                      = "toolscripts.commands.system.myip:main"
 checkspace                = "toolscripts.commands.system.checkspace:main"
 lsdevcu                   = "toolscripts.commands.system.lsdevcu:main"

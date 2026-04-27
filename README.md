@@ -124,10 +124,16 @@ full options.
 | media      | `img-resize`, `img-scale`, `imgcat`, `playsound`, `stopsound`, `mp4-compress`, `mov-to-mp4`, `mp4cut`, `mp4togif`, `mp3-to-pcm`, `remove-watermark`, `pdf-merge`, `kindle-pdf-cropper` |
 | ai         | `ccswitch`, `aido`, `aido-models`, `free-models-openrouter`, `free-models-nvidia`, `agents-setup`, `agents-cleanup`, `ai-links`, `npm-tools` |
 | text/docs  | `markdown-snippet`, `slugify`, `web2md`, `translate`, `mermaid`, `statcounter-os-coverage`, `xlsx-text2num` |
-| system     | `myip`, `checkspace`, `lsdevcu`, `rm-ds-store`, `rm-meta`, `dirdiff`, `intellij`, `pycharm`, `xcode`, `cleanup`, `venv-create`, `uv-venv-create`, `uvcmd`, `iterm-setup` |
+| system     | `toolscripts-list`, `myip`, `checkspace`, `lsdevcu`, `rm-ds-store`, `rm-meta`, `dirdiff`, `intellij`, `pycharm`, `xcode`, `cleanup`, `venv-create`, `uv-venv-create`, `uvcmd`, `iterm-setup` |
 | misc       | `axios-audit`, `extract-games`, `list-include-dirs-from-here`, `list-include-dirs-clang`, `dockercmd`, `docker-linux-env`, `docker-registry`, `mongo-tool` |
 
 The complete list lives in `[project.scripts]` inside `pyproject.toml`.
+
+For an always-up-to-date, browsable view, run `toolscripts-list` (plain text,
+grouped by domain) or `toolscripts-list -i` (curses browser: pick a domain,
+then a command, then read its `--help` in a side pane). Both are populated
+dynamically from the installed entry points, so newly added commands appear
+automatically — no static list to maintain.
 
 ## Project layout
 
