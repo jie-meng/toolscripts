@@ -27,13 +27,20 @@ That's it — every command in `[project.scripts]` is now on your `$PATH` with
 ### `manage.py` cheat sheet
 
 ```bash
-./manage.py install                    # pipx + [all]   (recommended default)
+./manage.py install                    # pipx, core only — fast, no third-party deps
+./manage.py install --extras all       # pipx + every optional extra
 ./manage.py install --extras media,git # pipx, only those extras
 ./manage.py install --pip              # pip into the active Python env
-./manage.py install --force            # force reinstall
+./manage.py install --force            # force reinstall even if up to date
 ./manage.py uninstall                  # try both pipx and pip, skip whichever is absent
 ./manage.py status                     # show install state on both pipx and pip
 ```
+
+After the first install, re-running `./manage.py install` is a no-op as long
+as `pyproject.toml` hasn't changed — the editable install picks up source
+edits under `src/` automatically. You only need to reinstall when an entry
+point is added/renamed/removed (i.e. `[project.scripts]` changed) or when
+you want to pull in new optional dependencies.
 
 ### Why `pipx` instead of `pip`?
 
@@ -57,8 +64,9 @@ python3 -m pip install --user pipx && python3 -m pipx ensurepath
 ### Manual install (without `manage.py`)
 
 ```bash
-pipx install -e ".[all]"               # equivalent to ./manage.py install
-pip install -e ".[all]"                # equivalent to ./manage.py install --pip
+pipx install -e .                      # equivalent to ./manage.py install
+pipx install -e ".[all]"               # equivalent to ./manage.py install --extras all
+pip install -e .                       # equivalent to ./manage.py install --pip
 ```
 
 ### Optional dependency groups
@@ -132,7 +140,7 @@ full options.
 | media      | `img-resize`, `img-scale`, `imgcat`, `playsound`, `stopsound`, `mp4-compress`, `mov-to-mp4`, `mp4cut`, `mp4togif`, `mp3-to-pcm`, `remove-watermark`, `pdf-merge`, `kindle-pdf-cropper` |
 | ai         | `ccswitch`, `aido`, `aido-models`, `free-models-openrouter`, `free-models-nvidia`, `agents-setup`, `agents-cleanup`, `ai-links`, `npm-tools` |
 | text/docs  | `markdown-snippet`, `slugify`, `web2md`, `translate`, `mermaid`, `statcounter-os-coverage`, `xlsx-text2num` |
-| system     | `toolscripts-list`, `myip`, `checkspace`, `lsdevcu`, `rm-ds-store`, `rm-meta`, `dirdiff`, `intellij`, `pycharm`, `xcode`, `venv-create`, `uv-venv-create`, `uvcmd`, `iterm-setup` |
+| system     | `toolscripts-list`, `myip`, `checkspace`, `lsdevcu`, `rm-ds-store`, `rm-meta`, `dirdiff`, `intellij`, `pycharm`, `xcode`, `venv-create`, `venv-activate`, `uv-venv-create`, `uvcmd`, `iterm-setup` |
 | misc       | `axios-audit`, `extract-games`, `list-include-dirs-from-here`, `list-include-dirs-clang`, `dockercmd`, `docker-linux-env`, `docker-registry`, `mongo-tool` |
 
 The complete list lives in `[project.scripts]` inside `pyproject.toml` — but

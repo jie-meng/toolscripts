@@ -25,13 +25,19 @@ cd toolscripts
 ### `manage.py` 速查
 
 ```bash
-./manage.py install                    # pipx + [all]   （推荐默认）
+./manage.py install                    # pipx，只装核心 —— 飞快，不拉任何三方依赖
+./manage.py install --extras all       # pipx + 全部可选 extras
 ./manage.py install --extras media,git # pipx，只装指定 extras
 ./manage.py install --pip              # 用 pip 装到当前 Python 环境
-./manage.py install --force            # 强制重装
+./manage.py install --force            # 强制重装（即使已经是最新）
 ./manage.py uninstall                  # 两边都尝试卸载，没装的那边自动跳过
 ./manage.py status                     # 同时查看 pipx 和 pip 的安装状态
 ```
+
+首次安装之后，再次跑 `./manage.py install` 默认是 no-op —— 只要
+`pyproject.toml` 没变，editable 安装会自动同步 `src/` 下的源码改动，无需重装。
+只有新增 / 重命名 / 删除命令（即 `[project.scripts]` 变更），或者要拉新的可选
+依赖时，才需要真的走一次重装。
 
 ### 为什么用 `pipx` 而不是 `pip`？
 
@@ -52,8 +58,9 @@ python3 -m pip install --user pipx && python3 -m pipx ensurepath
 ### 不用 `manage.py` 的手动安装
 
 ```bash
-pipx install -e ".[all]"               # 等价于 ./manage.py install
-pip install -e ".[all]"                # 等价于 ./manage.py install --pip
+pipx install -e .                      # 等价于 ./manage.py install
+pipx install -e ".[all]"               # 等价于 ./manage.py install --extras all
+pip install -e .                       # 等价于 ./manage.py install --pip
 ```
 
 ### 可选依赖分组
@@ -125,7 +132,7 @@ toolscripts-list -i <domain>              # 直接跳转到某个领域（如 gi
 | 媒体       | `img-resize`、`img-scale`、`imgcat`、`playsound`、`stopsound`、`mp4-compress`、`mov-to-mp4`、`mp4cut`、`mp4togif`、`mp3-to-pcm`、`remove-watermark`、`pdf-merge`、`kindle-pdf-cropper` |
 | AI 工具    | `ccswitch`、`aido`、`aido-models`、`free-models-openrouter`、`free-models-nvidia`、`agents-setup`、`agents-cleanup`、`ai-links`、`npm-tools` |
 | 文本/文档  | `markdown-snippet`、`slugify`、`web2md`、`translate`、`mermaid`、`statcounter-os-coverage`、`xlsx-text2num` |
-| 系统       | `toolscripts-list`、`myip`、`checkspace`、`lsdevcu`、`rm-ds-store`、`rm-meta`、`dirdiff`、`intellij`、`pycharm`、`xcode`、`venv-create`、`uv-venv-create`、`uvcmd`、`iterm-setup` |
+| 系统       | `toolscripts-list`、`myip`、`checkspace`、`lsdevcu`、`rm-ds-store`、`rm-meta`、`dirdiff`、`intellij`、`pycharm`、`xcode`、`venv-create`、`venv-activate`、`uv-venv-create`、`uvcmd`、`iterm-setup` |
 | 杂项       | `axios-audit`、`extract-games`、`list-include-dirs-from-here`、`list-include-dirs-clang`、`dockercmd`、`docker-linux-env`、`docker-registry`、`mongo-tool` |
 
 完整列表见 `pyproject.toml` 中的 `[project.scripts]` —— 但更方便的做法是

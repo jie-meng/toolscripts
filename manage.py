@@ -6,21 +6,28 @@ remember the exact flags. Supports both installation backends, but `pipx` is
 strongly recommended for CLI tools.
 
 Examples:
-    ./manage.py install                      # pipx + [all] (default)
-    ./manage.py install --extras media,git
+    ./manage.py install                      # pipx, core only (fast, no extras)
+    ./manage.py install --extras all         # pipx + every optional dep
+    ./manage.py install --extras media,clipboard
     ./manage.py install --pip                # pip into the active env
-    ./manage.py install --force              # force reinstall
+    ./manage.py install --force              # force reinstall even if up to date
 
     ./manage.py uninstall                    # try both pipx and pip
     ./manage.py uninstall --pipx
     ./manage.py uninstall --pip
 
     ./manage.py status                       # show install status on both sides
+
+Fast-skip behavior:
+    Once installed via pipx, `./manage.py install` re-runs as a no-op as long
+    as `pyproject.toml` hasn't changed - source edits under `src/` are picked
+    up live by the editable install with no reinstall needed.
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import os
 import shutil
 import subprocess
@@ -28,8 +35,17 @@ import sys
 from pathlib import Path
 
 PACKAGE = "toolscripts"
-DEFAULT_EXTRAS = "all"
+# Default to no extras: the core package has zero third-party deps, so a fresh
+# install is near-instant. Users who need optional features pass --extras
+# explicitly (e.g. --extras media,clipboard) or --extras all to get everything.
+DEFAULT_EXTRAS = ""
 ROOT = Path(__file__).resolve().parent
+# Stamp file: records the mtime of pyproject.toml at the moment of the last
+# successful install. If pyproject.toml hasn't changed since (i.e. no entry
+# points / extras / metadata edits), the editable install needs no reinstall
+# to pick up source changes - we can fast-skip.
+_STAMP = ROOT / ".manage-py-install-stamp"
+_PYPROJECT = ROOT / "pyproject.toml"
 
 
 # ---------------------------------------------------------------------------
@@ -134,6 +150,31 @@ def _hint_install_pipx() -> None:
     print("    sudo apt install pipx                                     # Debian/Ubuntu 23.04+")
 
 
+def _pyproject_mtime() -> float:
+    try:
+        return _PYPROJECT.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
+def _stamp_mtime() -> float:
+    try:
+        return _STAMP.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
+def _write_stamp() -> None:
+    try:
+        _STAMP.write_text(f"{_pyproject_mtime()}\n", encoding="utf-8")
+    except OSError as exc:
+        warn(f"could not write install stamp: {exc}")
+
+
+def _pyproject_changed_since_install() -> bool:
+    return _pyproject_mtime() > _stamp_mtime()
+
+
 # ---------------------------------------------------------------------------
 # commands
 # ---------------------------------------------------------------------------
@@ -150,6 +191,7 @@ def cmd_install(args: argparse.Namespace) -> int:
         if args.force:
             cmd.append("--force-reinstall")
         _run(cmd, check=True)
+        _write_stamp()
         success(f"{PACKAGE} installed via pip into {sys.executable}")
         return 0
 
@@ -158,10 +200,19 @@ def cmd_install(args: argparse.Namespace) -> int:
         return 1
 
     already = _pipx_installed()
+
+    # Fast path: editable install + pyproject.toml unchanged means there is
+    # literally nothing to do. Source edits under src/ are picked up live.
+    if already and not args.force and not _pyproject_changed_since_install():
+        success(f"{PACKAGE} is up to date - editable install picks up src/ changes automatically")
+        info("pass --force to reinstall anyway, or edit pyproject.toml to trigger a reinstall")
+        return 0
+
     if already and not args.force:
-        info(f"{PACKAGE} already installed via pipx - reinstalling to pick up changes")
+        info(f"{PACKAGE} already installed; pyproject.toml changed - reinstalling entry points")
         cmd = ["pipx", "reinstall", PACKAGE]
         _run(cmd, check=True)
+        _write_stamp()
         success(f"{PACKAGE} reinstalled via pipx")
         return 0
 
@@ -169,6 +220,7 @@ def cmd_install(args: argparse.Namespace) -> int:
     if args.force or already:
         cmd.append("--force")
     _run(cmd, check=True)
+    _write_stamp()
     success(f"{PACKAGE} installed via pipx (extras: {args.extras or 'none'})")
     info("commands are now available on $PATH (~/.local/bin)")
     return 0
@@ -199,6 +251,8 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
                   "translate binaryornot")
 
     if did_anything:
+        with contextlib.suppress(OSError):
+            _STAMP.unlink(missing_ok=True)
         success("uninstall complete")
     else:
         warn(f"{PACKAGE} is not installed (pipx or pip) - nothing to do")
@@ -245,12 +299,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_install = sub.add_parser(
         "install",
-        help="install the package (default: pipx + [all])",
+        help="install the package (default: pipx, core only - fast)",
     )
     p_install.add_argument(
         "--extras",
         default=DEFAULT_EXTRAS,
-        help="comma-separated extras to install (default: %(default)s; pass '' for none)",
+        help=(
+            "comma-separated extras to install (default: none - core only). "
+            "Use 'all' for everything, or pick from clipboard,media,office,text,windows. "
+            "Example: --extras media,clipboard"
+        ),
     )
     p_install.add_argument(
         "--pip",

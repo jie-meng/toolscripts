@@ -94,6 +94,9 @@ ENV/
 env.bak/
 venv.bak/
 
+# manage.py install fast-skip stamp
+.manage-py-install-stamp
+
 # Spyder project settings
 .spyderproject
 .spyproject
