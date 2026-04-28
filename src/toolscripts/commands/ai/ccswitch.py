@@ -71,10 +71,30 @@ _DEEPSEEK_ENV = {
 }
 
 PROVIDERS: dict[str, tuple[str, str | None, dict | None, str | None]] = {
-    "GLM": ("GLM Code Plan", "https://docs.bigmodel.cn/cn/coding-plan/quick-start", _GLM_ENV, "GLM_API_KEY"),
-    "MiniMax": ("MiniMax Code Plan", "https://platform.minimax.io/docs/guides/text-ai-coding-tools", _MINIMAX_ENV, "MINIMAX_API_KEY"),
-    "MiMo": ("Xiaomi MiMo", "https://platform.xiaomimimo.com/docs/integration/claudecode", _MIMO_ENV, "MIMO_API_KEY"),
-    "DeepSeek": ("DeepSeek", "https://api-docs.deepseek.com/zh-cn/guides/coding_agents", _DEEPSEEK_ENV, "DEEPSEEK_API_KEY"),
+    "GLM": (
+        "GLM Code Plan",
+        "https://docs.bigmodel.cn/cn/coding-plan/quick-start",
+        _GLM_ENV,
+        "GLM_API_KEY",
+    ),
+    "MiniMax": (
+        "MiniMax Code Plan",
+        "https://platform.minimax.io/docs/guides/text-ai-coding-tools",
+        _MINIMAX_ENV,
+        "MINIMAX_API_KEY",
+    ),
+    "MiMo": (
+        "Xiaomi MiMo",
+        "https://platform.xiaomimimo.com/docs/integration/claudecode",
+        _MIMO_ENV,
+        "MIMO_API_KEY",
+    ),
+    "DeepSeek": (
+        "DeepSeek",
+        "https://api-docs.deepseek.com/zh-cn/guides/coding_agents",
+        _DEEPSEEK_ENV,
+        "DEEPSEEK_API_KEY",
+    ),
     "Custom": ("Custom Endpoint", None, None, None),
 }
 

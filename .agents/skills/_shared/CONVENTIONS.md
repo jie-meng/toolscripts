@@ -157,9 +157,9 @@ agent discovers it on the reflex pass.
 
 ### Concrete examples already in the repo
 
-- `agents-setup` and `agents-cleanup` share their AI tool list via
-  `commands/ai/_integrations.py` (a domain-shared `Integration` dataclass
-  + `INTEGRATIONS` list) — **not** by importing from each other.
+- `agents-setup`, `agents-cleanup`, and `ai-links` share their AI tool
+  registry via `commands/ai/tools.py` (a domain-shared `AITool` dataclass
+  + `AI_TOOLS` list) — **not** by importing from each other.
 - `aido-models` reused / generalized the curses single-picker rather than
   copying multi-select code; the result lives in
   `core.ui_curses.select_one`.

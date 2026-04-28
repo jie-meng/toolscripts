@@ -20,9 +20,7 @@ _PENDING = object()
 
 def _run(cmd: list[str], *, timeout: int | None = None) -> tuple[int, str]:
     try:
-        proc = subprocess.run(
-            cmd, capture_output=True, text=True, check=False, timeout=timeout
-        )
+        proc = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=timeout)
         return proc.returncode, proc.stdout.strip()
     except subprocess.TimeoutExpired:
         return 1, ""
@@ -38,9 +36,7 @@ def _list_installed() -> dict[str, str]:
         return {}
     deps = data.get("dependencies", {})
     return {
-        name: info.get("version", "unknown")
-        for name, info in deps.items()
-        if name not in _BUILTINS
+        name: info.get("version", "unknown") for name, info in deps.items() if name not in _BUILTINS
     }
 
 
@@ -73,6 +69,7 @@ class _VersionFetcher:
 
 def _run_ops_outside_curses(stdscr, ops: list[tuple[str, str]]) -> None:  # type: ignore[no-untyped-def]
     import curses
+
     curses.def_prog_mode()
     curses.endwin()
     print()
@@ -109,8 +106,18 @@ def _draw(stdscr, *, installed, pkg_names, fetcher, nav_pos, scroll_top, selecte
     title = " NPM Global Packages "
     try:
         stdscr.addstr(0, max(0, (w - len(title)) // 2), title, curses.A_BOLD)
-        stdscr.addstr(2, 2, "[j/Down] Down  [k/Up] Up  [gg] Top  [G] Bottom  [Space] Select  [s] All/None", curses.A_DIM)
-        stdscr.addstr(3, 2, "[d] Uninstall  [u] Update Selected  [a] Update All  [r] Refresh  [q] Quit", curses.A_DIM)
+        stdscr.addstr(
+            2,
+            2,
+            "[j/Down] Down  [k/Up] Up  [gg] Top  [G] Bottom  [Space] Select  [s] All/None",
+            curses.A_DIM,
+        )
+        stdscr.addstr(
+            3,
+            2,
+            "[d] Uninstall  [u] Update Selected  [a] Update All  [r] Refresh  [q] Quit",
+            curses.A_DIM,
+        )
         col_hdr = f"{'':8}{'Package':<39}{'Installed':<13}Latest"
         stdscr.addstr(5, 2, col_hdr[: w - 4], curses.A_BOLD)
         stdscr.addstr(6, 2, "-" * min(len(col_hdr), w - 4), curses.A_DIM)
@@ -275,9 +282,7 @@ def main() -> None:
         prog="npm-tools",
         description="Manage globally installed npm packages via curses TUI.",
     )
-    parser.add_argument(
-        "--text", action="store_true", help="print plain text status without TUI"
-    )
+    parser.add_argument("--text", action="store_true", help="print plain text status without TUI")
     add_logging_flags(parser)
     args = parser.parse_args()
     configure_from_args(args)

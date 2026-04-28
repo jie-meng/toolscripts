@@ -10,7 +10,7 @@ from pathlib import Path
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
 from toolscripts.core.ui_curses import select_many
 
-from ._integrations import INTEGRATIONS, Integration
+from .tools import AI_TOOLS, AITool
 
 log = get_logger(__name__)
 
@@ -79,7 +79,7 @@ def _discover_agents() -> list[dict]:
     return agents
 
 
-def _setup_one(integration: Integration, agents: list[dict]) -> None:
+def _setup_one(integration: AITool, agents: list[dict]) -> None:
     log.info("setting up %s ...", integration.tool_name)
     if not integration.is_installed():
         log.warning("not detected, skipping")
@@ -118,12 +118,14 @@ def main() -> None:
 
     agents = _discover_agents()
     if not agents and not args.list:
-        log.error("no agent definitions bundled - rebuild the package after adding files in data/ai/agents/")
+        log.error(
+            "no agent definitions bundled - rebuild the package after adding files in data/ai/agents/"
+        )
         sys.exit(1)
 
     if args.list:
         log.info("Available AI Tools:")
-        for integ in INTEGRATIONS:
+        for integ in AI_TOOLS:
             status = "installed" if integ.is_installed() else "not installed"
             print(f"  {integ.tool_id:<14} {integ.tool_name:<18} [{status}]")
         log.info("Available Agents:")
@@ -132,7 +134,7 @@ def main() -> None:
         return
 
     if args.all:
-        installed = [i for i in INTEGRATIONS if i.is_installed()]
+        installed = [i for i in AI_TOOLS if i.is_installed()]
         if not installed:
             log.warning("no installed AI tools detected")
             return
@@ -141,7 +143,7 @@ def main() -> None:
         return
 
     if args.tool:
-        for integ in INTEGRATIONS:
+        for integ in AI_TOOLS:
             if integ.tool_id == args.tool:
                 _setup_one(integ, agents)
                 return
@@ -151,7 +153,7 @@ def main() -> None:
     items: list[str] = []
     preselected: list[bool] = []
     disabled: set[int] = set()
-    for i, integ in enumerate(INTEGRATIONS):
+    for i, integ in enumerate(AI_TOOLS):
         if integ.is_installed():
             items.append(f"{integ.tool_name} (~/{integ.config_dir_name})")
             preselected.append(True)
@@ -173,7 +175,7 @@ def main() -> None:
         log.info("no tools selected")
         return
     for idx in indices:
-        _setup_one(INTEGRATIONS[idx], agents)
+        _setup_one(AI_TOOLS[idx], agents)
 
 
 if __name__ == "__main__":

@@ -55,7 +55,7 @@ def _extract(html: str) -> list[dict]:
         in_string = False
         escape = False
         end = -1
-        chunk = raw[start.start():]
+        chunk = raw[start.start() :]
         for i, ch in enumerate(chunk):
             if escape:
                 escape = False
@@ -92,14 +92,28 @@ def _extract(html: str) -> list[dict]:
         if not is_free:
             continue
 
-        publisher = next(
-            (label.get("values", [None])[0] for label in labels if label.get("key") == "publisher"),
-            "unknown",
-        ) or "unknown"
-        usecase = next(
-            (label.get("values", [None])[0] for label in labels if label.get("key") == "general"),
-            "",
-        ) or ""
+        publisher = (
+            next(
+                (
+                    label.get("values", [None])[0]
+                    for label in labels
+                    if label.get("key") == "publisher"
+                ),
+                "unknown",
+            )
+            or "unknown"
+        )
+        usecase = (
+            next(
+                (
+                    label.get("values", [None])[0]
+                    for label in labels
+                    if label.get("key") == "general"
+                ),
+                "",
+            )
+            or ""
+        )
 
         seen.add(rid)
         out.append(
@@ -145,10 +159,16 @@ def main() -> None:
         desc = m["description"]
         if len(desc) > 80:
             desc = desc[:77] + "..."
-        rows.append([
-            m["name"], m["id"], m["publisher"], m["usecase"], desc,
-            (m["date"][:10] if m["date"] else "-"),
-        ])
+        rows.append(
+            [
+                m["name"],
+                m["id"],
+                m["publisher"],
+                m["usecase"],
+                desc,
+                (m["date"][:10] if m["date"] else "-"),
+            ]
+        )
 
     widths = [len(h) for h in headers]
     for row in rows:

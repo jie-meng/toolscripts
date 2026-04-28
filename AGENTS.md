@@ -137,11 +137,11 @@ its own AGENTS.md section (rare), add a section here too.
 
 ### 3.5 Concrete examples from this repo
 
-- `agents-setup` and `agents-cleanup` both need to know about the same set
-  of AI tool integrations (Claude, Cursor, Codex, ...). The `Integration`
-  dataclass and the `INTEGRATIONS` list live once in
-  `commands/ai/_integrations.py`, **not** duplicated across the two
-  commands.
+- `agents-setup`, `agents-cleanup`, and `ai-links` all need to know about
+  the same set of AI tool integrations (Claude, Cursor, Codex, ...). The
+  `AITool` dataclass and the `AI_TOOLS` list live once in
+  `commands/ai/tools.py`, **not** duplicated across the three commands —
+  when a vendor moves a config path, you update one row.
 - `aido-models` needed an interactive single-choice picker. Instead of
   copying the multi-select curses code from `agents-setup`, the picker
   was generalized into `core.ui_curses.select_one` so both commands share

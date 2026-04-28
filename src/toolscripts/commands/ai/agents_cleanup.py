@@ -9,27 +9,27 @@ import sys
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
 from toolscripts.core.ui_curses import select_many
 
-from ._integrations import INTEGRATIONS, Integration
+from .tools import AI_TOOLS, AITool
 
 log = get_logger(__name__)
 
 
-def _has_agents(integ: Integration) -> int:
+def _has_agents(integ: AITool) -> int:
     d = integ.get_agents_dir()
     if not d.exists():
         return 0
     return sum(1 for _ in d.glob("*.md"))
 
 
-def _has_instructions(integ: Integration) -> bool:
+def _has_instructions(integ: AITool) -> bool:
     return integ.get_instructions_path().exists()
 
 
-def _has_anything(integ: Integration) -> bool:
+def _has_anything(integ: AITool) -> bool:
     return _has_agents(integ) > 0 or _has_instructions(integ)
 
 
-def _cleanup_one(integ: Integration) -> None:
+def _cleanup_one(integ: AITool) -> None:
     log.info("cleaning up %s ...", integ.tool_name)
     if not _has_anything(integ):
         log.info("nothing to clean")
@@ -65,7 +65,7 @@ def main() -> None:
     configure_from_args(args)
 
     if args.list:
-        for integ in INTEGRATIONS:
+        for integ in AI_TOOLS:
             agents = _has_agents(integ)
             inst = _has_instructions(integ)
             tags = []
@@ -73,20 +73,22 @@ def main() -> None:
                 tags.append(f"{agents} agents")
             if inst:
                 tags.append(integ.instructions_filename)
-            status = ", ".join(tags) if tags else (
-                "nothing installed" if integ.is_installed() else "not installed"
+            status = (
+                ", ".join(tags)
+                if tags
+                else ("nothing installed" if integ.is_installed() else "not installed")
             )
             print(f"  {integ.tool_id:<14} {integ.tool_name:<18} [{status}]")
         return
 
     if args.all:
-        for integ in INTEGRATIONS:
+        for integ in AI_TOOLS:
             if _has_anything(integ):
                 _cleanup_one(integ)
         return
 
     if args.tool:
-        for integ in INTEGRATIONS:
+        for integ in AI_TOOLS:
             if integ.tool_id == args.tool:
                 _cleanup_one(integ)
                 return
@@ -95,7 +97,7 @@ def main() -> None:
 
     items: list[str] = []
     preselected: list[bool] = []
-    for integ in INTEGRATIONS:
+    for integ in AI_TOOLS:
         agents = _has_agents(integ)
         inst = _has_instructions(integ)
         tags = []
@@ -119,7 +121,7 @@ def main() -> None:
         log.info("no tools selected")
         return
     for idx in indices:
-        _cleanup_one(INTEGRATIONS[idx])
+        _cleanup_one(AI_TOOLS[idx])
 
 
 if __name__ == "__main__":
