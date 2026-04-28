@@ -72,9 +72,10 @@ def models_main() -> None:
 
     preselected = saved_idx if saved_idx is not None else None
 
+    display = [f"* {m}" if m == saved else f"  {m}" for m in models]
     idx = select_one(
         "Select a free model for aido:",
-        models,
+        display,
         default_index=preselected,
     )
     if idx is None:

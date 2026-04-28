@@ -109,7 +109,7 @@ def _draw(stdscr, *, installed, pkg_names, fetcher, nav_pos, scroll_top, selecte
     title = " NPM Global Packages "
     try:
         stdscr.addstr(0, max(0, (w - len(title)) // 2), title, curses.A_BOLD)
-        stdscr.addstr(2, 2, "[i/k/Up] Up  [j/Down] Down  [Space] Select  [s] Select All/None", curses.A_DIM)
+        stdscr.addstr(2, 2, "[j/Down] Down  [k/Up] Up  [gg] Top  [G] Bottom  [Space] Select  [s] All/None", curses.A_DIM)
         stdscr.addstr(3, 2, "[d] Uninstall  [u] Update Selected  [a] Update All  [r] Refresh  [q] Quit", curses.A_DIM)
         col_hdr = f"{'':8}{'Package':<39}{'Installed':<13}Latest"
         stdscr.addstr(5, 2, col_hdr[: w - 4], curses.A_BOLD)
@@ -206,6 +206,13 @@ def _curses_loop(stdscr) -> None:  # type: ignore[no-untyped-def]
         elif key in (curses.KEY_DOWN, ord("j")):
             if pkg_names:
                 nav_pos = min(len(pkg_names) - 1, nav_pos + 1)
+        elif key == ord("g"):
+            key2 = stdscr.getch()
+            if key2 == ord("g"):
+                nav_pos = 0
+        elif key == ord("G"):
+            if pkg_names:
+                nav_pos = len(pkg_names) - 1
         elif key in (ord("s"), ord("S")):
             if len(selected) == len(pkg_names):
                 selected.clear()
