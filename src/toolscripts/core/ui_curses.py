@@ -1,10 +1,59 @@
 """Curses-based interactive selection UIs.
 
-Provides a multi-select picker with arrow-key navigation, ``space`` to toggle,
-``a`` to select/deselect all, ``Enter`` to confirm, ``q`` / Esc to cancel.
+Two reusable pickers cover the vast majority of "let the user pick from a
+list" needs in toolscripts. **Use these by default — do not roll your own
+curses code** unless your command genuinely needs an application-level TUI
+(see "When to roll your own" below).
 
-Also provides ``browse_commands(...)`` — a two-pane drill-down browser for
-hierarchies of commands (used by ``toolscripts-list -i``).
+Public API
+----------
+
+``select_one(title, items, *, default_index=None) -> int | None``
+    Pick **one** item. Returns the chosen index, or ``None`` if the user
+    cancels (``q`` / Esc). Used by e.g. ``aido-models``.
+
+``select_many(title, items, *, preselected=None, disabled=None) -> list[int] | None``
+    Pick **zero or more** items. Returns the list of chosen indices (may be
+    empty), or ``None`` if the user cancels. Supports preselected items
+    (``preselected: list[bool]``) and disabled items
+    (``disabled: set[int]`` — rendered dimmed and unselectable). Used by e.g.
+    ``agents-setup`` / ``agents-cleanup``.
+
+``browse_commands(...)``
+    Two-pane drill-down browser for hierarchies of commands (used by
+    ``toolscripts-list -i``). Specialized — most commands won't need this.
+
+Decision tree for new commands
+------------------------------
+
+When you need user input from a list:
+
+1. "Pick exactly one of these N options" → ``select_one``
+2. "Pick any subset of these N options" → ``select_many``
+3. "Pick from a tree of categories → items" → ``browse_commands``
+4. None of the above (e.g. live-updating list, background workers, run
+   actions and stay in the UI) → see "When to roll your own".
+
+The legacy names ``single_select`` and ``multi_select`` are kept as aliases
+for backwards compatibility. New code should use ``select_one`` /
+``select_many``.
+
+When to roll your own
+---------------------
+
+Write a custom curses loop (like ``commands/ai/npm_tools.py``) only when:
+
+- you need to refresh the screen on a timer (e.g. background worker results),
+- you need to invoke external commands without leaving the picker,
+- you need a non-list layout (multi-pane, tabular columns, status bars).
+
+Otherwise, please reuse ``select_one`` / ``select_many`` so every command's
+picker behaves the same way (same keys: ``j``/``k`` or arrows to move,
+``Space`` to toggle in multi-select, ``Enter`` to confirm, ``q``/Esc to
+cancel).
+
+Platform notes
+--------------
 
 On Windows the standard library does not ship the ``curses`` module; install
 ``windows-curses`` (e.g. ``pip install windows-curses``) to enable this UI.
@@ -49,7 +98,7 @@ def _ensure_curses_available() -> None:
         sys.exit(1)
 
 
-def multi_select(
+def select_many(
     title: str,
     items: list[str],
     *,
@@ -57,7 +106,12 @@ def multi_select(
     disabled: set[int] | None = None,
     selected_color: int = 5,
 ) -> list[int] | None:
-    """Show a multi-select UI and return the chosen indices, or None on cancel."""
+    """Show a multi-select picker; return the chosen indices, or ``None`` on cancel.
+
+    Keys: ``j``/``k`` or arrows to move, ``Space`` to toggle, ``a`` to select
+    all / none, ``Enter`` to confirm, ``q`` or Esc to cancel. Items in
+    ``disabled`` are rendered dimmed and cannot be toggled.
+    """
     _ensure_curses_available()
     import curses
 
@@ -74,15 +128,16 @@ def multi_select(
     return curses.wrapper(_run)
 
 
-def single_select(
+def select_one(
     title: str,
     items: list[str],
     *,
     default_index: int | None = None,
 ) -> int | None:
-    """Show a single-select UI and return the chosen index, or None on cancel.
+    """Show a single-select picker; return the chosen index, or ``None`` on cancel.
 
-    Use arrow keys (or j/k) to move, Enter to confirm, q or Esc to cancel.
+    Keys: ``j``/``k`` or arrows to move, ``Enter`` to confirm, ``q`` or Esc
+    to cancel. ``default_index`` highlights one item on entry.
     """
     _ensure_curses_available()
     import curses
@@ -91,6 +146,12 @@ def single_select(
         return _single_select_impl(stdscr, title, items, default_index)
 
     return curses.wrapper(_run)
+
+
+# Legacy aliases — kept so existing imports keep working. New code should use
+# ``select_one`` / ``select_many``.
+single_select = select_one
+multi_select = select_many
 
 
 def _single_select_impl(

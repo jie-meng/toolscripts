@@ -7,5 +7,6 @@ Modules:
     shell      - subprocess wrappers
     clipboard  - cross-platform clipboard
     prompts    - interactive CLI prompts (yes/no, choice, ask)
-    ui_curses  - curses multi-select UI
+    ui_curses  - curses pickers: ``select_one`` (single), ``select_many``
+                 (multi), and ``browse_commands`` (two-pane drill-down)
 """

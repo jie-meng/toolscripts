@@ -7,7 +7,7 @@ import shutil
 import sys
 
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
-from toolscripts.core.ui_curses import multi_select
+from toolscripts.core.ui_curses import select_many
 
 from ._integrations import INTEGRATIONS, Integration
 
@@ -111,7 +111,7 @@ def main() -> None:
             items.append(f"{integ.tool_name} [not installed]")
         preselected.append(False)
 
-    indices = multi_select("Select AI tools to cleanup:", items, preselected=preselected)
+    indices = select_many("Select AI tools to cleanup:", items, preselected=preselected)
     if indices is None:
         log.warning("cancelled")
         return

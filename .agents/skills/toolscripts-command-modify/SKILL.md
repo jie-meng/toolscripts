@@ -33,6 +33,8 @@ If you have not yet, read the shared conventions cheat sheet:
 - [ ] Step 2: Reproduce / understand the current behavior
 - [ ] Step 3: Decide if this is a "preserve contract" or "intentional break" change
 - [ ] Step 4: Apply the smallest correct change
+              (reuse-first reflex: lift duplication into core/ or domain packages
+              instead of copy-pasting; never import from another command)
 - [ ] Step 5: Sync pyproject.toml + READMEs (only if the public surface changed)
 - [ ] Step 6: Tell the user whether ./manage.py install --force is needed
 ```
@@ -90,18 +92,47 @@ Bucket the change into one of:
   - If changing output, mention it in the commit-style explanation you
     return to the user so they know to retest piping.
 
-### Step 4 — Apply the change
+### Step 4 — Apply the change (reuse-first reflex applies here too)
 
-- Reuse `core/` helpers instead of rolling new ones. If you find yourself
-  writing yet another "run subprocess and log it" wrapper inside the
-  command file, lift it to `core/shell` (or use what's already there).
-- Don't import from another `commands/...` module. If two commands need
-  shared logic, lift it into `core/` (or a domain-helper package like
-  `adb/`, `git_utils/`).
-- Keep the change focused. If you spot unrelated style nits, leave them
-  unless the user asked for cleanup — don't sweep them in.
+Before writing **any new code** inside the module, do the same reuse-first
+reflex from `_shared/CONVENTIONS.md` §4:
+
+1. **Is what I'm about to write already in `core/` / `adb/` / `git_utils/`?**
+   Match the new behavior to the helpers table at
+   `_shared/CONVENTIONS.md` §5. If yes, use the helper.
+2. **Is this fix or new behavior also needed by another command in the
+   same domain?** Grep `commands/<domain>/`. If yes, decide:
+
+   | Situation | What to do |
+   |---|---|
+   | A `core/` / `adb/` / `git_utils/` helper exists and fits | Use it. Done. |
+   | The would-be shared logic still lives inside another command file | **Stop and lift it** into `core/` (or the right domain package) in this same change. Update the other command to route through it too. Don't `import` from another command. |
+   | Helper exists but needs one more knob | Extend the helper with a kwarg (backwards-compatible default). Don't fork. |
+
+Concrete reuse traps to catch (same list as the -add skill, repeated here
+because the *modify* path is where they get re-introduced most often):
+
+- "Pick from a list" UI → `core.ui_curses.select_one` / `select_many` /
+  `browse_commands`. Do not introduce a fresh `curses.wrapper(...)` loop
+  unless the command genuinely needs an application-level TUI (live
+  worker updates, in-UI external command execution, multi-pane). The only
+  current exception is `commands/ai/npm_tools.py`.
+- Calling `adb` / `git` → `toolscripts.adb` / `toolscripts.git_utils`,
+  not raw `subprocess`.
+- Yes/no or numbered prompts → `core.prompts.yes_no` / `choice` / `ask`.
+- ANSI color → `core.colors`.
+- Clipboard → `core.clipboard.copy_to_clipboard`.
+- OS branching → `core.platform.is_macos` / `is_linux` / `is_windows` /
+  `require_platform`.
+
+Then make the change:
+
 - Keep using `argparse`, `log = get_logger(__name__)`, `add_logging_flags`,
   `configure_from_args`, `core.shell.run/capture/require`.
+- Keep the change focused. If you spot unrelated style nits, leave them
+  unless the user asked for cleanup — don't sweep them in. (The reuse
+  lift in the table above is **not** "unrelated" — it's required to make
+  the fix correctly without growing duplication.)
 - If the command uses an optional third-party dep, keep the lazy-import
   pattern with a friendly error message intact.
 - Run/eyeball `ruff check src/<path> && ruff format src/<path>` before

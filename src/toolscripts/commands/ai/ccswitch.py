@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
-from toolscripts.core.ui_curses import multi_select  # noqa: F401  ensure curses available
 
 log = get_logger(__name__)
 

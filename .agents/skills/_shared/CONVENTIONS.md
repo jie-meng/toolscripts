@@ -96,7 +96,80 @@ Required for every command:
 
 ---
 
-## 4. Core helpers (use these instead of rolling your own)
+## 4. Reuse first (DRY) — the reflex before writing code
+
+Every new command, bug fix, or refactor starts with a **reuse reflex** pass.
+Duplicated code is the biggest source of long-term drift here, so we treat
+reuse as a default behavior, not a stretch goal.
+
+### The 3-question check (do this *before* writing code)
+
+For each non-trivial bit of behavior you're about to write:
+
+1. **Is there a `core/` helper for this?** Skim `src/toolscripts/core/` —
+   `log`, `colors`, `shell`, `clipboard`, `prompts`, `platform`,
+   `ui_curses`. If yes, use it. (See §5 for the table.)
+2. **Is there a domain-shared package?** ADB plumbing → `toolscripts.adb`,
+   git plumbing → `toolscripts.git_utils`. Reuse before writing yet another
+   `subprocess.run(["adb", ...])` / `subprocess.run(["git", ...])`.
+3. **Has another command already solved it?** Grep the relevant
+   `commands/<domain>/` folder for keywords. If yes, see "When you find
+   duplication" below.
+
+### When you find duplication
+
+| Situation | What to do |
+|---|---|
+| Helper exists and fits | Use it. Done. |
+| Helper exists but missing one option | **Extend the helper** with a kwarg (backwards-compatible default). Don't fork. |
+| Two commands have near-identical code, you're about to write a third copy | **Stop and lift it.** Move shared code into `core/` (or `adb/` / `git_utils/` for domain-specific), then route old + new through it — in the **same change**, not "later". |
+
+**Threshold is two.** First time, fine, write it inline. Second time it's
+about to appear, lift it. Don't wait for "three strikes" — by then the
+call sites have drifted.
+
+### Hard rules
+
+- A command **must not** import from another command. If you're tempted,
+  lift the shared code into `core/` (or `adb/` / `git_utils/`).
+- No raw `subprocess` — use `core.shell.run` / `capture` / `try_run` /
+  `which` / `require`.
+- No raw ANSI color escapes — use `core.colors`.
+- No hand-rolled prompt loops — use `core.prompts.yes_no` / `choice` /
+  `ask`.
+- No hand-rolled curses pickers — use `core.ui_curses.select_one` /
+  `select_many` / `browse_commands` (see §5).
+- No DIY clipboard fallbacks — use `core.clipboard.copy_to_clipboard`.
+- No DIY OS detection — use `core.platform.is_macos` / `is_linux` /
+  `is_windows` / `require_platform`.
+
+### When you genuinely need something new
+
+- Pure utility, useful across domains → add to `core/`.
+- Specific to one external tool's plumbing → add to `adb/` or `git_utils/`
+  (or create a new domain-shared package if a third tool earns it).
+- Never put a "shared helper" inside a `commands/...` module just because
+  you happen to be editing that file — the next person looking for the
+  same helper will not find it there.
+
+When you create a new shared helper, add a row to §5 below so the next
+agent discovers it on the reflex pass.
+
+### Concrete examples already in the repo
+
+- `agents-setup` and `agents-cleanup` share their AI tool list via
+  `commands/ai/_integrations.py` (a domain-shared `Integration` dataclass
+  + `INTEGRATIONS` list) — **not** by importing from each other.
+- `aido-models` reused / generalized the curses single-picker rather than
+  copying multi-select code; the result lives in
+  `core.ui_curses.select_one`.
+- Every `android-*` command goes through `toolscripts.adb` for ADB calls
+  so timeouts, error messages, and single-vs-multi-device handling are
+  consistent.
+
+---
+
+## 5. Core helpers (use these instead of rolling your own)
 
 | Need | Use | From |
 |---|---|---|
@@ -109,14 +182,45 @@ Required for every command:
 | Platform gate | `require_platform("macos")` (also `"linux"`, `"windows"`) | `toolscripts.core.platform` |
 | Prompts | `yes_no(...)`, `choice(...)`, `ask(...)` | `toolscripts.core.prompts` |
 | ANSI colors | `colors.RED`, `colors.colored(...)`, `colors_enabled(...)` | `toolscripts.core.colors` |
-| Curses multi-select | `select_many(...)` | `toolscripts.core.ui_curses` |
+| Pick one item from a list (curses) | `select_one(title, items, *, default_index=None)` → `int \| None` | `toolscripts.core.ui_curses` |
+| Pick zero or more items from a list (curses) | `select_many(title, items, *, preselected=None, disabled=None)` → `list[int] \| None` | `toolscripts.core.ui_curses` |
+| Drill-down browser (group → item + detail pane) | `browse_commands(title, entries, *, detail_provider=...)` | `toolscripts.core.ui_curses` |
 
 `require_platform` prints a yellow warning and exits **0** (intentional no-op,
 not a failure) on unsupported OSes.
 
+### Pickers — always reuse, almost never roll your own
+
+When a command needs the user to choose from a list, **default to** the
+shared pickers in `toolscripts.core.ui_curses`:
+
+| Need | Helper |
+|---|---|
+| Pick exactly one item | `select_one(title, items, *, default_index=None)` |
+| Pick any subset of items | `select_many(title, items, *, preselected=None, disabled=None)` |
+| Drill into a tree (group → item + detail) | `browse_commands(title, entries, *, detail_provider=...)` |
+
+Reference implementations in the codebase:
+
+- `select_one` → `commands/ai/aido.py` (`aido-models` model picker).
+- `select_many` → `commands/ai/agents_setup.py` and `agents_cleanup.py`
+  (multi-tool pick with `disabled=` for not-installed tools).
+- `browse_commands` → `commands/system/list_commands.py`
+  (`toolscripts-list -i`).
+
+Roll your own `curses.wrapper(...)` loop **only** when you need behavior the
+helpers don't model: live-updating rows from a background worker, running
+external commands without leaving the UI, or non-list/multi-pane layouts.
+The reference for that pattern is `commands/ai/npm_tools.py`. If you're
+doing plain "pick N of M" / "pick 1 of M", **stop** and use the helpers
+above — do not copy the npm-tools template.
+
+(Legacy aliases `single_select` / `multi_select` still work but are
+deprecated in new code.)
+
 ---
 
-## 5. Dependencies
+## 6. Dependencies
 
 - The base install must have **zero third-party runtime deps**. Standard
   library only.
@@ -144,7 +248,7 @@ If you really need a brand-new third-party dep, add it to the right extra in
 
 ---
 
-## 6. Bundled data resources
+## 7. Bundled data resources
 
 Non-code resources live under `src/toolscripts/data/<domain>/`. They ship
 with the package via:
@@ -166,7 +270,7 @@ Don't hard-code absolute paths and don't read from the source tree.
 
 ---
 
-## 7. External binaries
+## 8. External binaries
 
 If a command shells out to an external tool (`adb`, `gh`, `ffmpeg`,
 `docker`, ...):
@@ -177,7 +281,7 @@ If a command shells out to an external tool (`adb`, `gh`, `ffmpeg`,
 
 ---
 
-## 8. Logging levels
+## 9. Logging levels
 
 | Method | Color | Use for |
 |---|---|---|
@@ -191,7 +295,7 @@ Logs go to **stderr**. Real human output goes to **stdout**.
 
 ---
 
-## 9. Style
+## 10. Style
 
 - Python 3.10+, `from __future__ import annotations` at the top of new files.
 - Type hints encouraged where they help.
@@ -201,7 +305,7 @@ Logs go to **stderr**. Real human output goes to **stdout**.
 
 ---
 
-## 10. Bash scripts (`scripts/`)
+## 11. Bash scripts (`scripts/`)
 
 Bash is allowed only when Python genuinely cannot do the job (e.g. shelling
 out to `yum`/`make` for system installs). When you must:
@@ -221,7 +325,7 @@ Mark it executable (`chmod +x`). Bash scripts are **not** registered in
 
 ---
 
-## 11. README tables
+## 12. README tables
 
 `README.md` and `README.zh-CN.md` both have a "命令一览 / Available commands"
 table grouped by domain. Whenever you add, rename, or remove a command, the
@@ -233,7 +337,7 @@ matching between the two files.
 
 ---
 
-## 12. Editable install reload
+## 13. Editable install reload
 
 After editing `[project.scripts]` (adding/removing/renaming an entry point),
 the user has to refresh the install:

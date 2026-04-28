@@ -8,7 +8,7 @@ from importlib import resources
 from pathlib import Path
 
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
-from toolscripts.core.ui_curses import multi_select
+from toolscripts.core.ui_curses import select_many
 
 from ._integrations import INTEGRATIONS, Integration
 
@@ -160,7 +160,7 @@ def main() -> None:
             preselected.append(False)
             disabled.add(i)
 
-    indices = multi_select(
+    indices = select_many(
         "Select AI tools to set up agents:",
         items,
         preselected=preselected,

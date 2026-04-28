@@ -41,7 +41,7 @@ src/toolscripts/
     shell.py             # subprocess wrappers (run/capture/which/require)
     clipboard.py         # cross-platform clipboard
     prompts.py           # interactive prompts (yes_no/choice/ask)
-    ui_curses.py         # curses multi-select picker
+    ui_curses.py         # curses pickers: select_one / select_many / browse_commands
   adb/                   # ADB helpers shared by android-* commands
   git_utils/             # git helpers shared by git-* commands
   commands/              # CLI implementations, one file per command
@@ -65,11 +65,98 @@ tests/                   # pytest suite
 
 ---
 
-## 3. Adding a new command
+## 3. Reuse first (DRY)
+
+**Every change — new command, bug fix, refactor — starts with a quick "is
+this already done?" check.** Duplicated code is the single biggest source
+of long-term drift in this monorepo, so we treat reuse as a default
+behavior, not a stretch goal.
+
+### 3.1 The reuse reflex (do this *before* writing code)
+
+For each non-trivial piece of behavior you're about to write, ask:
+
+1. **Is there already a `core/` helper for this?** Skim
+   `src/toolscripts/core/` — `log`, `colors`, `shell`, `clipboard`,
+   `prompts`, `platform`, `ui_curses`. If a helper already does it, use
+   the helper.
+2. **Is there a domain-shared package for this?** ADB-related plumbing
+   lives in `src/toolscripts/adb/`; git plumbing lives in
+   `src/toolscripts/git_utils/`. Reuse those before writing yet another
+   `subprocess.run(["adb", ...])` or `subprocess.run(["git", ...])`.
+3. **Has another command already solved this?** Grep the relevant
+   `commands/<domain>/` folder for the keyword. If yes, see §3.2.
+
+### 3.2 When you find duplication
+
+| Situation | What to do |
+|---|---|
+| The shared helper exists and fits — just use it. | Use it. Done. |
+| The helper exists but doesn't quite fit — close, but missing a small option. | **Extend the helper** (add a kwarg with a backwards-compatible default). Don't fork it. |
+| Two commands already have near-identical code, and you're about to write a third copy. | **Stop and lift it.** Move the shared code to `core/` (or to `adb/` / `git_utils/` if it's domain-specific), have all call sites — old and new — go through the helper. Do this in the **same change**, not "later". |
+| The would-be shared code is platform-specific, depends on a third-party library, or has fallback logic | All the more reason to centralize it once: the fallback / version check / try-import block belongs in `core/`, not duplicated in N commands. |
+
+The threshold is **two**. The first time you write a piece of logic, fine,
+write it inline. The second time it's about to appear, lift it. Don't wait
+for "three strikes" — by then the call sites have already drifted.
+
+### 3.3 Hard rules
+
+- A command **must not** `import` from another command. If you're tempted,
+  that's the signal to lift code into `core/` (or `adb/` / `git_utils/`).
+- Don't reach for `subprocess` directly — `core.shell` (`run`, `capture`,
+  `try_run`, `which`, `require`) covers the common cases and gives you
+  consistent error handling.
+- Don't roll your own ANSI color escapes — use `core.colors`.
+- Don't roll your own prompt loops — use `core.prompts.yes_no` /
+  `choice` / `ask`.
+- Don't roll your own curses picker — use `core.ui_curses.select_one` /
+  `select_many` / `browse_commands` (see §6 *Interactive UIs* below for the
+  decision tree).
+- Don't reimplement clipboard fallbacks — `core.clipboard.copy_to_clipboard`
+  already handles the cross-platform mess.
+- Don't reimplement OS detection — use `core.platform.is_macos` /
+  `is_linux` / `is_windows` / `require_platform`.
+
+### 3.4 If you genuinely need something new
+
+If the helper you need doesn't exist anywhere:
+
+1. Add it to **`core/`** if it has no business logic (pure utility, useful
+   across domains).
+2. Add it to **`adb/`** or **`git_utils/`** if it's specific to one
+   external tool's plumbing.
+3. Don't add it to a `commands/...` module just because you happen to be
+   editing that file. The next person looking for the same helper will
+   never find it there.
+
+When you create a new shared helper, update the **Core helpers** table in
+`.agents/skills/_shared/CONVENTIONS.md` (§5 there) so future agents discover
+it on the reuse reflex pass. If the helper introduces a new category worth
+its own AGENTS.md section (rare), add a section here too.
+
+### 3.5 Concrete examples from this repo
+
+- `agents-setup` and `agents-cleanup` both need to know about the same set
+  of AI tool integrations (Claude, Cursor, Codex, ...). The `Integration`
+  dataclass and the `INTEGRATIONS` list live once in
+  `commands/ai/_integrations.py`, **not** duplicated across the two
+  commands.
+- `aido-models` needed an interactive single-choice picker. Instead of
+  copying the multi-select curses code from `agents-setup`, the picker
+  was generalized into `core.ui_curses.select_one` so both commands share
+  the same curses skeleton. (See §6 *Interactive UIs*.)
+- ADB device probing is centralized in `src/toolscripts/adb/` so every
+  `android-*` command speaks to ADB the same way (same timeout, same
+  error message, same single-vs-multi-device handling).
+
+---
+
+## 4. Adding a new command
 
 Pick a domain, create the module, register the entry point, done.
 
-### 3.1 File layout
+### 4.1 File layout
 
 ```
 src/toolscripts/commands/<domain>/<snake_name>.py
@@ -79,7 +166,7 @@ src/toolscripts/commands/<domain>/<snake_name>.py
 - Command names exposed to users use `kebab-case` (terminal convention).
 - Command names should be stable — they are user-facing muscle memory.
 
-### 3.2 Module skeleton
+### 4.2 Module skeleton
 
 ```python
 """``my-cmd`` - one-line summary."""
@@ -119,7 +206,7 @@ Required:
 - Print human output to **stdout**; print logs (debug/info/warn/error) via
   the logger which goes to **stderr**. This keeps stdout clean for piping.
 
-### 3.3 Register the entry point
+### 4.3 Register the entry point
 
 Add a line to `[project.scripts]` in `pyproject.toml`:
 
@@ -129,7 +216,7 @@ my-cmd = "toolscripts.commands.<domain>.<snake_name>:main"
 
 After editing, re-run `pip install -e .` (or `pipx reinstall toolscripts`).
 
-### 3.4 Platform gating
+### 4.4 Platform gating
 
 If the command only works on a subset of OSes:
 
@@ -144,7 +231,7 @@ def main() -> None:
 `require_platform` prints a yellow warning and exits with status `0` (the
 command is an intentional no-op on this OS, not a failure).
 
-### 3.5 External commands
+### 4.5 External commands
 
 Use `toolscripts.core.shell` instead of raw `subprocess`:
 
@@ -158,7 +245,7 @@ sha = capture(["git", "rev-parse", "HEAD"])
 
 ---
 
-## 4. Logging
+## 5. Logging
 
 Use `toolscripts.core.log.get_logger(__name__)`. Levels:
 
@@ -176,7 +263,53 @@ a TTY, and respects `NO_COLOR=1` / `FORCE_COLOR=1` per the
 
 ---
 
-## 5. Dependencies
+## 6. Interactive UIs (pickers)
+
+When a command needs the user to choose from a list, **always prefer the
+shared pickers in `core.ui_curses`** over rolling a fresh curses loop or a
+hand-written numbered prompt. This keeps every command's picker consistent
+(same keys, same colors, same Esc/q behavior).
+
+| Need | Use | Returns |
+|---|---|---|
+| Pick exactly one item | `select_one(title, items, *, default_index=None)` | `int` index or `None` (cancel) |
+| Pick zero or more items | `select_many(title, items, *, preselected=None, disabled=None)` | `list[int]` indices or `None` (cancel) |
+| Drill into a tree (group → item) and view detail | `browse_commands(title, entries, *, detail_provider=...)` | `BrowseEntry` or `None` (cancel) |
+
+Examples in the codebase:
+
+- `aido-models` (`commands/ai/aido.py`) — `select_one` for picking a model.
+- `agents-setup` / `agents-cleanup` (`commands/ai/`) — `select_many` for
+  picking which AI tool integrations to act on, with `disabled=` greying
+  out tools that aren't installed.
+- `toolscripts-list -i` (`commands/system/list_commands.py`) —
+  `browse_commands` for the domain → command → `--help` browser.
+
+Decision rule: if your need is "show a list, get the user's pick(s) back,
+then continue in normal stdout/stderr code" → it fits one of the three
+helpers above.
+
+### When to roll your own curses
+
+Write a custom `curses.wrapper(...)` loop **only** when the command needs
+behavior the helpers don't model:
+
+- live-updating rows from a background worker (e.g. `npm-tools` fetching
+  latest versions for each globally-installed package);
+- running external commands without leaving the picker (e.g. `npm-tools`
+  invoking `npm install`/`uninstall` and returning to the menu);
+- non-list layouts (multi-pane, tabular columns, persistent status bars).
+
+If you write one, document it as such in the module docstring. Do **not**
+copy it as a template for plain "pick one of N" / "pick any of N" needs —
+go back to `select_one` / `select_many`.
+
+The legacy names `single_select` and `multi_select` still work as aliases
+for `select_one` / `select_many`. New code should use the new names.
+
+---
+
+## 7. Dependencies
 
 - Core install must have **zero third-party runtime deps**. The base package
   only uses the standard library.
@@ -203,7 +336,7 @@ to native tools — that's preferred.)
 
 ---
 
-## 6. Style
+## 8. Style
 
 - Python 3.10+, type hints encouraged, `from __future__ import annotations`
   at the top of new files.
@@ -216,7 +349,7 @@ to native tools — that's preferred.)
 
 ---
 
-## 7. Bash scripts
+## 9. Bash scripts
 
 Living in `scripts/` only. Two acceptable reasons to keep something in bash:
 
@@ -243,7 +376,7 @@ Mark it executable (`chmod +x`).
 
 ---
 
-## 8. Modifying existing code
+## 10. Modifying existing code
 
 - **Preserve user-facing CLI behavior** unless the change is the explicit
   ask. Existing command names, flags, and output formats are part of the
@@ -257,7 +390,7 @@ Mark it executable (`chmod +x`).
 
 ---
 
-## 9. Helping the user
+## 11. Helping the user
 
 - When the user asks for a new tool, ask one or two clarifying questions if
   the domain isn't obvious, then implement it following the conventions
@@ -268,7 +401,7 @@ Mark it executable (`chmod +x`).
 
 ---
 
-## 10. Bundled skills for command lifecycle
+## 12. Bundled skills for command lifecycle
 
 This repo ships three project-scoped skills under `.agents/skills/` that
 encode the workflows above. Use them whenever you can — they handle the

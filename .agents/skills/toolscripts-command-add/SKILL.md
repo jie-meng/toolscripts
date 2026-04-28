@@ -22,10 +22,12 @@ Copy this checklist and tick items as you go:
 - [ ] Step 1: Clarify the requirement (one sentence)
 - [ ] Step 2: Check for overlap with existing commands → propose reuse / refactor if any
 - [ ] Step 3: Pick the domain folder and command name
-- [ ] Step 4: Write the module under src/toolscripts/commands/<domain>/<snake>.py
-- [ ] Step 5: Register the entry point in pyproject.toml
-- [ ] Step 6: Update README.md and README.zh-CN.md tables
-- [ ] Step 7: Tell the user the command name + ./manage.py install --force
+- [ ] Step 4: Reuse-first reflex — list the helpers/packages this command will lean on,
+              and flag any "I'm about to write code that already exists somewhere" moments
+- [ ] Step 5: Write the module under src/toolscripts/commands/<domain>/<snake>.py
+- [ ] Step 6: Register the entry point in pyproject.toml
+- [ ] Step 7: Update README.md and README.zh-CN.md tables
+- [ ] Step 8: Tell the user the command name + ./manage.py install --force
 ```
 
 ### Step 1 — Clarify
@@ -72,7 +74,59 @@ discover a duplicate later is worse than asking once.
 - **Module name**: `snake_case.py` mirroring the command name without the
   domain prefix (e.g. `copy_diff.py` for `git-copy-diff`).
 
-### Step 4 — Write the module
+### Step 4 — Reuse-first reflex (mandatory, do not skip)
+
+Step 2 checked for an existing **command** that overlaps. Step 4 checks for
+existing **helpers / functions / packages** the new module should lean on
+*before* you write anything. This is what `_shared/CONVENTIONS.md` §4
+(*Reuse first (DRY)*) calls "the reflex".
+
+Walk through the 3-question check:
+
+1. **Is there a `core/` helper for this?** Skim `src/toolscripts/core/` —
+   `log`, `colors`, `shell`, `clipboard`, `prompts`, `platform`,
+   `ui_curses`. Match each piece of intended behavior to a helper in the
+   table at `_shared/CONVENTIONS.md` §5.
+2. **Is there a domain-shared package for this?** ADB plumbing →
+   `toolscripts.adb`. Git plumbing → `toolscripts.git_utils`. If your
+   command shells out to `adb` or `git`, it almost certainly should go
+   through one of these.
+3. **Has another command in the same domain already solved part of this?**
+   Grep the relevant `commands/<domain>/` folder. If yes, decide:
+
+   | Situation | What to do |
+   |---|---|
+   | The shared logic already lives in `core/` / `adb/` / `git_utils/` and fits | Just import it. Done. |
+   | The shared logic lives **inside another command file** | **Stop and lift it** into `core/` (or the right domain package) in this same change, then have both the existing command and the new one route through it. Don't `import` from another command. |
+   | The shared logic *almost* fits but needs one more knob | Extend the existing helper with a kwarg (backwards-compatible default). Don't fork. |
+
+Write down (in your reply to the user, or as comments) the helpers you
+plan to use. If the answer is "I won't use any `core/` helper at all and
+will call `subprocess`/`curses`/raw ANSI directly", that's a strong smell
+— go back and check again.
+
+Common reuse traps to catch here:
+
+- "Pick from a list" UI → use `core.ui_curses.select_one` /
+  `select_many` / `browse_commands`. Do **not** write a fresh
+  `curses.wrapper(...)` loop. The only existing exception is
+  `commands/ai/npm_tools.py` (live worker + in-UI external commands),
+  and it's the exception, not the template.
+- Calling `adb` → use `toolscripts.adb` helpers, not raw `subprocess`.
+- Calling `git` → use `toolscripts.git_utils` helpers.
+- Yes/no or numbered choice prompt → `core.prompts.yes_no` / `choice` /
+  `ask`, not hand-rolled `input()` loops.
+- ANSI color in output → `core.colors`, not raw escape codes.
+- Copying to clipboard → `core.clipboard.copy_to_clipboard`, which already
+  has cross-platform fallbacks.
+- OS branching → `core.platform.is_macos` / `is_linux` / `is_windows` /
+  `require_platform`.
+
+If during Step 5 (writing the module) you discover *yet another* "I'm
+writing code that looks like X in command Y" moment that you missed here,
+**stop and lift it now**, before finishing the new file.
+
+### Step 5 — Write the module
 
 Path: `src/toolscripts/commands/<domain>/<snake_name>.py`
 
@@ -108,9 +162,13 @@ if __name__ == "__main__":
     main()
 ```
 
-Apply the rules from `_shared/CONVENTIONS.md`:
+Apply the rules from `_shared/CONVENTIONS.md`. The reuse-related ones were
+covered in Step 4; the rest:
 
-- Use `core.shell.run` / `core.shell.capture` instead of bare `subprocess`.
+- Wire the helpers you identified in Step 4 — go through `core.shell` /
+  `core.ui_curses` / `core.prompts` / `core.colors` / `core.clipboard` /
+  `core.platform` / `toolscripts.adb` / `toolscripts.git_utils` instead of
+  reaching for `subprocess`, `curses`, `input()`, raw ANSI, etc.
 - Use `core.shell.require("foo")` early when the command needs an external
   binary; mention the binary in the module docstring.
 - Platform-specific commands: call `require_platform("macos")` (or `"linux"`,
@@ -122,9 +180,10 @@ Apply the rules from `_shared/CONVENTIONS.md`:
 - Bundled non-code resources go under `src/toolscripts/data/<domain>/...` and
   are read with `importlib.resources.files(...)`.
 - Print human output to **stdout**; logs go through `log.*` (stderr).
-- Don't import from another command — lift shared code into `core/`.
+- Don't import from another command — lift shared code into `core/` (or
+  the right domain package). See Step 4.
 
-### Step 5 — Register the entry point
+### Step 6 — Register the entry point
 
 Add a single line to `[project.scripts]` in `pyproject.toml`, in the **same
 domain section** as similar commands (the file is grouped by `# domain`
@@ -137,7 +196,7 @@ my-cmd = "toolscripts.commands.<domain>.<snake_name>:main"
 Keep the columns aligned with the surrounding entries (the existing file
 pads command names to a consistent width; match it).
 
-### Step 6 — Update both READMEs
+### Step 7 — Update both READMEs
 
 Both `README.md` and `README.zh-CN.md` have a command table grouped by
 domain. Add the new command name to the matching domain row in **both**
@@ -147,7 +206,7 @@ tables and pick the same domain label translation.
 If you added a new optional dependency or extra, also update the extras
 table ("Optional dependency groups" / "可选依赖分组") in both READMEs.
 
-### Step 7 — Hand off to the user
+### Step 8 — Hand off to the user
 
 Tell the user, in this order:
 

@@ -9,7 +9,7 @@ from pathlib import Path
 
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
 from toolscripts.core.shell import CommandNotFoundError, capture, require, run
-from toolscripts.core.ui_curses import single_select
+from toolscripts.core.ui_curses import select_one
 
 log = get_logger(__name__)
 
@@ -72,7 +72,7 @@ def models_main() -> None:
 
     preselected = saved_idx if saved_idx is not None else None
 
-    idx = single_select(
+    idx = select_one(
         "Select a free model for aido:",
         models,
         default_index=preselected,
