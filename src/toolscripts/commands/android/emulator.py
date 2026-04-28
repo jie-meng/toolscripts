@@ -6,8 +6,9 @@ import argparse
 import sys
 
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
-from toolscripts.core.prompts import choice, yes_no
+from toolscripts.core.prompts import yes_no
 from toolscripts.core.shell import CommandNotFoundError, capture, require, run
+from toolscripts.core.ui_curses import select_one
 
 log = get_logger(__name__)
 
@@ -39,7 +40,7 @@ def main() -> None:
         log.warning("no emulator AVDs configured")
         return
 
-    idx = choice("Please select emulator", avds, default=0)
+    idx = select_one("Please select emulator", avds, default_index=0)
     if idx is None:
         return
     avd = avds[idx]
