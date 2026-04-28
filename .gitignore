@@ -97,6 +97,10 @@ venv.bak/
 # manage.py install fast-skip stamp
 .manage-py-install-stamp
 
+# scratch outputs from agent smoke tests
+.smoke_results/
+.smoke_run.sh
+
 # Spyder project settings
 .spyderproject
 .spyproject

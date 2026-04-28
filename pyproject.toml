@@ -167,7 +167,6 @@ pycharm                   = "toolscripts.commands.system.ide:pycharm_main"
 xcode                     = "toolscripts.commands.system.ide:xcode_main"
 
 venv-create               = "toolscripts.commands.system.venv_create:main"
-venv-activate             = "toolscripts.commands.system.venv_activate:main"
 uv-venv-create            = "toolscripts.commands.system.uv_venv_create:main"
 uvcmd                     = "toolscripts.commands.system.uvcmd:main"
 iterm-setup               = "toolscripts.commands.system.iterm_setup:main"
