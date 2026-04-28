@@ -74,6 +74,73 @@ def multi_select(
     return curses.wrapper(_run)
 
 
+def single_select(
+    title: str,
+    items: list[str],
+    *,
+    default_index: int | None = None,
+) -> int | None:
+    """Show a single-select UI and return the chosen index, or None on cancel.
+
+    Use arrow keys (or j/k) to move, Enter to confirm, q or Esc to cancel.
+    """
+    _ensure_curses_available()
+    import curses
+
+    def _run(stdscr: curses.window) -> int | None:
+        return _single_select_impl(stdscr, title, items, default_index)
+
+    return curses.wrapper(_run)
+
+
+def _single_select_impl(
+    stdscr,
+    title: str,
+    items: list[str],
+    default_index: int | None,
+) -> int | None:
+    import curses
+
+    curses.curs_set(0)
+    curses.use_default_colors()
+    curses.init_pair(1, curses.COLOR_CYAN, -1)
+    curses.init_pair(2, curses.COLOR_GREEN, -1)
+    curses.init_pair(3, curses.COLOR_YELLOW, -1)
+    curses.init_pair(4, curses.COLOR_WHITE, -1)
+
+    cursor = default_index if default_index is not None else 0
+    cursor = max(0, min(cursor, len(items) - 1))
+
+    def draw() -> None:
+        stdscr.clear()
+        stdscr.addstr(0, 0, title, curses.A_BOLD)
+        hint = "Up/Down move | Enter confirm | q quit"
+        stdscr.addstr(1, 0, hint, curses.color_pair(3))
+
+        row = 3
+        for i, item in enumerate(items):
+            marker = ">" if i == cursor else " "
+            attr = curses.A_BOLD | curses.A_REVERSE if i == cursor else 0
+            color = curses.color_pair(2) if i == cursor else curses.color_pair(4)
+            with contextlib.suppress(curses.error):
+                stdscr.addstr(row + i, 0, f"  {marker}  {item}", attr | color)
+
+        stdscr.refresh()
+
+    while True:
+        draw()
+        key = stdscr.getch()
+
+        if key == curses.KEY_UP or key == ord("k"):
+            cursor = max(0, cursor - 1)
+        elif key == curses.KEY_DOWN or key == ord("j"):
+            cursor = min(len(items) - 1, cursor + 1)
+        elif key in (curses.KEY_ENTER, 10, 13):
+            return cursor
+        elif key in (ord("q"), 27):
+            return None
+
+
 def _multi_select_impl(
     stdscr,
     title: str,

@@ -9,6 +9,7 @@ from pathlib import Path
 
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
 from toolscripts.core.shell import CommandNotFoundError, capture, require, run
+from toolscripts.core.ui_curses import single_select
 
 log = get_logger(__name__)
 
@@ -62,22 +63,24 @@ def models_main() -> None:
     config = _load_config()
     saved = config.get(CONFIG_KEY, "")
 
-    print("Select a free model for aido:")
-    for i, m in enumerate(models, 1):
-        marker = "*" if m == saved else " "
-        print(f"  {marker} {i}. {m}")
-    try:
-        raw = input(f"Choice [1-{len(models)}]: ").strip()
-    except (EOFError, KeyboardInterrupt):
-        print()
-        return
-    if not raw or not raw.isdigit():
+    saved_idx = None
+    if saved:
+        for i, m in enumerate(models):
+            if m == saved:
+                saved_idx = i
+                break
+
+    preselected = saved_idx if saved_idx is not None else None
+
+    idx = single_select(
+        "Select a free model for aido:",
+        models,
+        default_index=preselected,
+    )
+    if idx is None:
         log.warning("cancelled")
         return
-    idx = int(raw) - 1
-    if not 0 <= idx < len(models):
-        log.error("invalid selection")
-        sys.exit(1)
+
     chosen = models[idx]
     config[CONFIG_KEY] = chosen
     _save_config(config)
