@@ -171,20 +171,33 @@ def _single_select_impl(
 
     cursor = default_index if default_index is not None else 0
     cursor = max(0, min(cursor, len(items) - 1))
+    top = 0
 
     def draw() -> None:
+        nonlocal top
         stdscr.clear()
         stdscr.addstr(0, 0, title, curses.A_BOLD)
         hint = "Up/Down move | Enter confirm | q quit"
         stdscr.addstr(1, 0, hint, curses.color_pair(3))
 
-        row = 3
-        for i, item in enumerate(items):
-            marker = ">" if i == cursor else " "
-            attr = curses.A_BOLD | curses.A_REVERSE if i == cursor else 0
-            color = curses.color_pair(2) if i == cursor else curses.color_pair(4)
+        height, width = stdscr.getmaxyx()
+        body_row = 3
+        list_h = height - body_row - 1
+
+        if cursor < top:
+            top = cursor
+        elif cursor >= top + list_h:
+            top = cursor - list_h + 1
+
+        for i in range(min(list_h, len(items) - top)):
+            idx = top + i
+            item = items[idx]
+            marker = ">" if idx == cursor else " "
+            attr = curses.A_BOLD | curses.A_REVERSE if idx == cursor else 0
+            color = curses.color_pair(2) if idx == cursor else curses.color_pair(4)
             with contextlib.suppress(curses.error):
-                stdscr.addstr(row + i, 0, f"  {marker}  {item}", attr | color)
+                text = f"  {marker}  {item}"[: width - 1]
+                stdscr.addstr(body_row + i, 0, text, attr | color)
 
         stdscr.refresh()
 
