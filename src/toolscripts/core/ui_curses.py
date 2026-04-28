@@ -177,7 +177,7 @@ def _single_select_impl(
         nonlocal top
         stdscr.clear()
         stdscr.addstr(0, 0, title, curses.A_BOLD)
-        hint = "Up/Down move | Enter confirm | q quit"
+        hint = "j/k move | gg/G jump | Enter/o confirm | q quit"
         stdscr.addstr(1, 0, hint, curses.color_pair(3))
 
         height, width = stdscr.getmaxyx()
@@ -209,7 +209,13 @@ def _single_select_impl(
             cursor = max(0, cursor - 1)
         elif key == curses.KEY_DOWN or key == ord("j"):
             cursor = min(len(items) - 1, cursor + 1)
-        elif key in (curses.KEY_ENTER, 10, 13):
+        elif key == ord("g"):
+            key2 = stdscr.getch()
+            if key2 == ord("g"):
+                cursor = 0
+        elif key == ord("G"):
+            cursor = len(items) - 1
+        elif key in (curses.KEY_ENTER, 10, 13) or key == ord("o"):
             return cursor
         elif key in (ord("q"), 27):
             return None
@@ -251,42 +257,61 @@ def _multi_select_impl(
             candidate = (candidate + direction) % total
         return 0
 
+    def prev_enabled_tail() -> int:
+        return next_enabled(0, -1)
+
+    top = 0
+
     def draw() -> None:
+        nonlocal top
         stdscr.clear()
         stdscr.addstr(0, 0, title, curses.A_BOLD)
-        hint = "Up/Down move | Space toggle | a all/none | Enter confirm | q quit"
+        hint = "j/k move | Space toggle | a all/none | gg/G jump | Enter/o confirm | q quit"
         stdscr.addstr(1, 0, hint, curses.color_pair(3))
 
-        row = 3
-        enabled_sel = [s for i, s in enumerate(selected) if i not in disabled]
-        all_selected = bool(enabled_sel) and all(enabled_sel)
-        marker = "[x]" if all_selected else "[ ]"
-        attr = curses.A_REVERSE if cursor == 0 else 0
-        with contextlib.suppress(curses.error):
-            stdscr.addstr(row, 0, f"  {marker}  {all_label}", attr | curses.color_pair(1))
+        height, width = stdscr.getmaxyx()
+        body_row = 3
+        list_h = height - body_row - 3
 
-        row += 1
-        with contextlib.suppress(curses.error):
-            stdscr.addstr(row, 0, "  " + "-" * 40, curses.color_pair(1))
+        if cursor < top:
+            top = cursor
+        elif cursor >= top + list_h:
+            top = cursor - list_h + 1
 
-        row += 1
-        for i, item in enumerate(items):
-            is_disabled = i in disabled
-            if is_disabled:
-                marker = "[-]"
-                attr = curses.A_DIM
-                color = 0
+        visible = range(top, min(top + list_h, total))
+        row = body_row
+        for idx in visible:
+            if idx == 0:
+                enabled_sel = [s for i, s in enumerate(selected) if i not in disabled]
+                all_selected = bool(enabled_sel) and all(enabled_sel)
+                marker = "[x]" if all_selected else "[ ]"
+                attr = curses.A_REVERSE if cursor == 0 else 0
+                with contextlib.suppress(curses.error):
+                    stdscr.addstr(row, 0, f"  {marker}  {all_label}", attr | curses.color_pair(1))
+                row += 1
+                with contextlib.suppress(curses.error):
+                    stdscr.addstr(row, 0, "  " + "-" * min(40, width - 2), curses.color_pair(1))
+                row += 1
             else:
-                marker = "[x]" if selected[i] else "[ ]"
-                attr = curses.A_REVERSE if cursor == i + 1 else 0
-                color = curses.color_pair(selected_color) if selected[i] else curses.color_pair(4)
-            with contextlib.suppress(curses.error):
-                stdscr.addstr(row + i, 0, f"  {marker}  {item}", attr | color)
+                i = idx - 1
+                item = items[i]
+                is_disabled = i in disabled
+                if is_disabled:
+                    marker = "[-]"
+                    attr = curses.A_DIM
+                    color = 0
+                else:
+                    marker = "[x]" if selected[i] else "[ ]"
+                    attr = curses.A_REVERSE if cursor == idx else 0
+                    color = curses.color_pair(selected_color) if selected[i] else curses.color_pair(4)
+                with contextlib.suppress(curses.error):
+                    stdscr.addstr(row, 0, f"  {marker}  {item}"[: width - 1], attr | color)
+                row += 1
 
         count = sum(1 for i, s in enumerate(selected) if s and i not in disabled)
         with contextlib.suppress(curses.error):
             stdscr.addstr(
-                row + len(items) + 1,
+                height - 2,
                 0,
                 f"  {count}/{enabled_count} selected",
                 curses.color_pair(3),
@@ -302,6 +327,12 @@ def _multi_select_impl(
             cursor = next_enabled(cursor, -1)
         elif key == curses.KEY_DOWN or key == ord("j"):
             cursor = next_enabled(cursor, 1)
+        elif key == ord("g"):
+            key2 = stdscr.getch()
+            if key2 == ord("g"):
+                cursor = 0
+        elif key == ord("G"):
+            cursor = prev_enabled_tail()
         elif key == ord(" "):
             if cursor == 0:
                 enabled_sel = [s for i, s in enumerate(selected) if i not in disabled]
@@ -313,7 +344,7 @@ def _multi_select_impl(
             enabled_sel = [s for i, s in enumerate(selected) if i not in disabled]
             new_val = not (bool(enabled_sel) and all(enabled_sel))
             selected = [new_val if i not in disabled else False for i in range(len(items))]
-        elif key in (curses.KEY_ENTER, 10, 13):
+        elif key in (curses.KEY_ENTER, 10, 13) or key == ord("o"):
             return [i for i, s in enumerate(selected) if s and i not in disabled]
         elif key in (ord("q"), 27):
             return None
