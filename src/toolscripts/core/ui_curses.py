@@ -240,7 +240,7 @@ def _multi_select_impl(
     curses.init_pair(5, curses.COLOR_GREEN, -1)
 
     disabled = disabled or set()
-    selected = list(preselected) if preselected else [i not in disabled for i in range(len(items))]
+    selected = list(preselected) if preselected is not None else [False] * len(items)
     for i in disabled:
         selected[i] = False
 
@@ -303,7 +303,9 @@ def _multi_select_impl(
                 else:
                     marker = "[x]" if selected[i] else "[ ]"
                     attr = curses.A_REVERSE if cursor == idx else 0
-                    color = curses.color_pair(selected_color) if selected[i] else curses.color_pair(4)
+                    color = (
+                        curses.color_pair(selected_color) if selected[i] else curses.color_pair(4)
+                    )
                 with contextlib.suppress(curses.error):
                     stdscr.addstr(row, 0, f"  {marker}  {item}"[: width - 1], attr | color)
                 row += 1
