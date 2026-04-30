@@ -119,37 +119,26 @@ def _pick_network(title: str) -> str | None:
     return names[chosen] if chosen is not None else None
 
 
-def _confirm(msg: str) -> bool:
-    try:
-        return input(f"{msg} [y/N]: ").strip().lower() in ("y", "yes")
-    except (EOFError, KeyboardInterrupt):
-        print()
-        return False
-
-
 def _dispatch(idx: int) -> None:
     if idx == 0:
         _run(["docker", "container", "ls", "-a"])
     elif idx == 1:
         selected = _pick_containers("Select containers to stop:", running_only=True)
         if selected:
-            ids, names = zip(*selected, strict=False)
-            if _confirm(f"Stop {len(ids)} container(s): {', '.join(names)}?"):
-                _run(["docker", "container", "stop", *ids])
+            ids, _ = zip(*selected, strict=False)
+            _run(["docker", "container", "stop", *ids])
     elif idx == 2:
         selected = _pick_containers("Select containers to remove:")
         if selected:
-            ids, names = zip(*selected, strict=False)
-            if _confirm(f"Remove {len(ids)} container(s): {', '.join(names)}?"):
-                _run(["docker", "container", "rm", "-f", *ids])
+            ids, _ = zip(*selected, strict=False)
+            _run(["docker", "container", "rm", "-f", *ids])
     elif idx == 3:
         _run(["docker", "image", "ls"])
     elif idx == 4:
         selected = _pick_images("Select images to remove:")
         if selected:
-            ids, names = zip(*selected, strict=False)
-            if _confirm(f"Remove {len(ids)} image(s): {', '.join(names)}?"):
-                _run(["docker", "image", "rm", *ids])
+            ids, _ = zip(*selected, strict=False)
+            _run(["docker", "image", "rm", *ids])
     elif idx == 5:
         selected = _pick_containers("Select container for logs:", multi=False)
         if selected:
@@ -167,11 +156,9 @@ def _dispatch(idx: int) -> None:
     elif idx == 8:
         _run(["docker", "system", "df", "-v"])
     elif idx == 9:
-        if _confirm("System prune -a removes all unused containers, images, networks. Proceed?"):
-            _run(["docker", "system", "prune", "-a"])
+        _run(["docker", "system", "prune", "-a"])
     elif idx == 10:
-        if _confirm("Volume prune removes all unused volumes. Proceed?"):
-            _run(["docker", "volume", "prune"])
+        _run(["docker", "volume", "prune"])
 
 
 def main() -> None:
