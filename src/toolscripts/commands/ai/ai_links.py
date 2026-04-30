@@ -293,10 +293,17 @@ def _picker_label(tool: AITool) -> str:
 def _interactive_pick(current: set[str]) -> set[str] | None:
     items = [_picker_label(tool) for tool in TOOLS]
     preselected = [tool.tool_id in current for tool in TOOLS]
+    # Disable tools that are not installed and not already linked so they are
+    # excluded from "Select All" and rendered dimmed. Tools that are already
+    # linked remain fully toggleable so the user can remove those links.
+    disabled = {
+        i for i, tool in enumerate(TOOLS) if not tool.is_installed() and tool.tool_id not in current
+    }
     indices = select_many(
         "Select AI tools — already-linked tools are pre-checked:",
         items,
         preselected=preselected,
+        disabled=disabled or None,
     )
     if indices is None:
         return None
