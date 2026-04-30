@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
+from toolscripts.core.ui_curses import select_one
 
 log = get_logger(__name__)
 
@@ -63,7 +64,7 @@ _DEEPSEEK_ENV = {
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1,
     "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK": 1,
     "CLAUDE_CODE_EFFORT_LEVEL": "max",
-    "CLAUDE_CODE_SUBAGENT_MODEL": "deepseek-v4-pro[1m]",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "deepseek-v4-flash",
     "ANTHROPIC_MODEL": "deepseek-v4-pro[1m]",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-v4-flash",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-v4-pro[1m]",
@@ -171,25 +172,28 @@ def _update_settings(new_env: dict) -> None:
     log.success("settings updated.")
 
 
-def _select_provider(default_idx: int) -> str | None:
+def _select_provider(
+    default_idx: int,
+    *,
+    current_key: str | None = None,
+    current_model: str | None = None,
+) -> str | None:
     keys = list(PROVIDERS.keys())
-    print("Select Claude Code provider:")
-    for i, k in enumerate(keys, 1):
-        marker = "*" if i - 1 == default_idx else " "
+    items = []
+    for k in keys:
         label, url, _, _ = PROVIDERS[k]
-        suffix = f" ({url})" if url else ""
-        print(f"  {marker} {i}. {label}{suffix}")
-    try:
-        raw = input(f"Choice [1-{len(keys)}] (default: {default_idx + 1}): ").strip()
-    except (EOFError, KeyboardInterrupt):
-        print()
-        return None
-    if not raw:
-        return keys[default_idx]
-    if not raw.isdigit():
-        return None
-    idx = int(raw) - 1
-    if not 0 <= idx < len(keys):
+        suffix = f"  ({url})" if url else ""
+        prefix = "* " if k == current_key else "  "
+        items.append(f"{prefix}{label}{suffix}")
+
+    if current_key and current_model:
+        current_label = PROVIDERS.get(current_key, ("?",))[0]
+        title = f"current: {current_label} (model={current_model}) | Select Claude Code provider:"
+    else:
+        title = "Select Claude Code provider:"
+
+    idx = select_one(title, items, default_index=default_idx)
+    if idx is None:
         return None
     return keys[idx]
 
@@ -204,12 +208,10 @@ def main() -> None:
     configure_from_args(args)
 
     current, model = _detect_current()
-    if current:
-        log.info("current: %s (model=%s)", current, model)
     keys = list(PROVIDERS.keys())
     default_idx = keys.index(current) if current in keys else 0
 
-    selected = _select_provider(default_idx)
+    selected = _select_provider(default_idx, current_key=current, current_model=model)
     if selected is None:
         log.warning("cancelled")
         return
@@ -226,6 +228,10 @@ def main() -> None:
 
     _update_settings(env)
     log.success("switched to: %s", label)
+    for k, v in env.items():
+        if k == "ANTHROPIC_AUTH_TOKEN":
+            continue
+        print(f"  {k}={v}")
 
 
 if __name__ == "__main__":
