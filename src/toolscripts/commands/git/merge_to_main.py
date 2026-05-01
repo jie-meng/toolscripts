@@ -77,8 +77,8 @@ def main() -> None:
         prog="git-merge-to-main",
         description=(
             "Merge the current branch into the main branch. "
-            "Rebases current branch onto main first, then merges, "
-            "and optionally deletes the source branch (local + remote)."
+            "Rebases current branch onto main first, then merges. "
+            "Optionally deletes the source branch (local + remote)."
         ),
     )
     add_logging_flags(parser)
@@ -138,7 +138,10 @@ def main() -> None:
         _restore_branch(branch)
         sys.exit(1)
 
-    # Step 2: rebase current branch onto main
+    # Step 2: ask merge strategy
+    use_ff = yes_no("fast-forward merge (no merge commit)?", default=True)
+
+    # Step 3: rebase current branch onto main
     log.info("rebasing %s onto %s...", branch, main_branch)
     try:
         run(["git", "checkout", branch])
@@ -146,6 +149,8 @@ def main() -> None:
         log.error("failed to checkout %s", branch)
         _print_failure("checkout", exc)
         sys.exit(1)
+
+    original_commit = capture(["git", "rev-parse", "HEAD"]).strip()
 
     try:
         run(["git", "rebase", main_branch])
@@ -156,29 +161,33 @@ def main() -> None:
         log.info("resolve conflicts, then run: git rebase --continue")
         sys.exit(1)
 
-    # Step 3: merge into main
-    log.info("merging %s into %s...", branch, main_branch)
+    # Step 4: merge into main
+    ff_flag = "--ff-only" if use_ff else "--no-ff"
+    log.info("merging %s into %s (%s)...", branch, main_branch, ff_flag)
     try:
         run(["git", "checkout", main_branch])
     except subprocess.CalledProcessError as exc:
         log.error("failed to checkout %s", main_branch)
         _print_failure("checkout", exc)
-        sys.exit(1)
-
-    try:
-        run(["git", "merge", "--no-ff", "--no-edit", branch])
-    except subprocess.CalledProcessError as exc:
-        log.error("merge failed — there may be conflicts")
-        _print_failure("merge", exc)
-        log.info("you are now on branch %s", main_branch)
         _restore_branch(branch)
         sys.exit(1)
 
-    log.success("%s merged into %s", branch, main_branch)
+    try:
+        run(["git", "merge", ff_flag, "--no-edit", branch])
+    except subprocess.CalledProcessError as exc:
+        log.error("merge failed — restoring to previous state")
+        _print_failure("merge", exc)
+        run(["git", "checkout", branch], check=False)
+        run(["git", "reset", "--hard", original_commit], check=False)
+        run(["git", "checkout", main_branch], check=False)
+        log.info("state restored — nothing changed, you can retry")
+        sys.exit(1)
+
+    log.success("%s merged into %s (%s)", branch, main_branch, ff_flag)
 
     has_errors = False
 
-    # Step 4: delete local branch
+    # Step 5: delete local branch
     if yes_no(f"delete local branch '{branch}'?", default=True):
         try:
             capture(["git", "branch", "-d", branch])
@@ -197,7 +206,7 @@ def main() -> None:
             else:
                 has_errors = True
 
-    # Step 5: delete remote branch if exists
+    # Step 6: delete remote branch if exists
     if _remote_branch_exists(branch):
         if yes_no(f"delete remote branch 'origin/{branch}'?", default=True):
             try:
@@ -210,7 +219,7 @@ def main() -> None:
     else:
         log.debug("no remote tracking branch for %s, skipping remote delete", branch)
 
-    # Step 6: push main
+    # Step 7: push main
     if yes_no(f"push {main_branch} to origin?", default=True):
         log.info("pushing %s...", main_branch)
         try:
