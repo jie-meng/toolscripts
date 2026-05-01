@@ -45,7 +45,7 @@ _MINIMAX_ENV = {
 
 _MIMO_ENV = {
     "ANTHROPIC_AUTH_TOKEN": None,
-    "ANTHROPIC_BASE_URL": "https://api.xiaomimimo.com/anthropic",
+    "ANTHROPIC_BASE_URL": "https://token-plan-cn.xiaomimimo.com/anthropic",
     "API_TIMEOUT_MS": "3000000",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1,
     "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK": 1,
@@ -85,7 +85,7 @@ PROVIDERS: dict[str, tuple[str, str | None, dict | None, str | None]] = {
         "MINIMAX_API_KEY",
     ),
     "MiMo": (
-        "Xiaomi MiMo",
+        "Xiaomi MiMo Token Plan",
         "https://platform.xiaomimimo.com/docs/integration/claudecode",
         _MIMO_ENV,
         "MIMO_API_KEY",
