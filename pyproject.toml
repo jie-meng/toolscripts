@@ -91,6 +91,7 @@ oauth-code                = "toolscripts.commands.credential.oauth_code:main"
 # git
 git-copy-diff             = "toolscripts.commands.git.copy_diff:main"
 git-branch-delete         = "toolscripts.commands.git.branch_delete:main"
+git-merge-to-main         = "toolscripts.commands.git.merge_to_main:main"
 git-delete-local-branches = "toolscripts.commands.git.delete_local_branches:main"
 git-make-patches          = "toolscripts.commands.git.make_patches:main"
 git-apply-patches         = "toolscripts.commands.git.apply_patches:main"
