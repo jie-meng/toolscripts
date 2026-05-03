@@ -134,6 +134,8 @@ mp3-to-pcm                = "toolscripts.commands.media.mp3_to_pcm:main"
 remove-watermark          = "toolscripts.commands.media.remove_watermark:main"
 pdf-merge                 = "toolscripts.commands.media.pdf_merge:main"
 kindle-pdf-cropper        = "toolscripts.commands.media.kindle_pdf_cropper:main"
+audio-record              = "toolscripts.commands.media.record_audio:main"
+audio-trim                = "toolscripts.commands.media.trim_audio:main"
 
 # ai tooling
 ccswitch                  = "toolscripts.commands.ai.ccswitch:main"
