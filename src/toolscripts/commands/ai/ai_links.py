@@ -38,8 +38,8 @@ Behavior
   would create — no blind appending, no ignoring of the user's other
   config files.  ``.opencode`` is always included (opencode may create a
   project-level config dir).  All ``graphify-out/`` directories found in
-  the project tree are fully ignored except the three core reports
-  (``graph.html``, ``GRAPH_REPORT.md``, ``graph.json``).
+  the project tree are fully ignored via ``**/graphify-out/*`` except the
+  three core reports (``graph.html``, ``GRAPH_REPORT.md``, ``graph.json``).
 """
 
 from __future__ import annotations
@@ -66,16 +66,12 @@ MAIN_SKILLS_SUBDIR = "skills"
 GITIGNORE_FILE = ".gitignore"
 GITIGNORE_BLOCK_HEADER = "# AI tools config"
 
-# graphify-out: ignore everything except core reports.
+# graphify-out: ignore everything except core reports at any depth.
 _GRAPHIFY_CORE_REPORTS: tuple[str, ...] = ("graph.html", "GRAPH_REPORT.md", "graph.json")
-
-
-def _graphify_gitignore_entries(rel_dir: str) -> list[str]:
-    """Return gitignore lines that ignore all of *rel_dir* except core reports."""
-    prefix = rel_dir + "/" if rel_dir else ""
-    entries = [f"{prefix}graphify-out/*"]
-    entries.extend(f"!{prefix}graphify-out/{r}" for r in _GRAPHIFY_CORE_REPORTS)
-    return entries
+_GRAPHIFY_GITIGNORE_ENTRIES: list[str] = [
+    "**/graphify-out/*",
+    *[f"!**/graphify-out/{r}" for r in _GRAPHIFY_CORE_REPORTS],
+]
 
 
 @dataclass(frozen=True)
@@ -266,17 +262,9 @@ def _update_gitignore(root: Path, selected: set[str]) -> None:
 
     entries = _gitignore_entries(selected)
 
-    # graphify-out — ignore everything except core reports, for every depth.
-    for gdir in sorted(root.glob("**/graphify-out")):
-        if not gdir.is_dir():
-            continue
-        rel = gdir.relative_to(root)
-        # Skip graphify-out dirs nested inside hidden directories (e.g. .git).
-        if any(part.startswith(".") for part in rel.parts[:-1]):
-            continue
-        parent = str(rel.parent)
-        prefix = "" if parent == "." else parent
-        entries.extend(_graphify_gitignore_entries(prefix))
+    # graphify-out — use **/graphify-out/* to cover any depth.
+    if any(root.glob("**/graphify-out")):
+        entries.extend(_GRAPHIFY_GITIGNORE_ENTRIES)
 
     if not entries:
         new = (cleaned + "\n") if cleaned else ""
