@@ -36,7 +36,10 @@ Behavior
   symlink. The user is told to remove the umbrella symlink first.
 * ``.gitignore`` is rewritten to ignore exactly the symlinks ai-links
   would create — no blind appending, no ignoring of the user's other
-  config files.
+  config files.  ``.opencode`` is always included (opencode may create a
+  project-level config dir).  If ``graphify-out/`` exists in the project,
+  its cache and metadata files are ignored while core reports
+  (``graph.html``, ``GRAPH_REPORT.md``, ``graph.json``) are preserved.
 """
 
 from __future__ import annotations
@@ -62,6 +65,17 @@ MAIN_AGENTS_SUBDIR = "agents"
 MAIN_SKILLS_SUBDIR = "skills"
 GITIGNORE_FILE = ".gitignore"
 GITIGNORE_BLOCK_HEADER = "# AI tools config"
+
+# graphify-out: ignore cache and Python artifacts, keep core reports.
+_GRAPHIFY_GITIGNORE_ENTRIES: list[str] = [
+    "graphify-out/cache/",
+    "graphify-out/.graphify_python",
+    "graphify-out/cost.json",
+    "graphify-out/manifest.json",
+    "!graphify-out/graph.html",
+    "!graphify-out/GRAPH_REPORT.md",
+    "!graphify-out/graph.json",
+]
 
 
 @dataclass(frozen=True)
@@ -225,6 +239,10 @@ def _gitignore_entries(selected: set[str]) -> list[str]:
             continue
         for spec in _link_specs(tool):
             entries.append(str(spec.link))
+    # .opencode — opencode has no repo-level symlinks, but may create a
+    # project-level config directory that should be gitignored.  Always
+    # include it (harmless if the dir doesn't exist).
+    entries.append(".opencode")
     seen: set[str] = set()
     deduped: list[str] = []
     for entry in entries:
@@ -247,6 +265,11 @@ def _update_gitignore(root: Path, selected: set[str]) -> None:
     cleaned = pattern.sub("\n", content).strip("\n")
 
     entries = _gitignore_entries(selected)
+
+    # graphify-out — cache is ephemeral; keep core reports.
+    if (root / "graphify-out").is_dir():
+        entries.extend(_GRAPHIFY_GITIGNORE_ENTRIES)
+
     if not entries:
         new = (cleaned + "\n") if cleaned else ""
     else:
