@@ -118,10 +118,11 @@ venv.bak/
 
 # AI tools config
 CLAUDE.md
+.claude
+.codex
+.github/agents
+.cursor
 GEMINI.md
+.gemini
 QWEN.md
-.claude/
-.cursor/
-.gemini/
-.qwen/
-.specify/
+.qwen

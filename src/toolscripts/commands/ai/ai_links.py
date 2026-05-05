@@ -18,7 +18,7 @@ three symlinks at the repository root:
 
 Every per-tool path is declared on its ``AITool`` row in ``tools.py`` —
 that module is the single source of truth shared with ``agents-setup`` and
-``agents-cleanup``. When a vendor moves a path, you update one row.
+``ai-links``. When a vendor moves a path, you update one row.
 
 Behavior
 --------

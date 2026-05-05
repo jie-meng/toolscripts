@@ -144,8 +144,8 @@ aido-models               = "toolscripts.commands.ai.aido:models_main"
 free-models-openrouter    = "toolscripts.commands.ai.free_models_openrouter:main"
 free-models-nvidia        = "toolscripts.commands.ai.free_models_nvidia:main"
 agents-setup              = "toolscripts.commands.ai.agents_setup:main"
-agents-cleanup            = "toolscripts.commands.ai.agents_cleanup:main"
 ai-links                  = "toolscripts.commands.ai.ai_links:main"
+graphify-setup            = "toolscripts.commands.ai.graphify_setup:main"
 npm-tools                 = "toolscripts.commands.ai.npm_tools:main"
 
 # text / docs / web

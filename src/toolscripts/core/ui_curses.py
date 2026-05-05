@@ -17,7 +17,7 @@ Public API
     empty), or ``None`` if the user cancels. Supports preselected items
     (``preselected: list[bool]``) and disabled items
     (``disabled: set[int]`` — rendered dimmed and unselectable). Used by e.g.
-    ``agents-setup`` / ``agents-cleanup``.
+    ``agents-setup``.
 
 ``browse_commands(...)``
     Two-pane drill-down browser for hierarchies of commands (used by

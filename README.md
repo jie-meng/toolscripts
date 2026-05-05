@@ -138,7 +138,7 @@ full options.
 | android    | `android-record`, `android-deeplink`, `android-input-text`, `android-screencast`, `android-logcat`, `android-emulator`, `android-batch-install`, `android-retrieve-media`, `android-rename-project`, `android-adbsync`, `android-cp-drawable`, `android-keystore-generate`, `android-studio` |
 | ios        | `ios-log`, `ios-record`, `ios-simulator`, `xcode-terminal` |
 | media      | `img-resize`, `img-scale`, `imgcat`, `playsound`, `stopsound`, `mp4-compress`, `mov-to-mp4`, `mp4cut`, `mp4togif`, `mp3-to-pcm`, `remove-watermark`, `pdf-merge`, `kindle-pdf-cropper` |
-| ai         | `ccswitch`, `aido`, `aido-models`, `free-models-openrouter`, `free-models-nvidia`, `agents-setup`, `agents-cleanup`, `ai-links`, `npm-tools` |
+| ai         | `ccswitch`, `aido`, `aido-models`, `free-models-openrouter`, `free-models-nvidia`, `agents-setup`, `ai-links`, `graphify-setup`, `npm-tools` |
 | text/docs  | `markdown-snippet`, `slugify`, `web2md`, `translate`, `mermaid`, `statcounter-os-coverage`, `xlsx-text2num` |
 | system     | `toolscripts-list`, `myip`, `checkspace`, `lsdevcu`, `rm-ds-store`, `rm-meta`, `dirdiff`, `intellij`, `pycharm`, `xcode`, `venv-create`, `uv-venv-create`, `uvcmd`, `iterm-setup` |
 | misc       | `axios-audit`, `extract-games`, `list-include-dirs-from-here`, `list-include-dirs-clang`, `dockercmd`, `docker-linux-env`, `docker-registry`, `mongo-tool` |

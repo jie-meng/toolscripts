@@ -3,14 +3,14 @@
 Single source of truth for every ``commands/ai/`` command that needs to know
 where each AI tool keeps its config, what filename it reads at the repo
 root, and how it discovers skills. When a vendor changes a path, you update
-this file once and all of ``agents-setup``, ``agents-cleanup``, ``ai-links``
+this file once and all of ``agents-setup``, ``ai-links``
 pick up the new behavior.
 
 Layout: each tool is one ``AITool`` row in ``AI_TOOLS``. The fields split
 cleanly into two scopes:
 
 * **User-home scope** (``~/<config_dir_name>/...``) — used by
-  ``agents-setup`` / ``agents-cleanup`` to install/remove the user-level
+  ``agents-setup`` to install/remove the user-level
   ``AGENTS.md``-equivalent file and the per-tool ``agents/`` directory.
 * **Repository scope** (project root + ``.<tool>/`` inside the repo) — used
   by ``ai-links`` to symlink the project's ``AGENTS.md`` and
@@ -30,7 +30,7 @@ class AITool:
     tool_id: str
     tool_name: str
 
-    # ----- user-home scope (used by agents-setup / agents-cleanup) -----
+    # ----- user-home scope (used by agents-setup) -----
     config_dir_name: str
     """Directory under ``~`` (e.g. ``.claude``, ``.config/opencode``)."""
 
@@ -69,7 +69,7 @@ class AITool:
     """Used only when ``repo_umbrella_dir`` is None. Path (relative to the
     repo root) where ``ai-links`` symlinks ``.agents/skills/`` to."""
 
-    # ----- convenience accessors used by agents-setup / agents-cleanup -----
+    # ----- convenience accessors used by agents-setup -----
     def get_config_path(self) -> Path:
         return Path.home() / self.config_dir_name
 
