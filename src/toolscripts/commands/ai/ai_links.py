@@ -63,6 +63,7 @@ MAIN_SKILLS_SUBDIR = "skills"
 GITIGNORE_FILE = ".gitignore"
 GITIGNORE_BLOCK_HEADER = "# AI tools config"
 
+
 @dataclass(frozen=True)
 class LinkSpec:
     """One symlink ai-links manages: ``link`` points at ``display_target``.
@@ -228,6 +229,9 @@ def _gitignore_entries(selected: set[str]) -> list[str]:
     # project-level config directory that should be gitignored.  Always
     # include it (harmless if the dir doesn't exist).
     entries.append(".opencode")
+    # graphify — its output directory can be large and is generated, not
+    # source.  Always ignore it.
+    entries.append("**/graphify-out/")
     seen: set[str] = set()
     deduped: list[str] = []
     for entry in entries:
