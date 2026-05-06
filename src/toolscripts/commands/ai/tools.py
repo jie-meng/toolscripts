@@ -100,22 +100,6 @@ AI_TOOLS: list[AITool] = [
         repo_umbrella_dir=".codex",
     ),
     AITool(
-        "copilot",
-        "GitHub Copilot",
-        ".copilot",
-        # Copilot CLI uses ``$HOME/.copilot/copilot-instructions.md`` for
-        # user-level instructions (NOT ``AGENTS.md`` — confirmed against
-        # docs.github.com 2026 docs). At the repo root it reads ``AGENTS.md``
-        # directly and discovers ``.agents/skills/`` natively, so ai-links
-        # only needs to wire up the agents directory.
-        "copilot-instructions.md",
-        # NOTE: copilot's repo-level agents live in ``.github/agents``, NOT
-        # ``.copilot/agents``. Since ``.github/`` also holds GitHub Actions
-        # workflows, issue templates, etc., we *cannot* umbrella-link it —
-        # use a per-subdir link instead.
-        repo_agents_dir=".github/agents",
-    ),
-    AITool(
         "cursor",
         "Cursor",
         ".cursor",

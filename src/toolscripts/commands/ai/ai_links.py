@@ -8,8 +8,7 @@ three symlinks at the repository root:
   qwen → ``QWEN.md``). Tools that already read ``AGENTS.md`` directly get
   no root link.
 * ``<tool>/agents -> ../.agents/agents`` — exposes the project's shared
-  agent definitions. Path is per-tool (e.g. copilot uses
-  ``.github/agents``, not ``.copilot/agents``).
+  agent definitions (when the tool supports it).
 * ``<tool>/skills -> ../.agents/skills`` — only created for tools where
   the link genuinely helps (claude only reads ``.claude/skills``; cursor's
   slash commands only fire from ``.cursor/skills``). Tools that natively
