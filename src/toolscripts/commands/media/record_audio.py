@@ -314,8 +314,8 @@ def _is_virtual_audio(name: str) -> bool:
     return any(kw in lower for kw in VIRTUAL_AUDIO_KEYWORDS)
 
 
-def _setup_macos_audio() -> list[str]:
-    """Find a virtual audio device, switch output if needed, return ffmpeg args."""
+def _setup_macos_audio() -> tuple[int, str]:
+    """Find a virtual audio device, switch output if needed, return (idx, name)."""
     _macos_ensure_background_music()
 
     audio_devices = _list_macos_audio_devices()
@@ -359,17 +359,60 @@ def _setup_macos_audio() -> list[str]:
                 target_name,
             )
 
-    device_idx, device_name = virtual[0]
-    return ["-f", "avfoundation", "-i", f":{device_idx}:{device_name}"]
+    return virtual[0]
 
 
-def _get_audio_input_args() -> list[str]:
+def _build_record_cmd(output_path: Path, force_format: str | None) -> list[str]:
+    """Build the recording command for the current platform.
+
+    On macOS, prefer ``sox`` over ``ffmpeg``: ffmpeg's AVFoundation audio
+    bridge has a long-standing crackling/popping bug (every ffmpeg ≥ 4.3 is
+    affected, see https://trac.ffmpeg.org/ticket/4513 and BlackHole #761).
+    sox reads BlackHole directly via CoreAudio and produces clean audio.
+    """
     if is_linux():
-        return ["-f", "pulse", "-i", "default"]
+        cmd = ["ffmpeg", "-y", "-f", "pulse", "-i", "default"]
+        if force_format:
+            cmd += ["-f", force_format]
+        cmd.append(str(output_path))
+        return cmd
+
     if is_windows():
-        return ["-f", "dshow", "-i", "audio=virtual-audio-capturer"]
+        cmd = ["ffmpeg", "-y", "-f", "dshow", "-i", "audio=virtual-audio-capturer"]
+        if force_format:
+            cmd += ["-f", force_format]
+        cmd.append(str(output_path))
+        return cmd
+
     if is_macos():
-        return _setup_macos_audio()
+        device_idx, device_name = _setup_macos_audio()
+
+        if shutil.which("sox"):
+            log.debug("using sox (clean CoreAudio capture)")
+            cmd = ["sox", "--clobber", "-t", "coreaudio", device_name]
+            if force_format:
+                cmd += ["-t", force_format]
+            cmd.append(str(output_path))
+            return cmd
+
+        log.warning(
+            "sox not found — falling back to ffmpeg/AVFoundation, which has a known\n"
+            "  crackling/popping bug. For clean recordings install sox:\n"
+            "    brew install sox"
+        )
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "avfoundation",
+            "-i",
+            f":{device_idx}:{device_name}",
+        ]
+        if force_format:
+            cmd += ["-f", force_format]
+        cmd.append(str(output_path))
+        return cmd
+
     log.error("unsupported platform for system audio recording")
     sys.exit(1)
 
@@ -405,7 +448,7 @@ def main() -> None:
     parser.add_argument(
         "-f",
         "--format",
-        help="force ffmpeg output format (e.g. wav, mp3). By default inferred from file extension.",
+        help="force output format (e.g. wav, mp3). By default inferred from file extension.",
     )
     parser.add_argument(
         "--list-devices",
@@ -428,19 +471,23 @@ def main() -> None:
             print("device listing is only supported on macOS currently")
         return
 
-    try:
-        require("ffmpeg")
-    except Exception as exc:
-        log.error("%s", exc)
+    if is_macos() and not shutil.which("sox") and not shutil.which("ffmpeg"):
+        log.error(
+            "neither sox nor ffmpeg found.\n"
+            "  Install one (sox is preferred — ffmpeg has a known\n"
+            "  crackling bug on macOS):\n"
+            "    brew install sox"
+        )
         sys.exit(1)
+    if not is_macos():
+        try:
+            require("ffmpeg")
+        except Exception as exc:
+            log.error("%s", exc)
+            sys.exit(1)
 
     output_path = Path(args.output).expanduser()
-    input_args = _get_audio_input_args()
-
-    cmd = ["ffmpeg", "-y", *input_args]
-    if args.format:
-        cmd += ["-f", args.format]
-    cmd.append(str(output_path))
+    cmd = _build_record_cmd(output_path, args.format)
 
     log.info("recording system audio → %s", output_path)
     log.info("press Enter to stop recording")

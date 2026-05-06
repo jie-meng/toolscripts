@@ -120,9 +120,13 @@ venv.bak/
 CLAUDE.md
 .claude
 .codex
-.github/agents
 .cursor
 GEMINI.md
 .gemini
 QWEN.md
 .qwen
+.opencode
+**/graphify-out/*
+!**/graphify-out/graph.html
+!**/graphify-out/GRAPH_REPORT.md
+!**/graphify-out/graph.json
