@@ -33,12 +33,10 @@ Behavior
   where the user did ``ln -s .agents .claude``), ai-links *refuses* to
   create child links inside it — descending would produce a self-loop
   symlink. The user is told to remove the umbrella symlink first.
-* ``.gitignore`` is rewritten to ignore exactly the symlinks ai-links
-  would create — no blind appending, no ignoring of the user's other
-  config files.  ``.opencode`` is always included (opencode may create a
-  project-level config dir).  All ``graphify-out/`` directories found in
-  the project tree are fully ignored via ``**/graphify-out/*`` except the
-  three core reports (``graph.html``, ``GRAPH_REPORT.md``, ``graph.json``).
+ * ``.gitignore`` is rewritten to ignore exactly the symlinks ai-links
+ * would create — no blind appending, no ignoring of the user's other
+ * config files.  ``.opencode`` is always included (opencode may create a
+ * project-level config dir).
 """
 
 from __future__ import annotations
@@ -64,14 +62,6 @@ MAIN_AGENTS_SUBDIR = "agents"
 MAIN_SKILLS_SUBDIR = "skills"
 GITIGNORE_FILE = ".gitignore"
 GITIGNORE_BLOCK_HEADER = "# AI tools config"
-
-# graphify-out: ignore everything except core reports at any depth.
-_GRAPHIFY_CORE_REPORTS: tuple[str, ...] = ("graph.html", "GRAPH_REPORT.md", "graph.json")
-_GRAPHIFY_GITIGNORE_ENTRIES: list[str] = [
-    "**/graphify-out/*",
-    *[f"!**/graphify-out/{r}" for r in _GRAPHIFY_CORE_REPORTS],
-]
-
 
 @dataclass(frozen=True)
 class LinkSpec:
@@ -260,10 +250,6 @@ def _update_gitignore(root: Path, selected: set[str]) -> None:
     cleaned = pattern.sub("\n", content).strip("\n")
 
     entries = _gitignore_entries(selected)
-
-    # graphify-out — use **/graphify-out/* to cover any depth.
-    if any(root.glob("**/graphify-out")):
-        entries.extend(_GRAPHIFY_GITIGNORE_ENTRIES)
 
     if not entries:
         new = (cleaned + "\n") if cleaned else ""
