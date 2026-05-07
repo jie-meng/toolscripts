@@ -8,8 +8,9 @@ from pathlib import Path
 
 from toolscripts.adb.devices import select_device
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
-from toolscripts.core.prompts import ask, choice
 from toolscripts.core.shell import capture, run
+from toolscripts.core.ui_curses import select_one
+from toolscripts.core.prompts import ask
 
 log = get_logger(__name__)
 
@@ -49,7 +50,7 @@ def main() -> None:
     output_dir = Path(args.output).expanduser()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    idx = choice("Select media type", [p[0] for p in _PRESETS], default=0)
+    idx = select_one("Select media type", [p[0] for p in _PRESETS], default_index=0)
     if idx is None:
         return
     _, remote_dir, prefixes, suffixes = _PRESETS[idx]
