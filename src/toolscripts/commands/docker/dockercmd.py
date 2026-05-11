@@ -371,7 +371,9 @@ def _run_curses(stdscr) -> None:
             except Exception as exc:
                 print(f"Error: {exc}")
             input("\nPress Enter to return to the browser...")
-            curses.reset_prog_mode()
+            curses.noecho()
+            curses.cbreak()
+            stdscr.keypad(True)
             stdscr.clearok(True)
             stdscr.refresh()
         elif key in (ord("q"), 27):

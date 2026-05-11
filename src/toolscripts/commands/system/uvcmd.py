@@ -649,9 +649,12 @@ def _run_curses(stdscr) -> None:
             except Exception as exc:
                 print(f"Error: {exc}")
             input("\nPress Enter to return to the browser...")
-            # Restore curses prog mode after any nested curses.wrapper() calls
-            # (e.g. select_one/select_many) leave the terminal in shell mode.
-            curses.reset_prog_mode()
+            # re-apply curses settings: the inner curses.wrapper() (used by
+            # select_one/select_many) calls initscr() which overwrites the
+            # saved prog mode, so reset_prog_mode() alone is insufficient.
+            curses.noecho()
+            curses.cbreak()
+            stdscr.keypad(True)
             stdscr.clearok(True)
             stdscr.refresh()
         elif key in (ord("q"), 27):
