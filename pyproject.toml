@@ -110,7 +110,7 @@ android-batch-install     = "toolscripts.commands.android.batch_install:main"
 android-retrieve-media    = "toolscripts.commands.android.retrieve_media:main"
 android-rename-project    = "toolscripts.commands.android.rename_project:main"
 android-adbsync           = "toolscripts.commands.android.adbsync:main"
-android-cp-drawable       = "toolscripts.commands.android.cp_drawable:main"
+
 android-keystore-generate = "toolscripts.commands.android.keystore_generate:main"
 android-studio            = "toolscripts.commands.android.studio:main"
 
