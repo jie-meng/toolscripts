@@ -180,8 +180,6 @@ extract-games             = "toolscripts.commands.games.extract_games:main"
 list-include-dirs-from-here = "toolscripts.commands.cpp.list_include:from_here_main"
 list-include-dirs-clang   = "toolscripts.commands.cpp.list_include:clang_main"
 dockercmd                 = "toolscripts.commands.docker.dockercmd:main"
-docker-linux-env          = "toolscripts.commands.docker.linux_env:main"
-docker-registry           = "toolscripts.commands.docker.registry:main"
 mongo-tool                = "toolscripts.commands.db.mongo:main"
 
 [tool.setuptools]

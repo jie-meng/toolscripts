@@ -133,7 +133,7 @@ toolscripts-list -i <domain>              # 直接跳转到某个领域（如 gi
 | AI 工具    | `ccswitch`、`aido`、`aido-models`、`free-models-openrouter`、`free-models-nvidia`、`agents-setup`、`ai-links`、`graphify-setup`、`npm-tools` |
 | 文本/文档  | `markdown-snippet`、`slugify`、`web2md`、`translate`、`mermaid`、`statcounter-os-coverage`、`xlsx-text2num` |
 | 系统       | `toolscripts-list`、`myip`、`checkspace`、`lsdevcu`、`rm-ds-store`、`rm-meta`、`dirdiff`、`intellij`、`pycharm`、`xcode`、`venv-create`、`uv-venv-create`、`uvcmd`、`iterm-setup` |
-| 杂项       | `axios-audit`、`extract-games`、`list-include-dirs-from-here`、`list-include-dirs-clang`、`dockercmd`、`docker-linux-env`、`docker-registry`、`mongo-tool` |
+| 杂项       | `axios-audit`、`extract-games`、`list-include-dirs-from-here`、`list-include-dirs-clang`、`dockercmd`、`mongo-tool` |
 
 完整列表见 `pyproject.toml` 中的 `[project.scripts]` —— 但更方便的做法是
 直接跑上面的 `toolscripts-list`。
