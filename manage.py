@@ -46,6 +46,7 @@ _PYPROJECT = ROOT / "pyproject.toml"
 # installed yet when this script runs)
 # ---------------------------------------------------------------------------
 
+
 def _supports_color() -> bool:
     if os.environ.get("NO_COLOR"):
         return False
@@ -81,6 +82,7 @@ def error(msg: str) -> None:
 # subprocess helpers
 # ---------------------------------------------------------------------------
 
+
 def _have(tool: str) -> bool:
     return shutil.which(tool) is not None
 
@@ -102,6 +104,7 @@ def _capture(cmd: list[str]) -> tuple[int, str]:
 # ---------------------------------------------------------------------------
 # detection
 # ---------------------------------------------------------------------------
+
 
 def _uv_installed() -> bool:
     if not _have("uv"):
@@ -140,7 +143,9 @@ def _hint_install_uv() -> None:
     print("  install via one of:")
     print("    brew install uv                                             # macOS")
     print("    curl -LsSf https://astral.sh/uv/install.sh | sh            # macOS/Linux")
-    print("    powershell -ExecutionPolicy ByPass -c \"irm https://astral.sh/uv/install.ps1 | iex\"  # Windows")
+    print(
+        '    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"  # Windows'
+    )
 
 
 def _pyproject_mtime() -> float:
@@ -172,12 +177,15 @@ def _pyproject_changed_since_install() -> bool:
 # commands
 # ---------------------------------------------------------------------------
 
+
 def cmd_install(args: argparse.Namespace) -> int:
     pip_arg = f".[{args.extras}]" if args.extras else "."
 
     if args.pip:
-        warn("installing via pip - this puts the package into the currently active "
-             "Python environment and may conflict with other projects.")
+        warn(
+            "installing via pip - this puts the package into the currently active "
+            "Python environment and may conflict with other projects."
+        )
         warn("for daily CLI use prefer: ./manage.py install   (uv)")
         cmd = [sys.executable, "-m", "pip", "install", "-e", pip_arg]
         if args.force:
@@ -230,8 +238,10 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
             _run([sys.executable, "-m", "pip", "uninstall", "-y", PACKAGE], check=False)
             did_anything = True
             warn("pip leaves dependencies behind. To list candidates run:")
-            print("    pip show pyperclip pillow matplotlib openpyxl markdownify "
-                  "translate binaryornot")
+            print(
+                "    pip show pyperclip pillow matplotlib openpyxl markdownify "
+                "translate binaryornot"
+            )
 
     if did_anything:
         with contextlib.suppress(OSError):
@@ -261,9 +271,7 @@ def cmd_status(_args: argparse.Namespace) -> int:
     else:
         print(f"  {label} :  {_c('installed', '32')}  (version {pv})")
 
-    if _have(PACKAGE) is False and not (
-        _have("timestamp-now") or _have("hex2rgb")
-    ):
+    if _have(PACKAGE) is False and not (_have("timestamp-now") or _have("hex2rgb")):
         warn("no toolscripts commands found on $PATH")
     return 0
 
@@ -271,6 +279,7 @@ def cmd_status(_args: argparse.Namespace) -> int:
 # ---------------------------------------------------------------------------
 # argparse
 # ---------------------------------------------------------------------------
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(

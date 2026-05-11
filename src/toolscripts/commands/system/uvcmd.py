@@ -1,9 +1,12 @@
-"""``uvcmd`` - interactive front-end for common ``uv`` commands."""
+"""``uvcmd`` - interactive browser for common ``uv`` commands."""
 
 from __future__ import annotations
 
 import argparse
+import contextlib
+import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
@@ -12,20 +15,570 @@ from toolscripts.core.shell import CommandNotFoundError, require, run
 log = get_logger(__name__)
 
 
-def _ask(prompt: str, default: str | None = None) -> str:
-    suffix = f" [{default}]" if default else ""
+@dataclass
+class UvCommand:
+    name: str
+    command: str
+    base_args: list[str]
+    description: str
+    examples: list[str]
+    needs_args: bool = False
+    needs_project: bool = False
+
+
+_UV_COMMANDS: list[UvCommand] = [
+    UvCommand(
+        name="Create venv",
+        command="uv venv [OPTIONS]",
+        base_args=["venv"],
+        description="Create a new virtual environment in the current directory. "
+        "Without --python, uses the project-resolved Python version from pyproject.toml. "
+        "Use --python VERSION to specify an exact interpreter.",
+        examples=[
+            "uv venv                # use Python from pyproject.toml or default",
+            "uv venv --python 3.12 # use Python 3.12",
+            "uv venv .venv --python python3.11",
+        ],
+    ),
+    UvCommand(
+        name="Init project",
+        command="uv init [OPTIONS]",
+        base_args=["init"],
+        description="Create a new Python project (pyproject.toml + src/ layout). "
+        "Produces a minimal, PEP-compliant project scaffold.",
+        examples=[
+            "uv init                 # creates pyproject.toml + src/",
+            "uv init --name my-lib  # name the package",
+            "uv init --lib          # start a library (src/ layout, no __main__)",
+            "uv init --package     # start a package (src/ layout)",
+        ],
+    ),
+    UvCommand(
+        name="Add dependency",
+        command="uv add <PACKAGE> [OPTIONS]",
+        base_args=["add"],
+        description="Add one or more packages to the project and update pyproject.toml. "
+        "Creates or updates the lockfile. Dev-only deps use --dev.",
+        examples=[
+            "uv add requests            # latest version",
+            "uv add 'requests>=2.28'    # with version constraint",
+            "uv add --dev pytest        # dev dependency",
+            "uv add git+https://...      # from git",
+        ],
+        needs_args=True,
+        needs_project=True,
+    ),
+    UvCommand(
+        name="Remove dependency",
+        command="uv remove <PACKAGE>",
+        base_args=["remove"],
+        description="Remove a package from pyproject.toml and update the lockfile.",
+        examples=[
+            "uv remove requests",
+            "uv remove pytest --dev",
+        ],
+        needs_args=True,
+        needs_project=True,
+    ),
+    UvCommand(
+        name="Sync / install",
+        command="uv sync [OPTIONS]",
+        base_args=["sync"],
+        description="Sync the virtual environment with pyproject.toml. "
+        "Installs, removes, or updates packages to match the lockfile. "
+        "Without a project (only requirements.txt), uses uv pip sync.",
+        examples=[
+            "uv sync               # install all deps from lockfile",
+            "uv sync --all-packages  # include dev deps",
+            "uv sync --no-dev     # skip dev dependencies",
+        ],
+        needs_project=True,
+    ),
+    UvCommand(
+        name="Lock (generate)",
+        command="uv lock [OPTIONS]",
+        base_args=["lock"],
+        description="Update the lockfile (uv.lock) to reflect changes in pyproject.toml. "
+        "Always safe — reads the existing lock and minimizes changes.",
+        examples=[
+            "uv lock              # update uv.lock",
+            "uv lock --upgrade    # upgrade all packages to latest",
+            "uv lock --upgrade-package requests  # upgrade one",
+        ],
+        needs_project=True,
+    ),
+    UvCommand(
+        name="Pip install",
+        command="uv pip install <PACKAGE> [OPTIONS]",
+        base_args=["pip", "install"],
+        description="Install packages into the currently active Python environment "
+        "(not a project). Use in a venv created with uv venv.",
+        examples=[
+            "uv pip install requests        # into active venv",
+            "uv pip install -r requirements.txt",
+            "uv pip install --system        # system Python (requires --system)",
+        ],
+        needs_args=True,
+    ),
+    UvCommand(
+        name="Pip uninstall",
+        command="uv pip uninstall <PACKAGE>",
+        base_args=["pip", "uninstall"],
+        description="Uninstall packages from the currently active Python environment.",
+        examples=[
+            "uv pip uninstall requests",
+            "uv pip uninstall -r requirements.txt",
+        ],
+        needs_args=True,
+    ),
+    UvCommand(
+        name="Pip list",
+        command="uv pip list [OPTIONS]",
+        base_args=["pip", "list"],
+        description="List all packages installed in the active Python environment.",
+        examples=[
+            "uv pip list                  # all packages",
+            "uv pip list --outdated       # packages with newer versions",
+            "uv pip list --format freeze  # pip freeze format",
+        ],
+    ),
+    UvCommand(
+        name="Pip freeze",
+        command="uv pip freeze",
+        base_args=["pip", "freeze"],
+        description="Output all installed packages in requirements.txt format.",
+        examples=[
+            "uv pip freeze > requirements.txt  # save current env",
+        ],
+    ),
+    UvCommand(
+        name="Run script",
+        command="uv run <SCRIPT> [OPTIONS]",
+        base_args=["run"],
+        description="Run a Python script or inline command in a temporary environment "
+        "configured by pyproject.toml. Automatically resolves and installs dependencies.",
+        examples=[
+            "uv run python main.py          # run a script",
+            "uv run -- pytest tests/        # run pytest",
+            "uv run python -c 'print(1)'    # inline command",
+        ],
+        needs_args=True,
+        needs_project=True,
+    ),
+    UvCommand(
+        name="Run shell",
+        command="uv run python",
+        base_args=["run", "--python", "python3"],
+        description="Open an interactive Python shell (REPL) with all project "
+        "dependencies available. Useful for experimentation.",
+        examples=[
+            "uv run python                    # basic REPL",
+            "uv run --python python3.12       # specific Python REPL",
+        ],
+        needs_project=True,
+    ),
+    UvCommand(
+        name="Tool install",
+        command="uv tool install <PACKAGE> [OPTIONS]",
+        base_args=["tool", "install"],
+        description="Install a standalone CLI tool from a package. "
+        "Makes the tool's executables available on $PATH.",
+        examples=[
+            "uv tool install httpie           # install a CLI tool",
+            "uv tool install --python 3.12 ruff  # specific Python",
+            "uv tool install --from git+https://... some-tool",
+        ],
+        needs_args=True,
+    ),
+    UvCommand(
+        name="Tool run",
+        command="uv tool run <TOOL>",
+        base_args=["tool", "run"],
+        description="Run a named tool from the tool cache, invoking its default command. "
+        "Shorthand: uvx <TOOL>.",
+        examples=[
+            "uv tool run ruff check .",
+            "uvx pycowsay hello",
+        ],
+        needs_args=True,
+    ),
+    UvCommand(
+        name="Tool list",
+        command="uv tool list",
+        base_args=["tool", "list"],
+        description="List all installed standalone tools and their executables.",
+        examples=[
+            "uv tool list --show-paths",
+        ],
+    ),
+    UvCommand(
+        name="Tool update",
+        command="uv tool update <TOOL>",
+        base_args=["tool", "update"],
+        description="Update installed tools to their latest versions.",
+        examples=[
+            "uv tool update          # update all",
+            "uv tool update ruff     # update one",
+        ],
+    ),
+    UvCommand(
+        name="Build package",
+        command="uv build [OPTIONS]",
+        base_args=["build"],
+        description="Build source and wheel distributions for publishing. Outputs to dist/.",
+        examples=[
+            "uv build                 # build sdist + wheel",
+            "uv build --sdist         # source distribution only",
+            "uv build --wheel        # wheel only",
+        ],
+        needs_project=True,
+    ),
+    UvCommand(
+        name="Publish to PyPI",
+        command="uv publish [OPTIONS]",
+        base_args=["publish"],
+        description="Upload the built distributions to PyPI. "
+        "Reads credentials from pyproject.toml or --token.",
+        examples=[
+            "uv publish                    # upload dist/*",
+            "uv publish --token pypi-xxx   # with explicit token",
+            "uv publish --repository testpypi  # TestPyPI",
+        ],
+        needs_project=True,
+    ),
+    UvCommand(
+        name="Python list",
+        command="uv python list",
+        base_args=["python", "list"],
+        description="List all available Python interpreters found on the system. "
+        "Includes managed Python installations if UV_PYTHON_PREFERENCE=only-managed.",
+        examples=[
+            "uv python list          # all interpreters",
+            "uv python list --only-installed  # only installed ones",
+        ],
+    ),
+    UvCommand(
+        name="Python pin",
+        command="uv python pin <VERSION>",
+        base_args=["python", "pin"],
+        description="Write the requested Python version to .python-version in the "
+        "current directory, pinning the interpreter used by uv run and uv sync.",
+        examples=[
+            "uv python pin 3.12",
+            "uv python pin 3.11.8",
+        ],
+        needs_args=True,
+    ),
+    UvCommand(
+        name="Check project",
+        command="uv check [OPTIONS]",
+        base_args=["check"],
+        description="Check that the project's locked dependencies satisfy "
+        "the constraints in pyproject.toml. Used in CI to verify lockfile freshness.",
+        examples=[
+            "uv check",
+            "uv check --strict   # also check that all env vars are declared",
+        ],
+        needs_project=True,
+    ),
+    UvCommand(
+        name="Tree (deps)",
+        command="uv tree [OPTIONS]",
+        base_args=["tree"],
+        description="Display the dependency tree of the current project. "
+        "Shows which packages depend on what.",
+        examples=[
+            "uv tree",
+            "uv tree --depth 2       # limit depth",
+            "uv tree --no-dedupe     # show all duplicates",
+        ],
+        needs_project=True,
+    ),
+    UvCommand(
+        name="Cache clean",
+        command="uv cache clean [OPTIONS]",
+        base_args=["cache", "clean"],
+        description="Delete the uv cache. Removes downloaded wheels, built wheels, "
+        "and other cached data.",
+        examples=[
+            "uv cache clean              # clean everything",
+            "uv cache clean --package requests  # clean one package only",
+        ],
+    ),
+    UvCommand(
+        name="Cache dir",
+        command="uv cache dir",
+        base_args=["cache", "dir"],
+        description="Print the path to the uv cache directory.",
+        examples=[
+            "uv cache dir",
+        ],
+    ),
+]
+
+
+def _is_project() -> bool:
+    return Path("pyproject.toml").is_file()
+
+
+def _run_interactive_command(cmd: UvCommand) -> None:
+    if cmd.needs_project and not _is_project():
+        print(
+            "No pyproject.toml found in the current directory.\n"
+            "This command requires a project context.\n"
+            "Hint: run 'uv init' first, or 'cd' into a project directory."
+        )
+        return
+
+    if cmd.name == "Create venv":
+        _handle_venv_create()
+        return
+
+    args: list[str] = []
+    if cmd.needs_args:
+        prompt = "Enter argument (package name, path, etc.): "
+        try:
+            raw = input(prompt).strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return
+        if not raw:
+            print("Cancelled.")
+            return
+        args = raw.split()
+
+    run(["uv", *cmd.base_args, *args])
+
+
+def _handle_venv_create() -> None:
+    import shutil as _sh
+
+    pyenv_dir = Path.home() / ".pyenv" / "versions"
+
+    def pyenv_versions() -> list[str]:
+        if not pyenv_dir.is_dir():
+            return []
+        return sorted(
+            (p.name for p in pyenv_dir.iterdir() if p.is_dir()),
+            key=lambda v: tuple(int(x) if x.isdigit() else x for x in v.split(".")),
+            reverse=True,
+        )
+
+    def system_versions() -> list[str]:
+        seen: list[str] = []
+        for binary in (
+            "python3.13",
+            "python3.12",
+            "python3.11",
+            "python3.10",
+            "python3.9",
+            "python3.8",
+            "python3",
+            "python",
+        ):
+            if _sh.which(binary):
+                try:
+                    out = subprocess.check_output([binary, "--version"], text=True).strip()
+                except subprocess.CalledProcessError:
+                    continue
+                parts = out.split()
+                if len(parts) >= 2 and parts[1] not in seen:
+                    seen.append(parts[1])
+        return seen
+
+    versions = pyenv_versions() or system_versions()
+    if not versions:
+        print("No Python versions found.")
+        return
+
+    print("\nSelect a Python version:")
+    for i, v in enumerate(versions, 1):
+        print(f"  {i}. {v}")
     try:
-        raw = input(f"{prompt}{suffix}: ").strip()
+        raw = input(f"Enter choice (1-{len(versions)}): ").strip()
     except (EOFError, KeyboardInterrupt):
         print()
-        sys.exit(130)
-    return raw or (default or "")
+        return
+    if not raw.isdigit():
+        print("Invalid selection.")
+        return
+    idx = int(raw) - 1
+    if not 0 <= idx < len(versions):
+        print("Out of range.")
+        return
+    selected = versions[idx]
+    venv_name = ".venv"
+    try:
+        venv_raw = input(f"venv directory [{venv_name}]: ").strip()
+        if venv_raw:
+            venv_name = venv_raw
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return
+
+    Path(".python-version").write_text(selected + "\n", encoding="utf-8")
+    run(["uv", "venv", venv_name, "--python", selected])
+    print(f"\nCreated {venv_name} with Python {selected}")
+    print(f"Activate with: source {venv_name}/bin/activate")
+
+
+# ---------------------------------------------------------------------------
+# Curses UI
+# ---------------------------------------------------------------------------
+
+
+def _ensure_curses() -> None:
+    try:
+        import curses  # noqa: F401
+
+        return
+    except ImportError:
+        from toolscripts.core.log import get_logger
+
+        log = get_logger(__name__)
+        if sys.platform == "win32":
+            log.error("curses not available on Windows. Install with: pip install windows-curses")
+        else:
+            log.error("curses module not available on this Python build.")
+        sys.exit(1)
+
+
+def _run_curses(stdscr) -> None:
+    import curses
+
+    curses.curs_set(0)
+    curses.use_default_colors()
+    curses.init_pair(1, curses.COLOR_CYAN, -1)
+    curses.init_pair(2, curses.COLOR_GREEN, -1)
+    curses.init_pair(3, curses.COLOR_YELLOW, -1)
+    curses.init_pair(4, curses.COLOR_WHITE, -1)
+    curses.init_pair(5, curses.COLOR_MAGENTA, -1)
+    curses.init_pair(6, curses.COLOR_RED, -1)
+
+    def cp(n: int) -> int:
+        return curses.color_pair(n)
+
+    commands = _UV_COMMANDS
+    cursor = 0
+    top = 0
+
+    while True:
+        stdscr.clear()
+        height, width = stdscr.getmaxyx()
+
+        list_height = height - 11
+        preview_top = height - 10
+
+        title = " uvcmd - uv command browser "
+        stdscr.addstr(0, 0, title.center(width, " "), cp(1) | curses.A_BOLD)
+        hint = "j/k or arrows: move  |  Enter: execute  |  q: quit"
+        stdscr.addstr(1, 0, hint[:width], cp(3))
+        stdscr.hline(2, 0, curses.ACS_HLINE, width)
+
+        cmd = commands[cursor]
+
+        visible_count = list_height
+        if cursor < top:
+            top = cursor
+        elif cursor >= top + visible_count:
+            top = cursor - visible_count + 1
+        top = max(0, min(top, len(commands) - visible_count))
+
+        for i in range(visible_count):
+            idx = top + i
+            if idx >= len(commands):
+                break
+            c = commands[idx]
+            is_selected = idx == cursor
+            marker = "▶" if is_selected else " "
+            attr = curses.A_REVERSE if is_selected else 0
+            color = cp(2) if is_selected else cp(4)
+
+            name_text = f" {marker}  {c.name}"
+            with contextlib.suppress(curses.error):
+                stdscr.addstr(3 + i, 0, name_text[: width - 1], attr | color)
+
+        stdscr.hline(preview_top - 1, 0, curses.ACS_HLINE, width)
+
+        try:
+            stdscr.addstr(preview_top, 2, "Command:", cp(5) | curses.A_BOLD)
+            stdscr.addstr(preview_top + 1, 4, cmd.command[: width - 4], cp(2))
+        except curses.error:
+            pass
+
+        desc_lines = _wrap(cmd.description, width - 4)
+        try:
+            stdscr.addstr(preview_top + 3, 2, "Description:", cp(5) | curses.A_BOLD)
+            for li, line in enumerate(desc_lines[:3]):
+                stdscr.addstr(preview_top + 4 + li, 4, line[: width - 4], cp(4))
+        except curses.error:
+            pass
+
+        offset = preview_top + 4 + len(desc_lines[:3]) + 1
+        with contextlib.suppress(curses.error):
+            stdscr.addstr(offset, 2, "Examples:", cp(5) | curses.A_BOLD)
+        for li, ex in enumerate(cmd.examples[:3]):
+            line = f"  $ {ex}"
+            with contextlib.suppress(curses.error):
+                stdscr.addstr(offset + 1 + li, 4, line[: width - 4], cp(1))
+
+        status = f"  {cursor + 1}/{len(commands)}"
+        if _is_project():
+            status += "  [project detected]"
+        else:
+            status += "  [no project]"
+        with contextlib.suppress(curses.error):
+            stdscr.addstr(height - 1, 0, status[: width - 1], cp(3))
+
+        stdscr.refresh()
+        key = stdscr.getch()
+
+        if key in (curses.KEY_UP, ord("k")):
+            cursor = max(0, cursor - 1)
+        elif key in (curses.KEY_DOWN, ord("j")):
+            cursor = min(len(commands) - 1, cursor + 1)
+        elif key == ord("g"):
+            key2 = stdscr.getch()
+            if key2 == ord("g"):
+                cursor = 0
+        elif key == ord("G"):
+            cursor = len(commands) - 1
+        elif key in (curses.KEY_ENTER, 10, 13):
+            curses.endwin()
+            try:
+                _run_interactive_command(commands[cursor])
+            except Exception as exc:
+                print(f"Error: {exc}")
+            input("\nPress Enter to return to the browser...")
+            stdscr.refresh()
+        elif key in (ord("q"), 27):
+            break
+
+
+def _wrap(text: str, width: int) -> list[str]:
+    if width <= 0:
+        return []
+    out: list[str] = []
+    for raw_line in text.splitlines():
+        if not raw_line.strip():
+            out.append("")
+            continue
+        line = raw_line.rstrip()
+        while len(line) > width:
+            cut = line.rfind(" ", 0, width)
+            if cut <= 0:
+                cut = width
+            out.append(line[:cut])
+            line = line[cut:].lstrip()
+        if line:
+            out.append(line)
+    return out
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="uvcmd",
-        description="Interactive front-end for common `uv` commands.",
+        description="Interactive browser for common uv commands with live preview.",
     )
     add_logging_flags(parser)
     args = parser.parse_args()
@@ -35,60 +588,13 @@ def main() -> None:
         require("uv")
     except CommandNotFoundError as exc:
         log.error("%s", exc)
+        log.warning("install uv: https://docs.astral.sh/uv/getting-started/installation/")
         sys.exit(1)
 
-    while True:
-        print("\nSelect a uv action:")
-        print("  1) Create a virtual environment (uv-venv-create)")
-        print("  2) Sync dependencies (uv sync / uv pip sync)")
-        print("  3) Generate lock file (uv lock)")
-        print("  4) Install a package (uv pip install)")
-        print("  5) Uninstall a package (uv pip uninstall)")
-        print("  6) List installed packages (uv pip list)")
-        print("  7) Freeze packages (uv pip freeze)")
-        print("  8) Clean cache (uv cache clean)")
-        print("  9) Show cache directory (uv cache dir)")
-        print("  0) Quit")
-        try:
-            choice = input("Your choice: ").strip()
-        except (EOFError, KeyboardInterrupt):
-            print()
-            return
+    _ensure_curses()
+    import curses
 
-        if choice == "0":
-            return
-        if choice == "1":
-            try:
-                run([sys.executable, "-m", "toolscripts.commands.system.uv_venv_create"])
-            except Exception as exc:  # noqa: BLE001
-                log.error("uv-venv-create failed: %s", exc)
-        elif choice == "2":
-            if Path("pyproject.toml").is_file():
-                run(["uv", "sync"])
-            else:
-                req = _ask("requirements file", "requirements.txt")
-                run(["uv", "pip", "sync", req])
-        elif choice == "3":
-            run(["uv", "lock"])
-        elif choice == "4":
-            pkg = _ask("package to install")
-            if pkg:
-                run(["uv", "pip", "install", pkg])
-        elif choice == "5":
-            pkg = _ask("package to uninstall")
-            if pkg:
-                run(["uv", "pip", "uninstall", pkg])
-        elif choice == "6":
-            run(["uv", "pip", "list"])
-        elif choice == "7":
-            run(["uv", "pip", "freeze"])
-        elif choice == "8":
-            run(["uv", "cache", "clean"])
-        elif choice == "9":
-            run(["uv", "cache", "dir"])
-        else:
-            log.warning("invalid choice")
-        print("-" * 28)
+    curses.wrapper(_run_curses)
 
 
 if __name__ == "__main__":
