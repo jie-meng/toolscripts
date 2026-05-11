@@ -11,7 +11,7 @@ run anywhere — macOS, Linux, Windows.
 
 ## Install
 
-The repo ships a tiny helper script that wraps `pipx` and `pip` so you don't
+The repo ships a tiny helper script that wraps `uv` and `pip` so you don't
 have to remember the exact flags:
 
 ```bash
@@ -27,13 +27,13 @@ That's it — every command in `[project.scripts]` is now on your `$PATH` with
 ### `manage.py` cheat sheet
 
 ```bash
-./manage.py install                    # pipx, core only — fast, no third-party deps
-./manage.py install --extras all       # pipx + every optional extra
-./manage.py install --extras media,git # pipx, only those extras
+./manage.py install                    # uv, core only — fast, no third-party deps
+./manage.py install --extras all       # uv + every optional extra
+./manage.py install --extras media,git # uv, only those extras
 ./manage.py install --pip              # pip into the active Python env
 ./manage.py install --force            # force reinstall even if up to date
-./manage.py uninstall                  # try both pipx and pip, skip whichever is absent
-./manage.py status                     # show install state on both pipx and pip
+./manage.py uninstall                  # try both uv and pip, skip whichever is absent
+./manage.py status                     # show install state on both uv and pip
 ```
 
 After the first install, re-running `./manage.py install` is a no-op as long
@@ -42,31 +42,31 @@ edits under `src/` automatically. You only need to reinstall when an entry
 point is added/renamed/removed (i.e. `[project.scripts]` changed) or when
 you want to pull in new optional dependencies.
 
-### Why `pipx` instead of `pip`?
+### Why `uv` instead of `pip`?
 
 `toolscripts` is a collection of CLI tools, not a library you `import`. For
-that case `pipx` is the right tool:
+that case `uv` is the right tool:
 
 - **`pip install`** drops the package into whatever Python environment is
   active (system / user / venv). Easy to pollute and conflict with other
   projects' dependencies.
-- **`pipx install`** creates a dedicated, isolated venv for the package and
+- **`uv tool install`** creates a dedicated, isolated venv for the package and
   symlinks just its commands into `~/.local/bin`. No dependency conflicts,
   no manual `$PATH` setup, clean uninstall via `./manage.py uninstall`.
 
-If you don't have `pipx` yet:
+If you don't have `uv` yet:
 
 ```bash
-brew install pipx          # macOS
-python3 -m pip install --user pipx && python3 -m pipx ensurepath
+brew install uv             # macOS
+curl -LsSf https://astral.sh/uv/install.sh | sh   # macOS / Linux
 ```
 
 ### Manual install (without `manage.py`)
 
 ```bash
-pipx install -e .                      # equivalent to ./manage.py install
-pipx install -e ".[all]"               # equivalent to ./manage.py install --extras all
-pip install -e .                       # equivalent to ./manage.py install --pip
+uv tool install -e .                    # equivalent to ./manage.py install
+uv tool install -e ".[all]"             # equivalent to ./manage.py install --extras all
+pip install -e .                        # equivalent to ./manage.py install --pip
 ```
 
 ### Optional dependency groups
@@ -89,8 +89,8 @@ Example: `./manage.py install --extras clipboard,media`.
 ## Uninstall
 
 ```bash
-./manage.py uninstall          # try both pipx and pip
-./manage.py uninstall --pipx   # only pipx
+./manage.py uninstall          # try both uv and pip
+./manage.py uninstall --uv     # only uv
 ./manage.py uninstall --pip    # only pip
 ```
 

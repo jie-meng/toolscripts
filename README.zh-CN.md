@@ -10,7 +10,7 @@
 
 ## 安装
 
-仓库自带一个零依赖的小脚本 `manage.py`，封装了 `pipx` 和 `pip`，让你不用记
+仓库自带一个零依赖的小脚本 `manage.py`，封装了 `uv` 和 `pip`，让你不用记
 具体命令参数：
 
 ```bash
@@ -25,13 +25,13 @@ cd toolscripts
 ### `manage.py` 速查
 
 ```bash
-./manage.py install                    # pipx，只装核心 —— 飞快，不拉任何三方依赖
-./manage.py install --extras all       # pipx + 全部可选 extras
-./manage.py install --extras media,git # pipx，只装指定 extras
+./manage.py install                    # uv，只装核心 —— 飞快，不拉任何三方依赖
+./manage.py install --extras all       # uv + 全部可选 extras
+./manage.py install --extras media,git # uv，只装指定 extras
 ./manage.py install --pip              # 用 pip 装到当前 Python 环境
 ./manage.py install --force            # 强制重装（即使已经是最新）
 ./manage.py uninstall                  # 两边都尝试卸载，没装的那边自动跳过
-./manage.py status                     # 同时查看 pipx 和 pip 的安装状态
+./manage.py status                     # 同时查看 uv 和 pip 的安装状态
 ```
 
 首次安装之后，再次跑 `./manage.py install` 默认是 no-op —— 只要
@@ -39,28 +39,28 @@ cd toolscripts
 只有新增 / 重命名 / 删除命令（即 `[project.scripts]` 变更），或者要拉新的可选
 依赖时，才需要真的走一次重装。
 
-### 为什么用 `pipx` 而不是 `pip`？
+### 为什么用 `uv` 而不是 `pip`？
 
-`toolscripts` 是一组 CLI 工具，不是用来 `import` 的库。这种场景下 `pipx` 才是正解：
+`toolscripts` 是一组 CLI 工具，不是用来 `import` 的库。这种场景下 `uv` 才是正解：
 
 - **`pip install`** 把包装到当前激活的 Python 环境（system / user / venv）里，
   容易污染环境并跟其他项目的依赖冲突。
-- **`pipx install`** 为每个包创建独立的 venv，并把命令 symlink 到 `~/.local/bin`。
+- **`uv tool install`** 为每个包创建独立的 venv，并把命令 symlink 到 `~/.local/bin`。
   没有依赖冲突、不用手动配 `$PATH`，卸载也干脆 —— `./manage.py uninstall` 即可。
 
-如果你还没装 `pipx`：
+如果你还没装 `uv`：
 
 ```bash
-brew install pipx          # macOS
-python3 -m pip install --user pipx && python3 -m pipx ensurepath
+brew install uv                                          # macOS
+curl -LsSf https://astral.sh/uv/install.sh | sh         # macOS / Linux
 ```
 
 ### 不用 `manage.py` 的手动安装
 
 ```bash
-pipx install -e .                      # 等价于 ./manage.py install
-pipx install -e ".[all]"               # 等价于 ./manage.py install --extras all
-pip install -e .                       # 等价于 ./manage.py install --pip
+uv tool install -e .                    # 等价于 ./manage.py install
+uv tool install -e ".[all]"             # 等价于 ./manage.py install --extras all
+pip install -e .                        # 等价于 ./manage.py install --pip
 ```
 
 ### 可选依赖分组
@@ -83,7 +83,7 @@ pip install -e .                       # 等价于 ./manage.py install --pip
 
 ```bash
 ./manage.py uninstall          # 两边都尝试卸载
-./manage.py uninstall --pipx   # 仅 pipx
+./manage.py uninstall --uv     # 仅 uv
 ./manage.py uninstall --pip    # 仅 pip
 ```
 

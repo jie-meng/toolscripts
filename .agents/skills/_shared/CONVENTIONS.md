@@ -239,7 +239,7 @@ def main() -> None:
     try:
         import pyperclip  # noqa: F401
     except ImportError:
-        log.error("clipboard support not installed; run: pipx inject toolscripts pyperclip")
+        log.error("clipboard support not installed; run: ./manage.py install --extras clipboard")
         sys.exit(1)
 ```
 
@@ -343,7 +343,7 @@ After editing `[project.scripts]` (adding/removing/renaming an entry point),
 the user has to refresh the install:
 
 ```bash
-./manage.py install --force      # pipx (recommended)
+./manage.py install --force      # uv (recommended)
 ./manage.py install --pip --force
 ```
 

@@ -219,7 +219,7 @@ Tell the user, in this order:
    ```
 
 4. Mention any new external binary requirement (`brew install ffmpeg` etc.)
-   or new optional extra (`pipx inject toolscripts pyperclip`).
+   or new optional extra (`uv tool install -e ".[clipboard]"`).
 
 ---
 

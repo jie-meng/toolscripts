@@ -64,7 +64,12 @@ def _list_devices() -> list[tuple[str, str, str, str, str | None]]:
     devices.sort(
         key=lambda d: (
             d[2] != "Booted",
-            -(datetime.fromisoformat((d[4] or "0001-01-01T00:00:00Z").replace("Z", "+00:00")).timestamp() // 1),
+            -(
+                datetime.fromisoformat(
+                    (d[4] or "0001-01-01T00:00:00Z").replace("Z", "+00:00")
+                ).timestamp()
+                // 1
+            ),
             _ios_sort_key(d[3]),
             _device_sort_key(d[0]),
         )

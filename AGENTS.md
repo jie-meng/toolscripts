@@ -14,7 +14,7 @@ rules below.**
 - **Purpose**: a monorepo of small, single-purpose CLI utilities. The mantra
   is "make work simple."
 - **Distribution**: a single Python package, `toolscripts`, installed with
-  `pip install -e .` (or `pipx install -e .` for daily global use). Each
+  `pip install -e .` (or `uv tool install -e .` for daily global use). Each
   user-facing command is a `[project.scripts]` entry point — there is **no**
   `shell/` directory of bash wrappers any more.
 - **Languages**: Python 3.10+. Bash is allowed only for the rare cases where
@@ -214,7 +214,7 @@ Add a line to `[project.scripts]` in `pyproject.toml`:
 my-cmd = "toolscripts.commands.<domain>.<snake_name>:main"
 ```
 
-After editing, re-run `pip install -e .` (or `pipx reinstall toolscripts`).
+After editing, re-run `uv tool install -e .` (or `./manage.py install`).
 
 ### 4.4 Platform gating
 
@@ -327,7 +327,7 @@ def main() -> None:
     try:
         import pyperclip  # noqa: F401
     except ImportError:
-        log.error("clipboard support not installed; run: pipx inject toolscripts pyperclip")
+        log.error("clipboard support not installed; run: ./manage.py install --extras clipboard")
         sys.exit(1)
 ```
 

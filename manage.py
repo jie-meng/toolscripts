@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
 """Manage the local installation of toolscripts (install / uninstall / status).
 
-Tiny, dependency-free helper that wraps `pipx` and `pip` so users don't have to
-remember the exact flags. Supports both installation backends, but `pipx` is
-strongly recommended for CLI tools.
+Tiny, dependency-free helper that wraps `uv` and `pip` so users don't have to
+remember the exact flags. Supports both installation backends; `uv` is the
+default.
 
 Examples:
-    ./manage.py install                      # pipx, core only (fast, no extras)
-    ./manage.py install --extras all         # pipx + every optional dep
+    ./manage.py install                      # uv, core only (fast, no extras)
+    ./manage.py install --extras all         # uv + every optional dep
     ./manage.py install --extras media,clipboard
     ./manage.py install --pip                # pip into the active env
     ./manage.py install --force              # force reinstall even if up to date
 
-    ./manage.py uninstall                    # try both pipx and pip
-    ./manage.py uninstall --pipx
+    ./manage.py uninstall                    # try both uv and pip
+    ./manage.py uninstall --uv
     ./manage.py uninstall --pip
 
     ./manage.py status                       # show install status on both sides
 
 Fast-skip behavior:
-    Once installed via pipx, `./manage.py install` re-runs as a no-op as long
+    Once installed via uv, `./manage.py install` re-runs as a no-op as long
     as `pyproject.toml` hasn't changed - source edits under `src/` are picked
     up live by the editable install with no reinstall needed.
 """
@@ -35,15 +35,8 @@ import sys
 from pathlib import Path
 
 PACKAGE = "toolscripts"
-# Default to no extras: the core package has zero third-party deps, so a fresh
-# install is near-instant. Users who need optional features pass --extras
-# explicitly (e.g. --extras media,clipboard) or --extras all to get everything.
 DEFAULT_EXTRAS = ""
 ROOT = Path(__file__).resolve().parent
-# Stamp file: records the mtime of pyproject.toml at the moment of the last
-# successful install. If pyproject.toml hasn't changed since (i.e. no entry
-# points / extras / metadata edits), the editable install needs no reinstall
-# to pick up source changes - we can fast-skip.
 _STAMP = ROOT / ".manage-py-install-stamp"
 _PYPROJECT = ROOT / "pyproject.toml"
 
@@ -110,25 +103,25 @@ def _capture(cmd: list[str]) -> tuple[int, str]:
 # detection
 # ---------------------------------------------------------------------------
 
-def _pipx_installed() -> bool:
-    if not _have("pipx"):
+def _uv_installed() -> bool:
+    if not _have("uv"):
         return False
-    code, out = _capture(["pipx", "list", "--short"])
+    code, out = _capture(["uv", "tool", "list"])
     if code != 0:
         return False
     return any(line.startswith(PACKAGE + " ") for line in out.splitlines())
 
 
-def _pipx_version() -> str | None:
-    if not _have("pipx"):
+def _uv_version() -> str | None:
+    if not _have("uv"):
         return None
-    code, out = _capture(["pipx", "list", "--short"])
+    code, out = _capture(["uv", "tool", "list"])
     if code != 0:
         return None
     for line in out.splitlines():
-        parts = line.split()
-        if parts and parts[0] == PACKAGE:
-            return parts[1] if len(parts) > 1 else "unknown"
+        if line.startswith(PACKAGE + " "):
+            version = line.split()[-1]
+            return version.lstrip("v") if len(line.split()) > 1 else "unknown"
     return None
 
 
@@ -142,12 +135,12 @@ def _pip_version() -> str | None:
     return "unknown"
 
 
-def _hint_install_pipx() -> None:
-    warn("pipx is not installed.")
+def _hint_install_uv() -> None:
+    warn("uv is not installed.")
     print("  install via one of:")
-    print("    brew install pipx                                         # macOS")
-    print("    python3 -m pip install --user pipx && python3 -m pipx ensurepath")
-    print("    sudo apt install pipx                                     # Debian/Ubuntu 23.04+")
+    print("    brew install uv                                             # macOS")
+    print("    curl -LsSf https://astral.sh/uv/install.sh | sh            # macOS/Linux")
+    print("    powershell -ExecutionPolicy ByPass -c \"irm https://astral.sh/uv/install.ps1 | iex\"  # Windows")
 
 
 def _pyproject_mtime() -> float:
@@ -180,13 +173,12 @@ def _pyproject_changed_since_install() -> bool:
 # ---------------------------------------------------------------------------
 
 def cmd_install(args: argparse.Namespace) -> int:
-    spec = f"{ROOT}[{args.extras}]" if args.extras else str(ROOT)
     pip_arg = f".[{args.extras}]" if args.extras else "."
 
     if args.pip:
         warn("installing via pip - this puts the package into the currently active "
              "Python environment and may conflict with other projects.")
-        warn("for daily CLI use prefer: ./manage.py install   (pipx)")
+        warn("for daily CLI use prefer: ./manage.py install   (uv)")
         cmd = [sys.executable, "-m", "pip", "install", "-e", pip_arg]
         if args.force:
             cmd.append("--force-reinstall")
@@ -195,49 +187,40 @@ def cmd_install(args: argparse.Namespace) -> int:
         success(f"{PACKAGE} installed via pip into {sys.executable}")
         return 0
 
-    if not _have("pipx"):
-        _hint_install_pipx()
+    if not _have("uv"):
+        _hint_install_uv()
         return 1
 
-    already = _pipx_installed()
+    already = _uv_installed()
 
-    # Fast path: editable install + pyproject.toml unchanged means there is
-    # literally nothing to do. Source edits under src/ are picked up live.
     if already and not args.force and not _pyproject_changed_since_install():
         success(f"{PACKAGE} is up to date - editable install picks up src/ changes automatically")
         info("pass --force to reinstall anyway, or edit pyproject.toml to trigger a reinstall")
         return 0
 
-    if already and not args.force:
-        info(f"{PACKAGE} already installed; pyproject.toml changed - reinstalling entry points")
-        cmd = ["pipx", "reinstall", PACKAGE]
-        _run(cmd, check=True)
-        _write_stamp()
-        success(f"{PACKAGE} reinstalled via pipx")
-        return 0
-
-    cmd = ["pipx", "install", "-e", spec]
+    spec = f".[{args.extras}]" if args.extras else "."
+    cmd = ["uv", "tool", "install", "-e", spec]
     if args.force or already:
         cmd.append("--force")
     _run(cmd, check=True)
     _write_stamp()
-    success(f"{PACKAGE} installed via pipx (extras: {args.extras or 'none'})")
+    success(f"{PACKAGE} installed via uv (extras: {args.extras or 'none'})")
     info("commands are now available on $PATH (~/.local/bin)")
     return 0
 
 
 def cmd_uninstall(args: argparse.Namespace) -> int:
-    target_pipx = args.pipx or not args.pip
-    target_pip = args.pip or not args.pipx
+    target_uv = args.uv or not args.pip
+    target_pip = args.pip or not args.uv
     did_anything = False
 
-    if target_pipx:
-        if not _have("pipx"):
-            info("pipx not present - skipping pipx uninstall")
-        elif not _pipx_installed():
-            info(f"{PACKAGE} is not installed via pipx - skipping")
+    if target_uv:
+        if not _have("uv"):
+            info("uv not present - skipping uv uninstall")
+        elif not _uv_installed():
+            info(f"{PACKAGE} is not installed via uv - skipping")
         else:
-            _run(["pipx", "uninstall", PACKAGE], check=False)
+            _run(["uv", "tool", "uninstall", PACKAGE], check=False)
             did_anything = True
 
     if target_pip:
@@ -255,21 +238,21 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
             _STAMP.unlink(missing_ok=True)
         success("uninstall complete")
     else:
-        warn(f"{PACKAGE} is not installed (pipx or pip) - nothing to do")
+        warn(f"{PACKAGE} is not installed (uv or pip) - nothing to do")
     return 0
 
 
 def cmd_status(_args: argparse.Namespace) -> int:
     print(_c(f"=== {PACKAGE} install status ===", "1;36"))
 
-    if not _have("pipx"):
-        print(f"  pipx :  {_c('not installed', '33')}")
+    if not _have("uv"):
+        print(f"  uv    :  {_c('not installed', '33')}")
     else:
-        v = _pipx_version()
+        v = _uv_version()
         if v is None:
-            print(f"  pipx :  {_c('not installed', '33')}  (pipx itself is available)")
+            print(f"  uv    :  {_c('not installed', '33')}  (uv itself is available)")
         else:
-            print(f"  pipx :  {_c('installed', '32')}  (version {v})")
+            print(f"  uv    :  {_c('installed', '32')}  (version {v})")
 
     pv = _pip_version()
     label = f"pip ({sys.executable})"
@@ -299,7 +282,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_install = sub.add_parser(
         "install",
-        help="install the package (default: pipx, core only - fast)",
+        help="install the package (default: uv, core only - fast)",
     )
     p_install.add_argument(
         "--extras",
@@ -324,13 +307,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_uninstall = sub.add_parser(
         "uninstall",
-        help="uninstall the package (default: try both pipx and pip)",
+        help="uninstall the package (default: try both uv and pip)",
     )
-    p_uninstall.add_argument("--pipx", action="store_true", help="uninstall only via pipx")
+    p_uninstall.add_argument("--uv", action="store_true", help="uninstall only via uv")
     p_uninstall.add_argument("--pip", action="store_true", help="uninstall only via pip")
     p_uninstall.set_defaults(func=cmd_uninstall)
 
-    p_status = sub.add_parser("status", help="show install status on both pipx and pip")
+    p_status = sub.add_parser("status", help="show install status on both uv and pip")
     p_status.set_defaults(func=cmd_status)
 
     return parser
