@@ -275,13 +275,16 @@ def _ensure_curses() -> None:
 def _run_curses(stdscr) -> None:
     import curses
 
-    curses.curs_set(0)
-    curses.use_default_colors()
-    curses.init_pair(1, curses.COLOR_CYAN, -1)
-    curses.init_pair(2, curses.COLOR_GREEN, -1)
-    curses.init_pair(3, curses.COLOR_YELLOW, -1)
-    curses.init_pair(4, curses.COLOR_WHITE, -1)
-    curses.init_pair(5, curses.COLOR_MAGENTA, -1)
+    def _init_colors() -> None:
+        curses.curs_set(0)
+        curses.use_default_colors()
+        curses.init_pair(1, curses.COLOR_CYAN, -1)
+        curses.init_pair(2, curses.COLOR_GREEN, -1)
+        curses.init_pair(3, curses.COLOR_YELLOW, -1)
+        curses.init_pair(4, curses.COLOR_WHITE, -1)
+        curses.init_pair(5, curses.COLOR_MAGENTA, -1)
+
+    _init_colors()
 
     def cp(n: int) -> int:
         return curses.color_pair(n)
@@ -374,6 +377,7 @@ def _run_curses(stdscr) -> None:
             curses.noecho()
             curses.cbreak()
             stdscr.keypad(True)
+            _init_colors()
             stdscr.clearok(True)
             stdscr.refresh()
         elif key in (ord("q"), 27):

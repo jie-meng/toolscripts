@@ -27,19 +27,45 @@ class UvCommand:
 
 
 _UV_COMMANDS: list[UvCommand] = [
+    # ── Python management (do first, before any project work) ──────────────
     UvCommand(
-        name="Create venv",
-        command="uv venv [OPTIONS]",
-        base_args=["venv"],
-        description="Run in your project directory. "
-        "Creates a virtual environment (default: .venv) and writes .python-version. "
-        "You will be prompted to pick from uv-managed Python versions already installed.",
+        name="Python list",
+        command="uv python list",
+        base_args=["python", "list"],
+        description="Run anywhere. "
+        "Lists all Python interpreters known to uv — both uv-managed installations "
+        "and system/Homebrew/pyenv Pythons. Shows path or '<download available>'.",
         examples=[
-            "uv venv                # use Python from pyproject.toml or default",
-            "uv venv --python 3.12 # use Python 3.12",
-            "uv venv .venv --python python3.11",
+            "uv python list          # all interpreters",
+            "uv python list --only-installed  # only installed ones",
         ],
     ),
+    UvCommand(
+        name="Python install",
+        command="uv python install <VERSION>",
+        base_args=["python", "install"],
+        description="Run anywhere — installs globally into ~/.local/share/uv/python/. "
+        "Downloads and installs a specific Python version managed by uv. "
+        "You will be shown a picker of available versions to select from.",
+        examples=[
+            "uv python install 3.13",
+            "uv python install 3.12.10",
+            "uv python install cpython-3.11.14-macos-aarch64-none",
+        ],
+    ),
+    UvCommand(
+        name="Python uninstall",
+        command="uv python uninstall <VERSION>",
+        base_args=["python", "uninstall"],
+        description="Run anywhere — uninstalls from ~/.local/share/uv/python/. "
+        "Removes a uv-managed Python installation. "
+        "You will be shown a picker of installed versions to select from.",
+        examples=[
+            "uv python uninstall 3.11.14",
+            "uv python uninstall cpython-3.11.14-macos-aarch64-none",
+        ],
+    ),
+    # ── Project setup ──────────────────────────────────────────────────────
     UvCommand(
         name="Init project",
         command="uv init [OPTIONS]",
@@ -53,6 +79,32 @@ _UV_COMMANDS: list[UvCommand] = [
             "uv init --package     # start a package (src/ layout)",
         ],
     ),
+    UvCommand(
+        name="Create venv",
+        command="uv venv [OPTIONS]",
+        base_args=["venv"],
+        description="Run in your project directory (after uv init). "
+        "Creates a virtual environment (default: .venv) and writes .python-version. "
+        "You will be prompted to pick from uv-managed Python versions already installed.",
+        examples=[
+            "uv venv                # use Python from pyproject.toml or default",
+            "uv venv --python 3.12 # use Python 3.12",
+            "uv venv .venv --python python3.11",
+        ],
+    ),
+    UvCommand(
+        name="Python pin",
+        command="uv python pin <VERSION>",
+        base_args=["python", "pin"],
+        description="Run in the project root (where pyproject.toml is). "
+        "Writes .python-version to pin the interpreter used by uv run and uv sync.",
+        examples=[
+            "uv python pin 3.12",
+            "uv python pin 3.11.8",
+        ],
+        needs_args=True,
+    ),
+    # ── Dependency management ──────────────────────────────────────────────
     UvCommand(
         name="Add dependency",
         command="uv add <PACKAGE> [OPTIONS]",
@@ -110,6 +162,90 @@ _UV_COMMANDS: list[UvCommand] = [
         ],
         needs_project=True,
     ),
+    # ── Running code ───────────────────────────────────────────────────────
+    UvCommand(
+        name="Run script",
+        command="uv run <SCRIPT> [OPTIONS]",
+        base_args=["run"],
+        description="Run in the project root (where pyproject.toml is). "
+        "Runs a Python script or command in an environment configured by pyproject.toml. "
+        "Automatically resolves and installs dependencies.",
+        examples=[
+            "uv run python main.py          # run a script",
+            "uv run -- pytest tests/        # run pytest",
+            "uv run python -c 'print(1)'    # inline command",
+        ],
+        needs_args=True,
+        needs_project=True,
+    ),
+    UvCommand(
+        name="Run shell",
+        command="uv run python",
+        base_args=["run", "--python", "python3"],
+        description="Run in the project root (where pyproject.toml is). "
+        "Opens an interactive Python REPL with all project dependencies available.",
+        examples=[
+            "uv run python                    # basic REPL",
+            "uv run --python python3.12       # specific Python REPL",
+        ],
+        needs_project=True,
+    ),
+    # ── Project info ───────────────────────────────────────────────────────
+    UvCommand(
+        name="Tree (deps)",
+        command="uv tree [OPTIONS]",
+        base_args=["tree"],
+        description="Run in the project root (where pyproject.toml is). "
+        "Displays the dependency tree of the current project.",
+        examples=[
+            "uv tree",
+            "uv tree --depth 2       # limit depth",
+            "uv tree --no-dedupe     # show all duplicates",
+        ],
+        needs_project=True,
+    ),
+    UvCommand(
+        name="Check project",
+        command="uv check [OPTIONS]",
+        base_args=["check"],
+        description="Run in the project root (where pyproject.toml is). "
+        "Verifies that locked dependencies satisfy pyproject.toml constraints. "
+        "Used in CI to check lockfile freshness.",
+        examples=[
+            "uv check",
+            "uv check --strict   # also check that all env vars are declared",
+        ],
+        needs_project=True,
+    ),
+    # ── Publishing ─────────────────────────────────────────────────────────
+    UvCommand(
+        name="Build package",
+        command="uv build [OPTIONS]",
+        base_args=["build"],
+        description="Run in the project root (where pyproject.toml is). "
+        "Builds source and wheel distributions for publishing. Outputs to dist/.",
+        examples=[
+            "uv build                 # build sdist + wheel",
+            "uv build --sdist         # source distribution only",
+            "uv build --wheel        # wheel only",
+        ],
+        needs_project=True,
+    ),
+    UvCommand(
+        name="Publish to PyPI",
+        command="uv publish [OPTIONS]",
+        base_args=["publish"],
+        description="Run in the project root (where pyproject.toml is). "
+        "Uploads built distributions from dist/ to PyPI. "
+        "Reads credentials from pyproject.toml or --token.",
+        examples=[
+            "uv publish                    # upload dist/*",
+            "uv publish --token pypi-xxx   # with explicit token",
+            "uv publish --repository testpypi  # TestPyPI",
+        ],
+        needs_project=True,
+    ),
+    # ── pip (non-project / active venv) ───────────────────────────────────
     UvCommand(
         name="Pip install",
         command="uv pip install <PACKAGE> [OPTIONS]",
@@ -158,33 +294,7 @@ _UV_COMMANDS: list[UvCommand] = [
             "uv pip freeze > requirements.txt  # save current env",
         ],
     ),
-    UvCommand(
-        name="Run script",
-        command="uv run <SCRIPT> [OPTIONS]",
-        base_args=["run"],
-        description="Run in the project root (where pyproject.toml is). "
-        "Runs a Python script or command in an environment configured by pyproject.toml. "
-        "Automatically resolves and installs dependencies.",
-        examples=[
-            "uv run python main.py          # run a script",
-            "uv run -- pytest tests/        # run pytest",
-            "uv run python -c 'print(1)'    # inline command",
-        ],
-        needs_args=True,
-        needs_project=True,
-    ),
-    UvCommand(
-        name="Run shell",
-        command="uv run python",
-        base_args=["run", "--python", "python3"],
-        description="Run in the project root (where pyproject.toml is). "
-        "Opens an interactive Python REPL with all project dependencies available.",
-        examples=[
-            "uv run python                    # basic REPL",
-            "uv run --python python3.12       # specific Python REPL",
-        ],
-        needs_project=True,
-    ),
+    # ── Global tools ───────────────────────────────────────────────────────
     UvCommand(
         name="Tool install",
         command="uv tool install <PACKAGE> [OPTIONS]",
@@ -231,108 +341,7 @@ _UV_COMMANDS: list[UvCommand] = [
             "uv tool update ruff     # update one",
         ],
     ),
-    UvCommand(
-        name="Build package",
-        command="uv build [OPTIONS]",
-        base_args=["build"],
-        description="Run in the project root (where pyproject.toml is). "
-        "Builds source and wheel distributions for publishing. Outputs to dist/.",
-        examples=[
-            "uv build                 # build sdist + wheel",
-            "uv build --sdist         # source distribution only",
-            "uv build --wheel        # wheel only",
-        ],
-        needs_project=True,
-    ),
-    UvCommand(
-        name="Publish to PyPI",
-        command="uv publish [OPTIONS]",
-        base_args=["publish"],
-        description="Run in the project root (where pyproject.toml is). "
-        "Uploads built distributions from dist/ to PyPI. "
-        "Reads credentials from pyproject.toml or --token.",
-        examples=[
-            "uv publish                    # upload dist/*",
-            "uv publish --token pypi-xxx   # with explicit token",
-            "uv publish --repository testpypi  # TestPyPI",
-        ],
-        needs_project=True,
-    ),
-    UvCommand(
-        name="Python list",
-        command="uv python list",
-        base_args=["python", "list"],
-        description="Run anywhere. "
-        "Lists all Python interpreters known to uv — both uv-managed installations "
-        "and system/Homebrew/pyenv Pythons. Shows path or '<download available>'.",
-        examples=[
-            "uv python list          # all interpreters",
-            "uv python list --only-installed  # only installed ones",
-        ],
-    ),
-    UvCommand(
-        name="Python install",
-        command="uv python install <VERSION>",
-        base_args=["python", "install"],
-        description="Run anywhere — installs globally into ~/.local/share/uv/python/. "
-        "Downloads and installs a specific Python version managed by uv. "
-        "You will be shown a picker of available versions to select from.",
-        examples=[
-            "uv python install 3.13",
-            "uv python install 3.12.10",
-            "uv python install cpython-3.11.14-macos-aarch64-none",
-        ],
-    ),
-    UvCommand(
-        name="Python uninstall",
-        command="uv python uninstall <VERSION>",
-        base_args=["python", "uninstall"],
-        description="Run anywhere — uninstalls from ~/.local/share/uv/python/. "
-        "Removes a uv-managed Python installation. "
-        "You will be shown a picker of installed versions to select from.",
-        examples=[
-            "uv python uninstall 3.11.14",
-            "uv python uninstall cpython-3.11.14-macos-aarch64-none",
-        ],
-    ),
-    UvCommand(
-        name="Python pin",
-        command="uv python pin <VERSION>",
-        base_args=["python", "pin"],
-        description="Run in the project root (where pyproject.toml is). "
-        "Writes .python-version to pin the interpreter used by uv run and uv sync.",
-        examples=[
-            "uv python pin 3.12",
-            "uv python pin 3.11.8",
-        ],
-        needs_args=True,
-    ),
-    UvCommand(
-        name="Check project",
-        command="uv check [OPTIONS]",
-        base_args=["check"],
-        description="Run in the project root (where pyproject.toml is). "
-        "Verifies that locked dependencies satisfy pyproject.toml constraints. "
-        "Used in CI to check lockfile freshness.",
-        examples=[
-            "uv check",
-            "uv check --strict   # also check that all env vars are declared",
-        ],
-        needs_project=True,
-    ),
-    UvCommand(
-        name="Tree (deps)",
-        command="uv tree [OPTIONS]",
-        base_args=["tree"],
-        description="Run in the project root (where pyproject.toml is). "
-        "Displays the dependency tree of the current project.",
-        examples=[
-            "uv tree",
-            "uv tree --depth 2       # limit depth",
-            "uv tree --no-dedupe     # show all duplicates",
-        ],
-        needs_project=True,
-    ),
+    # ── Cache ──────────────────────────────────────────────────────────────
     UvCommand(
         name="Cache clean",
         command="uv cache clean [OPTIONS]",
@@ -545,14 +554,17 @@ def _ensure_curses() -> None:
 def _run_curses(stdscr) -> None:
     import curses
 
-    curses.curs_set(0)
-    curses.use_default_colors()
-    curses.init_pair(1, curses.COLOR_CYAN, -1)
-    curses.init_pair(2, curses.COLOR_GREEN, -1)
-    curses.init_pair(3, curses.COLOR_YELLOW, -1)
-    curses.init_pair(4, curses.COLOR_WHITE, -1)
-    curses.init_pair(5, curses.COLOR_MAGENTA, -1)
-    curses.init_pair(6, curses.COLOR_RED, -1)
+    def _init_colors() -> None:
+        curses.curs_set(0)
+        curses.use_default_colors()
+        curses.init_pair(1, curses.COLOR_CYAN, -1)
+        curses.init_pair(2, curses.COLOR_GREEN, -1)
+        curses.init_pair(3, curses.COLOR_YELLOW, -1)
+        curses.init_pair(4, curses.COLOR_WHITE, -1)
+        curses.init_pair(5, curses.COLOR_MAGENTA, -1)
+        curses.init_pair(6, curses.COLOR_RED, -1)
+
+    _init_colors()
 
     def cp(n: int) -> int:
         return curses.color_pair(n)
@@ -655,6 +667,7 @@ def _run_curses(stdscr) -> None:
             curses.noecho()
             curses.cbreak()
             stdscr.keypad(True)
+            _init_colors()
             stdscr.clearok(True)
             stdscr.refresh()
         elif key in (ord("q"), 27):
