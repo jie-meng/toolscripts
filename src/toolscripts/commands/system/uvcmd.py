@@ -565,8 +565,8 @@ def _run_curses(stdscr) -> None:
         stdscr.clear()
         height, width = stdscr.getmaxyx()
 
-        list_height = height - 11
-        preview_top = height - 10
+        preview_top = height - 13
+        list_height = max(1, preview_top - 3)
 
         title = " uvcmd - uv command browser "
         stdscr.addstr(0, 0, title.center(width, " "), cp(1) | curses.A_BOLD)
