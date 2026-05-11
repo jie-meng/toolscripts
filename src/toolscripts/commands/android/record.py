@@ -9,9 +9,10 @@ import sys
 import time
 from pathlib import Path
 
-from toolscripts.adb.devices import select_device
+from toolscripts.adb.devices import list_devices
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
 from toolscripts.core.shell import run
+from toolscripts.core.ui_curses import select_one
 
 from ._video import compress_video
 
@@ -23,14 +24,19 @@ def main() -> None:
         prog="android-record",
         description="Record the screen on a connected Android device.",
     )
-    parser.add_argument(
-        "--no-compress", action="store_true", help="skip the compression prompt"
-    )
+    parser.add_argument("--no-compress", action="store_true", help="skip the compression prompt")
     add_logging_flags(parser)
     args = parser.parse_args()
     configure_from_args(args)
 
-    device = select_device()
+    devices = list_devices()
+    if not devices:
+        log.error("no Android devices connected; check `adb devices`")
+        sys.exit(1)
+    idx = select_one("Select device", devices)
+    if idx is None:
+        sys.exit(1)
+    device = devices[idx]
     timestamp = time.strftime("%Y%m%d_%H%M%S")
     remote = f"/sdcard/android-video-{timestamp}.mp4"
     local = Path(f"android-video-{timestamp}.mp4")

@@ -25,9 +25,19 @@ def compress_video(input_file: Path, *, quality: int = 1) -> Path | None:
 
     log.info("compressing video (quality=%d)...", quality)
     cmd = [
-        "ffmpeg", "-i", str(input_file),
-        "-c:v", "libx264", "-crf", crf, "-preset", preset,
-        "-c:a", "aac", "-movflags", "+faststart",
+        "ffmpeg",
+        "-i",
+        str(input_file),
+        "-c:v",
+        "libx264",
+        "-crf",
+        crf,
+        "-preset",
+        preset,
+        "-c:a",
+        "aac",
+        "-movflags",
+        "+faststart",
         str(output),
     ]
     try:

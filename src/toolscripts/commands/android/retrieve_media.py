@@ -6,20 +6,30 @@ import argparse
 import sys
 from pathlib import Path
 
-from toolscripts.adb.devices import select_device
+from toolscripts.adb.devices import list_devices
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
+from toolscripts.core.prompts import ask
 from toolscripts.core.shell import capture, run
 from toolscripts.core.ui_curses import select_one
-from toolscripts.core.prompts import ask
 
 log = get_logger(__name__)
 
 
 _PRESETS = [
-    ("Image (jpg/png from DCIM/Camera)",          "/sdcard/DCIM/Camera",        ("IMG_",), (".jpg", ".png")),
-    ("Screenshot (jpg/png from DCIM/Screenshots)", "/sdcard/DCIM/Screenshots",   ("Screenshot_",), (".jpg", ".png")),
-    ("Video (mp4 from DCIM/Camera)",              "/sdcard/DCIM/Camera",        ("VID_",), (".mp4",)),
-    ("Screen recording (mp4 from DCIM/ScreenRecorder)", "/sdcard/DCIM/ScreenRecorder", (), (".mp4",)),
+    ("Image (jpg/png from DCIM/Camera)", "/sdcard/DCIM/Camera", ("IMG_",), (".jpg", ".png")),
+    (
+        "Screenshot (jpg/png from DCIM/Screenshots)",
+        "/sdcard/DCIM/Screenshots",
+        ("Screenshot_",),
+        (".jpg", ".png"),
+    ),
+    ("Video (mp4 from DCIM/Camera)", "/sdcard/DCIM/Camera", ("VID_",), (".mp4",)),
+    (
+        "Screen recording (mp4 from DCIM/ScreenRecorder)",
+        "/sdcard/DCIM/ScreenRecorder",
+        (),
+        (".mp4",),
+    ),
 ]
 
 
@@ -39,14 +49,19 @@ def main() -> None:
     parser.add_argument(
         "-n", "--count", type=int, default=None, help="number of latest files to pull"
     )
-    parser.add_argument(
-        "-o", "--output", default=".", help="local output directory (default: .)"
-    )
+    parser.add_argument("-o", "--output", default=".", help="local output directory (default: .)")
     add_logging_flags(parser)
     args = parser.parse_args()
     configure_from_args(args)
 
-    device = select_device()
+    devices = list_devices()
+    if not devices:
+        log.error("no Android devices connected; check `adb devices`")
+        sys.exit(1)
+    idx = select_one("Select device", devices)
+    if idx is None:
+        sys.exit(1)
+    device = devices[idx]
     output_dir = Path(args.output).expanduser()
     output_dir.mkdir(parents=True, exist_ok=True)
 

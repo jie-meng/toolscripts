@@ -34,13 +34,23 @@ def main() -> None:
 
     if args.debug or yes_no("Is it a debug keystore?", default=False):
         cmd = [
-            "keytool", "-genkey", "-v",
-            "-keystore", "debug.keystore",
-            "-storepass", "android",
-            "-alias", "androiddebugkey",
-            "-keypass", "android",
-            "-keyalg", "RSA", "-keysize", "2048",
-            "-validity", "10000",
+            "keytool",
+            "-genkey",
+            "-v",
+            "-keystore",
+            "debug.keystore",
+            "-storepass",
+            "android",
+            "-alias",
+            "androiddebugkey",
+            "-keypass",
+            "android",
+            "-keyalg",
+            "RSA",
+            "-keysize",
+            "2048",
+            "-validity",
+            "10000",
         ]
     else:
         keystore = args.keystore or ask("Please input keystore name")
@@ -57,11 +67,19 @@ def main() -> None:
             log.error("validity must be an integer: %r", validity_raw)
             sys.exit(1)
         cmd = [
-            "keytool", "-genkey", "-v",
-            "-keystore", keystore,
-            "-alias", alias,
-            "-keyalg", "RSA", "-keysize", "2048",
-            "-validity", str(validity),
+            "keytool",
+            "-genkey",
+            "-v",
+            "-keystore",
+            keystore,
+            "-alias",
+            alias,
+            "-keyalg",
+            "RSA",
+            "-keysize",
+            "2048",
+            "-validity",
+            str(validity),
         ]
 
     log.info("running: %s", " ".join(cmd))
