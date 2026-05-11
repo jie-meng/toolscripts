@@ -436,6 +436,18 @@ def _run_interactive_command(cmd: UvCommand) -> None:
         _handle_python_uninstall()
         return
 
+    if cmd.name == "Add dependency":
+        _handle_add_dependency()
+        return
+
+    if cmd.name == "Remove dependency":
+        _handle_remove_dependency()
+        return
+
+    if cmd.name == "Sync / install":
+        _handle_sync()
+        return
+
     args: list[str] = []
     if cmd.needs_args:
         prompt = "Enter argument (package name, path, etc.): "
@@ -530,9 +542,94 @@ def _handle_python_uninstall() -> None:
         run(["uv", "python", "uninstall", versions[i]])
 
 
-# ---------------------------------------------------------------------------
-# Curses UI
-# ---------------------------------------------------------------------------
+def _handle_add_dependency() -> None:
+    from toolscripts.core.ui_curses import select_one
+
+    try:
+        raw = input("Package name (e.g. requests, 'fastapi>=0.100'): ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return
+    if not raw:
+        print("Cancelled.")
+        return
+
+    choice = select_one(
+        "Dependency type?",
+        [
+            "Runtime      uv add <package>",
+            "Dev          uv add <package> --dev",
+            "Optional     uv add <package> --optional <group>",
+        ],
+    )
+    if choice is None:
+        print("Cancelled.")
+        return
+
+    if choice == 0:
+        run(["uv", "add", *raw.split()])
+    elif choice == 1:
+        run(["uv", "add", "--dev", *raw.split()])
+    else:
+        try:
+            group = input("Optional group name (e.g. viz, docs): ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return
+        if not group:
+            print("Cancelled.")
+            return
+        run(["uv", "add", "--optional", group, *raw.split()])
+
+
+def _handle_remove_dependency() -> None:
+    from toolscripts.core.ui_curses import select_one
+
+    try:
+        raw = input("Package name to remove: ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return
+    if not raw:
+        print("Cancelled.")
+        return
+
+    choice = select_one(
+        "Remove from which group?",
+        [
+            "Runtime      uv remove <package>",
+            "Dev          uv remove <package> --dev",
+        ],
+    )
+    if choice is None:
+        print("Cancelled.")
+        return
+
+    dev_flag = ["--dev"] if choice == 1 else []
+    run(["uv", "remove", *dev_flag, *raw.split()])
+
+
+def _handle_sync() -> None:
+    from toolscripts.core.ui_curses import select_one
+
+    choice = select_one(
+        "Sync mode?",
+        [
+            "All deps          uv sync             (runtime + dev)",
+            "Production only   uv sync --no-dev    (skip dev, use for deploy)",
+            "All packages      uv sync --all-packages  (include optional groups)",
+        ],
+    )
+    if choice is None:
+        print("Cancelled.")
+        return
+
+    if choice == 0:
+        run(["uv", "sync"])
+    elif choice == 1:
+        run(["uv", "sync", "--no-dev"])
+    else:
+        run(["uv", "sync", "--all-packages"])
 
 
 def _ensure_curses() -> None:
