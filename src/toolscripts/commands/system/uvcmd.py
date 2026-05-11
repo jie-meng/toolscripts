@@ -31,9 +31,9 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Create venv",
         command="uv venv [OPTIONS]",
         base_args=["venv"],
-        description="Create a new virtual environment in the current directory. "
-        "Without --python, uses the project-resolved Python version from pyproject.toml. "
-        "Use --python VERSION to specify an exact interpreter.",
+        description="Run in your project directory. "
+        "Creates a virtual environment (default: .venv) and writes .python-version. "
+        "You will be prompted to pick from uv-managed Python versions already installed.",
         examples=[
             "uv venv                # use Python from pyproject.toml or default",
             "uv venv --python 3.12 # use Python 3.12",
@@ -44,8 +44,8 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Init project",
         command="uv init [OPTIONS]",
         base_args=["init"],
-        description="Create a new Python project (pyproject.toml + src/ layout). "
-        "Produces a minimal, PEP-compliant project scaffold.",
+        description="Run in an empty directory where you want to start a new project. "
+        "Creates pyproject.toml + src/ layout — a minimal, PEP-compliant scaffold.",
         examples=[
             "uv init                 # creates pyproject.toml + src/",
             "uv init --name my-lib  # name the package",
@@ -57,8 +57,9 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Add dependency",
         command="uv add <PACKAGE> [OPTIONS]",
         base_args=["add"],
-        description="Add one or more packages to the project and update pyproject.toml. "
-        "Creates or updates the lockfile. Dev-only deps use --dev.",
+        description="Run in the project root (where pyproject.toml is). "
+        "Adds one or more packages to pyproject.toml and updates the lockfile. "
+        "Dev-only deps use --dev.",
         examples=[
             "uv add requests            # latest version",
             "uv add 'requests>=2.28'    # with version constraint",
@@ -72,7 +73,8 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Remove dependency",
         command="uv remove <PACKAGE>",
         base_args=["remove"],
-        description="Remove a package from pyproject.toml and update the lockfile.",
+        description="Run in the project root (where pyproject.toml is). "
+        "Removes a package from pyproject.toml and updates the lockfile.",
         examples=[
             "uv remove requests",
             "uv remove pytest --dev",
@@ -84,9 +86,9 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Sync / install",
         command="uv sync [OPTIONS]",
         base_args=["sync"],
-        description="Sync the virtual environment with pyproject.toml. "
-        "Installs, removes, or updates packages to match the lockfile. "
-        "Without a project (only requirements.txt), uses uv pip sync.",
+        description="Run in the project root (where pyproject.toml is). "
+        "Syncs the virtual environment with the lockfile — installs, removes, or "
+        "updates packages to match pyproject.toml.",
         examples=[
             "uv sync               # install all deps from lockfile",
             "uv sync --all-packages  # include dev deps",
@@ -98,7 +100,8 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Lock (generate)",
         command="uv lock [OPTIONS]",
         base_args=["lock"],
-        description="Update the lockfile (uv.lock) to reflect changes in pyproject.toml. "
+        description="Run in the project root (where pyproject.toml is). "
+        "Updates uv.lock to reflect changes in pyproject.toml. "
         "Always safe — reads the existing lock and minimizes changes.",
         examples=[
             "uv lock              # update uv.lock",
@@ -111,8 +114,9 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Pip install",
         command="uv pip install <PACKAGE> [OPTIONS]",
         base_args=["pip", "install"],
-        description="Install packages into the currently active Python environment "
-        "(not a project). Use in a venv created with uv venv.",
+        description="Run anywhere with an active virtual environment. "
+        "Installs packages directly into the active Python environment (not a project). "
+        "Activate a venv first with: source .venv/bin/activate",
         examples=[
             "uv pip install requests        # into active venv",
             "uv pip install -r requirements.txt",
@@ -124,7 +128,8 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Pip uninstall",
         command="uv pip uninstall <PACKAGE>",
         base_args=["pip", "uninstall"],
-        description="Uninstall packages from the currently active Python environment.",
+        description="Run anywhere with an active virtual environment. "
+        "Uninstalls packages from the active Python environment.",
         examples=[
             "uv pip uninstall requests",
             "uv pip uninstall -r requirements.txt",
@@ -135,7 +140,8 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Pip list",
         command="uv pip list [OPTIONS]",
         base_args=["pip", "list"],
-        description="List all packages installed in the active Python environment.",
+        description="Run anywhere with an active virtual environment. "
+        "Lists all packages installed in the active Python environment.",
         examples=[
             "uv pip list                  # all packages",
             "uv pip list --outdated       # packages with newer versions",
@@ -146,7 +152,8 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Pip freeze",
         command="uv pip freeze",
         base_args=["pip", "freeze"],
-        description="Output all installed packages in requirements.txt format.",
+        description="Run anywhere with an active virtual environment. "
+        "Outputs all installed packages in requirements.txt format.",
         examples=[
             "uv pip freeze > requirements.txt  # save current env",
         ],
@@ -155,8 +162,9 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Run script",
         command="uv run <SCRIPT> [OPTIONS]",
         base_args=["run"],
-        description="Run a Python script or inline command in a temporary environment "
-        "configured by pyproject.toml. Automatically resolves and installs dependencies.",
+        description="Run in the project root (where pyproject.toml is). "
+        "Runs a Python script or command in an environment configured by pyproject.toml. "
+        "Automatically resolves and installs dependencies.",
         examples=[
             "uv run python main.py          # run a script",
             "uv run -- pytest tests/        # run pytest",
@@ -169,8 +177,8 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Run shell",
         command="uv run python",
         base_args=["run", "--python", "python3"],
-        description="Open an interactive Python shell (REPL) with all project "
-        "dependencies available. Useful for experimentation.",
+        description="Run in the project root (where pyproject.toml is). "
+        "Opens an interactive Python REPL with all project dependencies available.",
         examples=[
             "uv run python                    # basic REPL",
             "uv run --python python3.12       # specific Python REPL",
@@ -181,8 +189,8 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Tool install",
         command="uv tool install <PACKAGE> [OPTIONS]",
         base_args=["tool", "install"],
-        description="Install a standalone CLI tool from a package. "
-        "Makes the tool's executables available on $PATH.",
+        description="Run anywhere — installs globally. "
+        "Installs a standalone CLI tool and makes its executables available on $PATH.",
         examples=[
             "uv tool install httpie           # install a CLI tool",
             "uv tool install --python 3.12 ruff  # specific Python",
@@ -194,7 +202,8 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Tool run",
         command="uv tool run <TOOL>",
         base_args=["tool", "run"],
-        description="Run a named tool from the tool cache, invoking its default command. "
+        description="Run anywhere. "
+        "Runs a named tool from the tool cache without installing it permanently. "
         "Shorthand: uvx <TOOL>.",
         examples=[
             "uv tool run ruff check .",
@@ -206,7 +215,7 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Tool list",
         command="uv tool list",
         base_args=["tool", "list"],
-        description="List all installed standalone tools and their executables.",
+        description="Run anywhere. " "Lists all installed standalone tools and their executables.",
         examples=[
             "uv tool list --show-paths",
         ],
@@ -215,7 +224,8 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Tool update",
         command="uv tool update <TOOL>",
         base_args=["tool", "update"],
-        description="Update installed tools to their latest versions.",
+        description="Run anywhere — updates globally installed tools. "
+        "Updates installed tools to their latest versions.",
         examples=[
             "uv tool update          # update all",
             "uv tool update ruff     # update one",
@@ -225,7 +235,8 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Build package",
         command="uv build [OPTIONS]",
         base_args=["build"],
-        description="Build source and wheel distributions for publishing. Outputs to dist/.",
+        description="Run in the project root (where pyproject.toml is). "
+        "Builds source and wheel distributions for publishing. Outputs to dist/.",
         examples=[
             "uv build                 # build sdist + wheel",
             "uv build --sdist         # source distribution only",
@@ -237,7 +248,8 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Publish to PyPI",
         command="uv publish [OPTIONS]",
         base_args=["publish"],
-        description="Upload the built distributions to PyPI. "
+        description="Run in the project root (where pyproject.toml is). "
+        "Uploads built distributions from dist/ to PyPI. "
         "Reads credentials from pyproject.toml or --token.",
         examples=[
             "uv publish                    # upload dist/*",
@@ -250,19 +262,45 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Python list",
         command="uv python list",
         base_args=["python", "list"],
-        description="List all available Python interpreters found on the system. "
-        "Includes managed Python installations if UV_PYTHON_PREFERENCE=only-managed.",
+        description="Run anywhere. "
+        "Lists all Python interpreters known to uv — both uv-managed installations "
+        "and system/Homebrew/pyenv Pythons. Shows path or '<download available>'.",
         examples=[
             "uv python list          # all interpreters",
             "uv python list --only-installed  # only installed ones",
         ],
     ),
     UvCommand(
+        name="Python install",
+        command="uv python install <VERSION>",
+        base_args=["python", "install"],
+        description="Run anywhere — installs globally into ~/.local/share/uv/python/. "
+        "Downloads and installs a specific Python version managed by uv. "
+        "You will be shown a picker of available versions to select from.",
+        examples=[
+            "uv python install 3.13",
+            "uv python install 3.12.10",
+            "uv python install cpython-3.11.14-macos-aarch64-none",
+        ],
+    ),
+    UvCommand(
+        name="Python uninstall",
+        command="uv python uninstall <VERSION>",
+        base_args=["python", "uninstall"],
+        description="Run anywhere — uninstalls from ~/.local/share/uv/python/. "
+        "Removes a uv-managed Python installation. "
+        "You will be shown a picker of installed versions to select from.",
+        examples=[
+            "uv python uninstall 3.11.14",
+            "uv python uninstall cpython-3.11.14-macos-aarch64-none",
+        ],
+    ),
+    UvCommand(
         name="Python pin",
         command="uv python pin <VERSION>",
         base_args=["python", "pin"],
-        description="Write the requested Python version to .python-version in the "
-        "current directory, pinning the interpreter used by uv run and uv sync.",
+        description="Run in the project root (where pyproject.toml is). "
+        "Writes .python-version to pin the interpreter used by uv run and uv sync.",
         examples=[
             "uv python pin 3.12",
             "uv python pin 3.11.8",
@@ -273,8 +311,9 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Check project",
         command="uv check [OPTIONS]",
         base_args=["check"],
-        description="Check that the project's locked dependencies satisfy "
-        "the constraints in pyproject.toml. Used in CI to verify lockfile freshness.",
+        description="Run in the project root (where pyproject.toml is). "
+        "Verifies that locked dependencies satisfy pyproject.toml constraints. "
+        "Used in CI to check lockfile freshness.",
         examples=[
             "uv check",
             "uv check --strict   # also check that all env vars are declared",
@@ -285,8 +324,8 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Tree (deps)",
         command="uv tree [OPTIONS]",
         base_args=["tree"],
-        description="Display the dependency tree of the current project. "
-        "Shows which packages depend on what.",
+        description="Run in the project root (where pyproject.toml is). "
+        "Displays the dependency tree of the current project.",
         examples=[
             "uv tree",
             "uv tree --depth 2       # limit depth",
@@ -298,8 +337,8 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Cache clean",
         command="uv cache clean [OPTIONS]",
         base_args=["cache", "clean"],
-        description="Delete the uv cache. Removes downloaded wheels, built wheels, "
-        "and other cached data.",
+        description="Run anywhere. "
+        "Deletes the uv cache — downloaded wheels, built wheels, and other cached data.",
         examples=[
             "uv cache clean              # clean everything",
             "uv cache clean --package requests  # clean one package only",
@@ -309,7 +348,7 @@ _UV_COMMANDS: list[UvCommand] = [
         name="Cache dir",
         command="uv cache dir",
         base_args=["cache", "dir"],
-        description="Print the path to the uv cache directory.",
+        description="Run anywhere. Prints the path to the uv cache directory.",
         examples=[
             "uv cache dir",
         ],
@@ -319,6 +358,52 @@ _UV_COMMANDS: list[UvCommand] = [
 
 def _is_project() -> bool:
     return Path("pyproject.toml").is_file()
+
+
+def _get_uv_python_installed() -> list[str]:
+    """Return unique installed Python version keys known to uv (deduped)."""
+    try:
+        out = subprocess.check_output(
+            ["uv", "python", "list", "--only-installed"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return []
+    seen: set[str] = set()
+    result: list[str] = []
+    for line in out.splitlines():
+        parts = line.split()
+        if parts and parts[0] not in seen:
+            seen.add(parts[0])
+            result.append(parts[0])
+    return result
+
+
+def _get_uv_python_downloadable() -> list[str]:
+    """Return version keys available for download but not yet installed."""
+    try:
+        out = subprocess.check_output(
+            ["uv", "python", "list"], text=True, stderr=subprocess.DEVNULL
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return []
+    installed_keys: set[str] = set()
+    downloadable: list[str] = []
+    seen_dl: set[str] = set()
+    for line in out.splitlines():
+        parts = line.split()
+        if not parts:
+            continue
+        key = parts[0]
+        is_download = len(parts) >= 2 and parts[1].startswith("<download")
+        if is_download:
+            if key not in seen_dl:
+                seen_dl.add(key)
+                downloadable.append(key)
+        else:
+            installed_keys.add(key)
+    return [k for k in downloadable if k not in installed_keys]
 
 
 def _run_interactive_command(cmd: UvCommand) -> None:
@@ -332,6 +417,14 @@ def _run_interactive_command(cmd: UvCommand) -> None:
 
     if cmd.name == "Create venv":
         _handle_venv_create()
+        return
+
+    if cmd.name == "Python install":
+        _handle_python_install()
+        return
+
+    if cmd.name == "Python uninstall":
+        _handle_python_uninstall()
         return
 
     args: list[str] = []
@@ -351,62 +444,23 @@ def _run_interactive_command(cmd: UvCommand) -> None:
 
 
 def _handle_venv_create() -> None:
-    import shutil as _sh
+    from toolscripts.core.ui_curses import select_one
 
-    pyenv_dir = Path.home() / ".pyenv" / "versions"
-
-    def pyenv_versions() -> list[str]:
-        if not pyenv_dir.is_dir():
-            return []
-        return sorted(
-            (p.name for p in pyenv_dir.iterdir() if p.is_dir()),
-            key=lambda v: tuple(int(x) if x.isdigit() else x for x in v.split(".")),
-            reverse=True,
-        )
-
-    def system_versions() -> list[str]:
-        seen: list[str] = []
-        for binary in (
-            "python3.13",
-            "python3.12",
-            "python3.11",
-            "python3.10",
-            "python3.9",
-            "python3.8",
-            "python3",
-            "python",
-        ):
-            if _sh.which(binary):
-                try:
-                    out = subprocess.check_output([binary, "--version"], text=True).strip()
-                except subprocess.CalledProcessError:
-                    continue
-                parts = out.split()
-                if len(parts) >= 2 and parts[1] not in seen:
-                    seen.append(parts[1])
-        return seen
-
-    versions = pyenv_versions() or system_versions()
+    print("Fetching installed Python versions from uv...")
+    versions = _get_uv_python_installed()
     if not versions:
-        print("No Python versions found.")
+        print(
+            "No Python versions found via uv.\n"
+            "Hint: use 'Python install' in this browser to install one first."
+        )
         return
 
-    print("\nSelect a Python version:")
-    for i, v in enumerate(versions, 1):
-        print(f"  {i}. {v}")
-    try:
-        raw = input(f"Enter choice (1-{len(versions)}): ").strip()
-    except (EOFError, KeyboardInterrupt):
-        print()
-        return
-    if not raw.isdigit():
-        print("Invalid selection.")
-        return
-    idx = int(raw) - 1
-    if not 0 <= idx < len(versions):
-        print("Out of range.")
+    idx = select_one("Select Python version for venv", versions)
+    if idx is None:
+        print("Cancelled.")
         return
     selected = versions[idx]
+
     venv_name = ".venv"
     try:
         venv_raw = input(f"venv directory [{venv_name}]: ").strip()
@@ -416,10 +470,55 @@ def _handle_venv_create() -> None:
         print()
         return
 
-    Path(".python-version").write_text(selected + "\n", encoding="utf-8")
+    # Extract bare version string (e.g. cpython-3.13.3-macos-aarch64-none -> 3.13.3)
+    parts = selected.split("-")
+    version_str = parts[1] if len(parts) > 1 and parts[1][0].isdigit() else selected
+    Path(".python-version").write_text(version_str + "\n", encoding="utf-8")
     run(["uv", "venv", venv_name, "--python", selected])
     print(f"\nCreated {venv_name} with Python {selected}")
     print(f"Activate with: source {venv_name}/bin/activate")
+
+
+def _handle_python_install() -> None:
+    from toolscripts.core.ui_curses import select_many
+
+    print("Fetching available Python versions from uv...")
+    versions = _get_uv_python_downloadable()
+    if not versions:
+        print("No additional Python versions available for download (all are already installed).")
+        return
+
+    indices = select_many("Select Python versions to install", versions)
+    if indices is None:
+        print("Cancelled.")
+        return
+    if not indices:
+        print("No versions selected.")
+        return
+
+    for i in indices:
+        run(["uv", "python", "install", versions[i]])
+
+
+def _handle_python_uninstall() -> None:
+    from toolscripts.core.ui_curses import select_many
+
+    print("Fetching installed Python versions from uv...")
+    versions = _get_uv_python_installed()
+    if not versions:
+        print("No uv-managed Python versions found.")
+        return
+
+    indices = select_many("Select Python versions to uninstall", versions)
+    if indices is None:
+        print("Cancelled.")
+        return
+    if not indices:
+        print("No versions selected.")
+        return
+
+    for i in indices:
+        run(["uv", "python", "uninstall", versions[i]])
 
 
 # ---------------------------------------------------------------------------
