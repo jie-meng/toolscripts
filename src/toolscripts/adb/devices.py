@@ -13,13 +13,13 @@ from __future__ import annotations
 
 import sys
 
-from toolscripts.core import prompts
 from toolscripts.core.log import get_logger
 from toolscripts.core.shell import (
     CommandNotFoundError,
     capture,
     require,
 )
+from toolscripts.core.ui_curses import select_one
 
 log = get_logger(__name__)
 
@@ -59,10 +59,10 @@ def select_device(*, prompt: str = "Please select device") -> str:
         sys.exit(1)
 
     if len(devices) == 1:
-        log.debug("single device, auto-selected: %s", devices[0])
+        log.info("single device connected, auto-selected: %s", devices[0])
         return devices[0]
 
-    idx = prompts.choice(prompt, devices, default=0)
+    idx = select_one(prompt, devices)
     if idx is None:
         log.error("no device selected")
         sys.exit(1)

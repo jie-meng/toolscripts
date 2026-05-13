@@ -5,10 +5,9 @@ from __future__ import annotations
 import argparse
 import sys
 
-from toolscripts.adb.devices import list_devices
+from toolscripts.adb.devices import select_device
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
 from toolscripts.core.shell import CommandNotFoundError, require, run
-from toolscripts.core.ui_curses import select_one
 
 log = get_logger(__name__)
 
@@ -30,14 +29,7 @@ def main() -> None:
         log.warning("install scrcpy: https://github.com/Genymobile/scrcpy")
         sys.exit(1)
 
-    devices = list_devices()
-    if not devices:
-        log.error("no Android devices connected; check `adb devices`")
-        sys.exit(1)
-    idx = select_one("Select device", devices)
-    if idx is None:
-        sys.exit(1)
-    device = devices[idx]
+    device = select_device()
     log.info("launching scrcpy for %s...", device)
     cmd = ["scrcpy", "-s", device, *args.extra]
     try:
