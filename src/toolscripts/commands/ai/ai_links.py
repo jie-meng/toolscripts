@@ -232,6 +232,8 @@ def _gitignore_entries(selected: set[str]) -> list[str]:
     # graphify — its output directory can be large and is generated, not
     # source.  Always ignore it.
     entries.append("**/graphify-out/")
+    # playwright-mcp — playwright config dir that may be created per-project
+    entries.append(".playwright-mcp/")
     seen: set[str] = set()
     deduped: list[str] = []
     for entry in entries:
