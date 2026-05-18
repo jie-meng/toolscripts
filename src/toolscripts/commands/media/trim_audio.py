@@ -178,6 +178,17 @@ def main() -> None:
         metavar="SEC",
         help="With -s: minimum silence duration to detect, in seconds (default: 0.5).",
     )
+    parser.add_argument(
+        "--fade-out",
+        type=float,
+        default=0.0,
+        metavar="SEC",
+        help=(
+            "Apply a fade-out at the tail of the trimmed clip, in seconds (default: 0 = disabled). "
+            "Typical values: 0.5–1.5 s for speech, 2–4 s for music. "
+            "Any non-zero value forces re-encoding (codec copy is skipped)."
+        ),
+    )
     add_logging_flags(parser)
     args = parser.parse_args()
     configure_from_args(args)
@@ -224,8 +235,22 @@ def main() -> None:
             log.error("invalid end time: %s (must be > start %s)", raw_end, _format_time(start))
             sys.exit(1)
         if end > duration:
-            log.warning("end time %.3f exceeds duration %.3f, clamping", end, duration)
+            # Silently clamp when the overshoot is within display precision (≤1 ms) —
+            # this happens when the user accepts the default which was rounded up by
+            # _format_time (e.g. raw duration 10.1706 → displayed as "10.171").
+            if end - duration > 0.001:
+                log.warning("end time %.3f exceeds duration %.3f, clamping", end, duration)
             end = duration
+
+        raw_fade = ask(
+            "fade-out duration (0 = none; typical: 0.5–1.5 s for speech, 2–4 s for music)",
+            default="0",
+        )
+        fade_out = _parse_time(raw_fade) if raw_fade is not None else 0.0
+        if fade_out is None or fade_out < 0:
+            log.warning("invalid fade-out value '%s', defaulting to 0", raw_fade)
+            fade_out = 0.0
+        args.fade_out = fade_out
 
     ext = input_path.suffix
     stem = input_path.stem
@@ -240,13 +265,43 @@ def main() -> None:
         output_path = Path(raw_out) if raw_out else Path(default_output)
 
     needs_transcode = output_path.suffix.lower() != ext.lower()
+    fade_out: float = args.fade_out
+    if fade_out < 0:
+        log.warning("--fade-out must be non-negative, ignoring")
+        fade_out = 0.0
+    clip_duration = end - start
+    if fade_out > 0 and fade_out >= clip_duration:
+        log.warning(
+            "fade-out (%.3f s) >= clip duration (%.3f s), disabling fade-out",
+            fade_out,
+            clip_duration,
+        )
+        fade_out = 0.0
+
     cmd = ["ffmpeg", "-y", "-i", str(input_path)]
     cmd += ["-ss", str(start), "-to", str(end)]
-    if needs_transcode and output_path.suffix.lower() == ".ogg":
+    if fade_out > 0:
+        # Pick a perceptually natural curve based on fade duration.
+        # Human loudness perception is logarithmic, so a linear-amplitude fade
+        # sounds abrupt.  Shorter fades benefit from a convex (fast-then-slow)
+        # amplitude drop; longer fades want an S-shaped envelope.
+        #   < 1 s  → exp  : convex exponential — clean, tight cutoff
+        #   1–3 s  → qsin : quarter-sine — closest to perceived linear loudness
+        #   > 3 s  → hsin : half-sine S-curve — gentle entry and exit, musical
+        if fade_out < 1.0:
+            curve = "exp"
+        elif fade_out <= 3.0:
+            curve = "qsin"
+        else:
+            curve = "hsin"
+        fade_start = clip_duration - fade_out
+        cmd += ["-af", f"afade=t=out:st={fade_start:.6f}:d={fade_out:.6f}:curve={curve}"]
+        log.info("fade-out: %.3f s (%s curve)", fade_out, curve)
+        if needs_transcode and output_path.suffix.lower() == ".ogg":
+            cmd += ["-c:a", "libopus"]
+    elif needs_transcode and output_path.suffix.lower() == ".ogg":
         cmd += ["-c:a", "libopus"]
-    elif needs_transcode:
-        pass
-    else:
+    elif not needs_transcode:
         cmd += ["-c", "copy"]
     cmd.append(str(output_path))
 
