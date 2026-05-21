@@ -136,7 +136,7 @@ full options.
 | credential | `jwt-decode`, `basic-auth`, `uuid-gen`, `redact-clipboard`, `pem-to-oneline`, `oauth-code` |
 | git        | `git-copy-diff`, `git-branch-delete`, `git-merge-to-main`, `git-delete-local-branches`, `git-make-patches`, `git-apply-patches`, `git-install-sensitive-hook`, `git-user`, `git-user-batch` |
 | android    | `android-record`, `android-deeplink`, `android-input-text`, `android-screencast`, `android-logcat`, `android-emulator`, `android-batch-install`, `android-retrieve-media`, `android-rename-project`, `android-adbsync`, `android-keystore-generate`, `android-studio` |
-| ios        | `ios-log`, `ios-record`, `ios-simulator`, `xcode-terminal` |
+| ios        | `ios-log`, `ios-record`, `ios-simulator`, `ios-deeplink`, `xcode-terminal` |
 | media      | `img-resize`, `img-scale`, `imgcat`, `playsound`, `stopsound`, `mp4-compress`, `mov-to-mp4`, `mp4cut`, `mp4togif`, `mp3-to-pcm`, `remove-watermark`, `pdf-merge`, `kindle-pdf-cropper` |
 | ai         | `ccswitch`, `aido`, `aido-models`, `free-models-openrouter`, `free-models-nvidia`, `agents-setup`, `ai-links`, `graphify-setup`, `npm-tools` |
 | text/docs  | `markdown-snippet`, `slugify`, `web2md`, `translate`, `mermaid`, `statcounter-os-coverage`, `xlsx-text2num` |

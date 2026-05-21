@@ -118,6 +118,7 @@ android-studio            = "toolscripts.commands.android.studio:main"
 ios-log                   = "toolscripts.commands.ios.log:main"
 ios-record                = "toolscripts.commands.ios.record:main"
 ios-simulator             = "toolscripts.commands.ios.simulator:main"
+ios-deeplink              = "toolscripts.commands.ios.deeplink:main"
 xcode-terminal            = "toolscripts.commands.ios.xcode_terminal:main"
 
 # media (image/audio/video/pdf)
