@@ -112,6 +112,7 @@ android-rename-project    = "toolscripts.commands.android.rename_project:main"
 android-adbsync           = "toolscripts.commands.android.adbsync:main"
 
 android-keystore-generate = "toolscripts.commands.android.keystore_generate:main"
+android-screenshot        = "toolscripts.commands.android.screenshot:main"
 android-studio            = "toolscripts.commands.android.studio:main"
 
 # ios
