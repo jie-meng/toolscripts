@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import argparse
-import sys
 
 from toolscripts.core.clipboard import copy_to_clipboard
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
+from toolscripts.core.ui_curses import select_one
 
 log = get_logger(__name__)
 
@@ -15,23 +15,22 @@ def _generate_table(rows: int, cols: int) -> str:
     header = "| " + " | ".join(f"Header{i + 1}" for i in range(cols)) + " |"
     separator = "| " + " | ".join("---" for _ in range(cols)) + " |"
     body = "\n".join(
-        "| " + " | ".join(f"Cell{i + 1}{j + 1}" for j in range(cols)) + " |"
-        for i in range(rows)
+        "| " + " | ".join(f"Cell{i + 1}{j + 1}" for j in range(cols)) + " |" for i in range(rows)
     )
     return "\n".join([header, separator, body])
 
 
 _TASK_LIST = "- [x] Write the press release\n- [ ] Update the website\n- [ ] Contact the media"
 
-_MERMAID = {
-    "1": """```mermaid
+_MERMAID = [
+    """```mermaid
 graph TD;
     A-->B;
     A-->C;
     B-->D;
     C-->D;
 ```""",
-    "2": """```mermaid
+    """```mermaid
 sequenceDiagram
     participant Alice
     participant Bob
@@ -44,7 +43,7 @@ sequenceDiagram
     John->>Bob: How about you?
     Bob-->>John: Jolly good!
 ```""",
-    "3": """```mermaid
+    """```mermaid
 gantt
 dateFormat  YYYY-MM-DD
 title Adding GANTT diagram to mermaid
@@ -56,7 +55,7 @@ Active task               :active,  des2, 2014-01-09, 3d
 Future task               :         des3, after des2, 5d
 Future task2              :         des4, after des3, 5d
 ```""",
-    "4": """```mermaid
+    """```mermaid
 classDiagram
 Class01 <|-- AveryLongClass : Cool
 Class03 *-- Class04
@@ -72,7 +71,7 @@ Class01 : int chimp
 Class01 : int gorilla
 Class08 <--> C2: Cool label
 ```""",
-}
+]
 
 
 def _emit(content: str) -> None:
@@ -101,20 +100,11 @@ def _task_list_flow() -> None:
 
 
 def _mermaid_flow() -> None:
-    print("Select a mermaid diagram type:")
-    print("  1. Flowchart")
-    print("  2. Sequence")
-    print("  3. Gantt")
-    print("  4. Class")
-    try:
-        choice = input("Choice [1-4]: ").strip()
-    except (EOFError, KeyboardInterrupt):
+    items = ["Flowchart", "Sequence", "Gantt", "Class"]
+    idx = select_one("Select mermaid diagram type", items)
+    if idx is None:
         return
-    diagram = _MERMAID.get(choice)
-    if diagram is None:
-        log.error("invalid choice")
-        return
-    _emit(diagram)
+    _emit(_MERMAID[idx])
 
 
 def main() -> None:
@@ -126,28 +116,18 @@ def main() -> None:
     args = parser.parse_args()
     configure_from_args(args)
 
+    items = ["Table", "Task List", "Mermaid Diagram", "Exit"]
     while True:
-        print("\nSelect an option:")
-        print("  1. Table")
-        print("  2. Task List")
-        print("  3. Mermaid Diagram")
-        print("  0. Exit")
-        try:
-            choice = input("Enter your choice: ").strip()
-        except (EOFError, KeyboardInterrupt):
-            print()
-            sys.exit(0)
-        if choice == "1":
-            _table_flow()
-        elif choice == "2":
-            _task_list_flow()
-        elif choice == "3":
-            _mermaid_flow()
-        elif choice == "0":
+        idx = select_one("Select snippet type", items)
+        if idx is None or idx == 3:
             log.info("bye")
             return
-        else:
-            log.warning("invalid choice")
+        if idx == 0:
+            _table_flow()
+        elif idx == 1:
+            _task_list_flow()
+        elif idx == 2:
+            _mermaid_flow()
 
 
 if __name__ == "__main__":
