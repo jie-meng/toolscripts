@@ -7,7 +7,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from toolscripts.adb.devices import select_device
+from toolscripts.adb.devices import get_device_model, select_device
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
 
 log = get_logger(__name__)
@@ -25,16 +25,18 @@ def main() -> None:
         "--output",
         type=Path,
         default=None,
-        help="Output file path (default: android-screenshot-<timestamp>.png)",
+        help="Output file path (default: android-screenshot-<model>-<timestamp>.png)",
     )
     add_logging_flags(parser)
     args = parser.parse_args()
     configure_from_args(args)
 
     device = select_device()
+    model = get_device_model(device)
+    safe_name = model.replace(" ", "_")
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output = args.output or Path(f"android-screenshot-{timestamp}.png")
+    output = args.output or Path(f"android-screenshot-{safe_name}-{timestamp}.png")
 
     log.info("capturing screenshot from %s...", device)
     try:

@@ -3,10 +3,11 @@
 Used by every ``android-*`` command. Wraps ``adb devices`` and exposes a
 small API:
 
-    from toolscripts.adb import select_device, list_devices
+    from toolscripts.adb import select_device, list_devices, get_device_model
 
     serial = select_device()        # may prompt the user
     serials = list_devices()        # returns all serials, no prompt
+    model = get_device_model(serial)  # human-readable model name
 """
 
 from __future__ import annotations
@@ -67,3 +68,9 @@ def select_device(*, prompt: str = "Please select device") -> str:
         log.error("no device selected")
         sys.exit(1)
     return devices[idx]
+
+
+def get_device_model(serial: str) -> str:
+    """Return the human-readable model name for an ADB device serial."""
+    output = capture(["adb", "-s", serial, "shell", "getprop", "ro.product.model"], check=False)
+    return output.strip()
