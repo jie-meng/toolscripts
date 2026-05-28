@@ -32,9 +32,9 @@ def _load_config() -> dict:
             sys.exit(1)
     log.warning("config file not found at %s", CONFIG_FILE)
     log.info(
-        "create one with: {\"port\":27017,\"host\":\"127.0.0.1\","
-        "\"username\":\"...\",\"password\":\"...\",\"dbname\":\"...\","
-        "\"recordsCount\":10}"
+        'create one with: {"port":27017,"host":"127.0.0.1",'
+        '"username":"...","password":"...","dbname":"...",'
+        '"recordsCount":10}'
     )
     sys.exit(1)
 

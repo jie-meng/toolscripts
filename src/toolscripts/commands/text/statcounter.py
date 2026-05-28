@@ -26,17 +26,12 @@ def _read_data(
         for row in reader:
             version_str, percentage_str = row
             major = _VERSION_RE.findall(version_str)
-            major_version = (
-                major[0].split(".")[0] if major else version_str
-            )
+            major_version = major[0].split(".")[0] if major else version_str
             try:
                 pct = float(percentage_str)
             except ValueError:
                 continue
-            if (
-                pct < threshold
-                or (major_version.isdigit() and int(major_version) < min_version)
-            ):
+            if pct < threshold or (major_version.isdigit() and int(major_version) < min_version):
                 major_version = "Other"
             versions[major_version] += pct
     return versions, title
@@ -76,9 +71,7 @@ def main() -> None:
         log.error("missing dependency: install with `pip install matplotlib`")
         sys.exit(1)
 
-    data, title = _read_data(
-        csv_path, min_version=args.min_version, threshold=args.threshold
-    )
+    data, title = _read_data(csv_path, min_version=args.min_version, threshold=args.threshold)
     versions = sorted(data.keys(), key=lambda v: int(v) if v.isdigit() else float("inf"))
     percentages = [data[v] for v in versions]
 

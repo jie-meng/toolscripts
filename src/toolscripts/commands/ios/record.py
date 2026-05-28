@@ -40,9 +40,7 @@ def main() -> None:
         prog="ios-record",
         description="Record a video of the booted iOS simulator (macOS only).",
     )
-    parser.add_argument(
-        "--no-compress", action="store_true", help="skip the compression prompt"
-    )
+    parser.add_argument("--no-compress", action="store_true", help="skip the compression prompt")
     add_logging_flags(parser)
     args = parser.parse_args()
     configure_from_args(args)

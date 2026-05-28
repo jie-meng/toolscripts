@@ -16,9 +16,7 @@ def main() -> None:
         prog="trans",
         description="Translate text between English and Chinese using the `translate` library.",
     )
-    parser.add_argument(
-        "lang", nargs="?", choices=("en", "zh"), help="target language (en or zh)"
-    )
+    parser.add_argument("lang", nargs="?", choices=("en", "zh"), help="target language (en or zh)")
     parser.add_argument("text", nargs="*", help="text to translate (or read from stdin)")
     add_logging_flags(parser)
     args = parser.parse_args()

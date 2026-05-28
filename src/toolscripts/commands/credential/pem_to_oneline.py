@@ -34,9 +34,7 @@ def main() -> None:
         description="Read a PEM file and emit just the base64 key body on a single line.",
     )
     parser.add_argument("file", help="path to the PEM file")
-    parser.add_argument(
-        "--no-copy", action="store_true", help="print only; do not touch clipboard"
-    )
+    parser.add_argument("--no-copy", action="store_true", help="print only; do not touch clipboard")
     add_logging_flags(parser)
     args = parser.parse_args()
     configure_from_args(args)

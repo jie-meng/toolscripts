@@ -44,9 +44,7 @@ def _select(versions: list[str]) -> str | None:
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="venv-create",
-        description=(
-            "Pick a pyenv-managed Python version and create a venv via `python -m venv`."
-        ),
+        description=("Pick a pyenv-managed Python version and create a venv via `python -m venv`."),
     )
     parser.add_argument(
         "--name", default=".venv", help="virtual environment directory (default: .venv)"

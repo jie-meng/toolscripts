@@ -33,9 +33,19 @@ def encode(
 
     crf, preset = _PRESETS.get(str(quality), _PRESETS["1"])
     cmd = [
-        "ffmpeg", "-i", str(input_file),
-        "-c:v", "libx264", "-crf", crf, "-preset", preset,
-        "-c:a", "aac", "-movflags", "+faststart",
+        "ffmpeg",
+        "-i",
+        str(input_file),
+        "-c:v",
+        "libx264",
+        "-crf",
+        crf,
+        "-preset",
+        preset,
+        "-c:a",
+        "aac",
+        "-movflags",
+        "+faststart",
         str(output_file),
     ]
     log.info("running: %s", " ".join(cmd))

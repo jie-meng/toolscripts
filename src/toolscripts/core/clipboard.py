@@ -100,9 +100,7 @@ def paste_from_clipboard() -> str | None:
         tool = shutil.which("pbpaste")
         if tool:
             try:
-                result = subprocess.run(
-                    [tool], capture_output=True, text=True, check=True
-                )
+                result = subprocess.run([tool], capture_output=True, text=True, check=True)
                 return result.stdout
             except subprocess.CalledProcessError:
                 return None

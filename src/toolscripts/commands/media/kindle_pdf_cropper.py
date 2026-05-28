@@ -21,8 +21,13 @@ def _split_pdf_to_jpg(image_path: Path, base_name: str, src_pdf: Path) -> None:
     image_path.mkdir(parents=True)
     run(
         [
-            "magick", "-quality", "100", "-density", density,
-            str(src_pdf), str(image_path / f"{base_name}-%06d.jpg"),
+            "magick",
+            "-quality",
+            "100",
+            "-density",
+            density,
+            str(src_pdf),
+            str(image_path / f"{base_name}-%06d.jpg"),
         ]
     )
 
@@ -66,9 +71,7 @@ def _test_crop(image_path: Path, base_name: str, src_path: Path) -> None:
 
     target = image_path / f"{base_name}-{formatted}.jpg"
     out = src_path / "test.jpg"
-    geom = (
-        f"{width - crops[3] - crops[1]}x{height - crops[0] - crops[2]}+{crops[3]}+{crops[0]}"
-    )
+    geom = f"{width - crops[3] - crops[1]}x{height - crops[0] - crops[2]}+{crops[3]}+{crops[0]}"
     run(["magick", "-crop", geom, str(target), str(out)])
     log.success("test crop saved at %s", out)
 
@@ -82,9 +85,7 @@ def _resize_all(image_path: Path, base_name: str) -> None:
 
     base_image = image_path / f"{base_name}-000000.jpg"
     width, height = _open_image_size(base_image)
-    geom = (
-        f"{width - crops[3] - crops[1]}x{height - crops[0] - crops[2]}+{crops[3]}+{crops[0]}"
-    )
+    geom = f"{width - crops[3] - crops[1]}x{height - crops[0] - crops[2]}+{crops[3]}+{crops[0]}"
 
     for jpg in image_path.iterdir():
         if jpg.suffix.lower() != ".jpg":

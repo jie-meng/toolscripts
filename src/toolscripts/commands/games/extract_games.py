@@ -91,9 +91,7 @@ def main() -> None:
             "categorize by file extension."
         ),
     )
-    parser.add_argument(
-        "directory", nargs="?", default=".", help="directory containing zip files"
-    )
+    parser.add_argument("directory", nargs="?", default=".", help="directory containing zip files")
     add_logging_flags(parser)
     args = parser.parse_args()
     configure_from_args(args)
@@ -109,9 +107,7 @@ def main() -> None:
         return
 
     archives, files = _extract(zip_files, cwd)
-    log.success(
-        "done: %d archive(s) processed, %d file(s) extracted", archives, files
-    )
+    log.success("done: %d archive(s) processed, %d file(s) extracted", archives, files)
 
 
 if __name__ == "__main__":

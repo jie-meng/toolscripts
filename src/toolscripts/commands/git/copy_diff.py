@@ -15,9 +15,7 @@ log = get_logger(__name__)
 
 def _run(cmd: list[str]) -> str | None:
     try:
-        result = subprocess.run(
-            cmd, check=True, capture_output=True, text=True
-        )
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
         return result.stdout
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
@@ -91,7 +89,10 @@ def _staged_diff() -> tuple[str | None, dict[str, str]]:
 def _working_diff() -> tuple[str | None, dict[str, str]]:
     return (
         _run(["git", "diff"]),
-        {"success_msg": "Working directory diff copied to clipboard.", "empty_msg": "No diff to copy."},
+        {
+            "success_msg": "Working directory diff copied to clipboard.",
+            "empty_msg": "No diff to copy.",
+        },
     )
 
 
@@ -182,10 +183,18 @@ def _branch_diff() -> tuple[str | None, dict[str, str]]:
     if not current:
         return None, {"empty_msg": "Could not determine the current branch."}
     candidates = [
-        "origin/main", "origin/master", "origin/develop", "origin/dev",
-        "main", "master", "develop", "dev",
+        "origin/main",
+        "origin/master",
+        "origin/develop",
+        "origin/dev",
+        "main",
+        "master",
+        "develop",
+        "dev",
     ]
-    auto = next((c for c in candidates if _run(["git", "rev-parse", "--verify", c]) is not None), None)
+    auto = next(
+        (c for c in candidates if _run(["git", "rev-parse", "--verify", c]) is not None), None
+    )
     if auto:
         user = input(
             f"Automatically selected '{auto}' as the base. "
@@ -270,9 +279,7 @@ def _format_and_copy(diff: str, prompt_type: str | None, info: dict[str, str]) -
         current = info.get("current_branch") or _current_branch()
         fmt = _commit_format()
         if prompt_type == "en":
-            commit_instr = (
-                "   - Generate a concise, accurate, and conventional commit message for this change."
-            )
+            commit_instr = "   - Generate a concise, accurate, and conventional commit message for this change."
             if fmt:
                 commit_instr = (
                     "   - Generate a concise, accurate commit message for this change. "

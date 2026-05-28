@@ -75,11 +75,16 @@ def _resize_one(
     output = target_dir / f"{new_stem}{image.suffix}"
     run(
         [
-            "magick", str(image),
-            "-resize", f"{width}x{height}",
-            "-background", "black",
-            "-gravity", "center",
-            "-extent", f"{width}x{height}",
+            "magick",
+            str(image),
+            "-resize",
+            f"{width}x{height}",
+            "-background",
+            "black",
+            "-gravity",
+            "center",
+            "-extent",
+            f"{width}x{height}",
             str(output),
         ]
     )
@@ -144,15 +149,11 @@ def main() -> None:
     parser.add_argument(
         "-d", "--dimensions", help="target dimensions WIDTHxHEIGHT (e.g. 1242x2688)"
     )
-    parser.add_argument(
-        "--no-suffix", action="store_true", help="do not add the dimensions suffix"
-    )
+    parser.add_argument("--no-suffix", action="store_true", help="do not add the dimensions suffix")
     parser.add_argument(
         "-i", "--interactive", action="store_true", help="interactive preset selector"
     )
-    parser.add_argument(
-        "-w", "--overwrite", action="store_true", help="overwrite source files"
-    )
+    parser.add_argument("-w", "--overwrite", action="store_true", help="overwrite source files")
     add_logging_flags(parser)
     args = parser.parse_args()
     configure_from_args(args)
@@ -208,7 +209,10 @@ def main() -> None:
     width, height = target
     for image in images:
         result = _resize_one(
-            image, output_dir, width, height,
+            image,
+            output_dir,
+            width,
+            height,
             add_suffix=not args.no_suffix,
             overwrite=args.overwrite,
         )

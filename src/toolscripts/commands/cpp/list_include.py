@@ -30,9 +30,7 @@ def from_here_main() -> None:
         prog="list-include-dirs-from-here",
         description="Recursively list directories named 'include' under the given path.",
     )
-    parser.add_argument(
-        "directory", nargs="?", default=".", help="root directory (default: cwd)"
-    )
+    parser.add_argument("directory", nargs="?", default=".", help="root directory (default: cwd)")
     add_logging_flags(parser)
     args = parser.parse_args()
     configure_from_args(args)

@@ -22,7 +22,11 @@ def main() -> None:
         description="Generate git patches for the last N commits and zip them as patches.zip.",
     )
     parser.add_argument(
-        "-n", "--count", type=int, default=None, help="number of commits to patch (prompted if omitted)"
+        "-n",
+        "--count",
+        type=int,
+        default=None,
+        help="number of commits to patch (prompted if omitted)",
     )
     parser.add_argument(
         "-o", "--output", default="patches.zip", help="output zip file (default: patches.zip)"

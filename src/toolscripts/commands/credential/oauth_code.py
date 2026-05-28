@@ -32,9 +32,7 @@ def main() -> None:
         "--secret",
         help="base32-encoded TOTP secret (defaults to $OATH_SECRET)",
     )
-    parser.add_argument(
-        "--no-copy", action="store_true", help="do not copy the code to clipboard"
-    )
+    parser.add_argument("--no-copy", action="store_true", help="do not copy the code to clipboard")
     add_logging_flags(parser)
     args = parser.parse_args()
     configure_from_args(args)
@@ -52,9 +50,7 @@ def main() -> None:
         sys.exit(1)
 
     try:
-        out = subprocess.check_output(
-            ["oathtool", "--totp", "-b", secret], text=True
-        ).strip()
+        out = subprocess.check_output(["oathtool", "--totp", "-b", secret], text=True).strip()
     except subprocess.CalledProcessError as exc:
         log.error("oathtool failed: %s", exc)
         sys.exit(1)

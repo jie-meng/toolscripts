@@ -14,50 +14,115 @@ log = get_logger(__name__)
 MASK = "[REDACTED]"
 
 SENSITIVE_KEYWORDS: tuple[str, ...] = (
-    "api_key", "apikey", "api-key",
-    "secret", "secret_key", "secretkey", "secret-key",
-    "token", "access_token", "access-token", "auth_token", "auth-token",
-    "refresh_token", "refresh-token", "bearer",
-    "password", "passwd", "pwd",
+    "api_key",
+    "apikey",
+    "api-key",
+    "secret",
+    "secret_key",
+    "secretkey",
+    "secret-key",
+    "token",
+    "access_token",
+    "access-token",
+    "auth_token",
+    "auth-token",
+    "refresh_token",
+    "refresh-token",
+    "bearer",
+    "password",
+    "passwd",
+    "pwd",
     "credential",
-    "private_key", "privatekey", "private-key",
-    "public_key", "publickey", "public-key",
-    "client_secret", "client-secret",
-    "aws_access_key_id", "aws_secret_access_key",
-    "connection_string", "connection-string",
-    "database_url", "database-url",
-    "db_password", "db-password", "db_secret", "db-secret",
-    "encryption_key", "encryption-key",
-    "signing_key", "signing-key",
-    "session_id", "sessionid", "session-id",
-    "session_secret", "session-secret",
-    "jwt_secret", "jwt-secret",
-    "oauth_secret", "oauth-secret",
-    "webhook_secret", "webhook-secret",
-    "stripe_key", "stripe-key", "stripe_secret", "stripe-secret",
-    "github_token", "github-token",
-    "gitlab_token", "gitlab-token",
-    "slack_token", "slack-token", "slack_secret", "slack-secret",
-    "sendgrid_key", "sendgrid-key",
-    "twilio_token", "twilio-token", "twilio_secret", "twilio-secret",
-    "firebase_key", "firebase-key",
-    "openai_key", "openai-key",
-    "anthropic_key", "anthropic-key",
-    "hf_token", "hf-token", "huggingface_token", "huggingface-token",
-    "cohere_key", "cohere-key",
-    "replicate_token", "replicate-token",
-    "groq_key", "groq-key",
-    "perplexity_key", "perplexity-key",
-    "together_key", "together-key",
-    "mistral_key", "mistral-key",
-    "deepseek_key", "deepseek-key",
-    "xai_key", "xai-key",
-    "gemini_key", "gemini-key",
+    "private_key",
+    "privatekey",
+    "private-key",
+    "public_key",
+    "publickey",
+    "public-key",
+    "client_secret",
+    "client-secret",
+    "aws_access_key_id",
+    "aws_secret_access_key",
+    "connection_string",
+    "connection-string",
+    "database_url",
+    "database-url",
+    "db_password",
+    "db-password",
+    "db_secret",
+    "db-secret",
+    "encryption_key",
+    "encryption-key",
+    "signing_key",
+    "signing-key",
+    "session_id",
+    "sessionid",
+    "session-id",
+    "session_secret",
+    "session-secret",
+    "jwt_secret",
+    "jwt-secret",
+    "oauth_secret",
+    "oauth-secret",
+    "webhook_secret",
+    "webhook-secret",
+    "stripe_key",
+    "stripe-key",
+    "stripe_secret",
+    "stripe-secret",
+    "github_token",
+    "github-token",
+    "gitlab_token",
+    "gitlab-token",
+    "slack_token",
+    "slack-token",
+    "slack_secret",
+    "slack-secret",
+    "sendgrid_key",
+    "sendgrid-key",
+    "twilio_token",
+    "twilio-token",
+    "twilio_secret",
+    "twilio-secret",
+    "firebase_key",
+    "firebase-key",
+    "openai_key",
+    "openai-key",
+    "anthropic_key",
+    "anthropic-key",
+    "hf_token",
+    "hf-token",
+    "huggingface_token",
+    "huggingface-token",
+    "cohere_key",
+    "cohere-key",
+    "replicate_token",
+    "replicate-token",
+    "groq_key",
+    "groq-key",
+    "perplexity_key",
+    "perplexity-key",
+    "together_key",
+    "together-key",
+    "mistral_key",
+    "mistral-key",
+    "deepseek_key",
+    "deepseek-key",
+    "xai_key",
+    "xai-key",
+    "gemini_key",
+    "gemini-key",
 )
 
 _PLACEHOLDERS = (
-    "", "null", "none", "undefined", "changeme",
-    "your_key_here", "your_secret_here", "<your-key-here>",
+    "",
+    "null",
+    "none",
+    "undefined",
+    "changeme",
+    "your_key_here",
+    "your_secret_here",
+    "<your-key-here>",
 )
 
 _SENTINEL = "\x00REDACTED\x00"
@@ -98,9 +163,7 @@ def mask_text(text: str) -> tuple[str, int]:
 
     text = export_quoted.sub(export_quoted_repl, text)
 
-    export_unquoted = re.compile(
-        rf"(export\s+)({kw})\s*=\s*(\S+)", re.IGNORECASE | re.MULTILINE
-    )
+    export_unquoted = re.compile(rf"(export\s+)({kw})\s*=\s*(\S+)", re.IGNORECASE | re.MULTILINE)
 
     def export_unquoted_repl(m: re.Match[str]) -> str:
         nonlocal count
@@ -111,9 +174,7 @@ def mask_text(text: str) -> tuple[str, int]:
 
     text = export_unquoted.sub(export_unquoted_repl, text)
 
-    dotenv_quoted = re.compile(
-        rf'^({kw})\s*=\s*(["\'])(.+?)\2\s*$', re.IGNORECASE | re.MULTILINE
-    )
+    dotenv_quoted = re.compile(rf'^({kw})\s*=\s*(["\'])(.+?)\2\s*$', re.IGNORECASE | re.MULTILINE)
 
     def dotenv_quoted_repl(m: re.Match[str]) -> str:
         nonlocal count
@@ -123,9 +184,7 @@ def mask_text(text: str) -> tuple[str, int]:
 
     text = dotenv_quoted.sub(dotenv_quoted_repl, text)
 
-    dotenv_unquoted = re.compile(
-        rf"^({kw})\s*=\s*(\S+)\s*$", re.IGNORECASE | re.MULTILINE
-    )
+    dotenv_unquoted = re.compile(rf"^({kw})\s*=\s*(\S+)\s*$", re.IGNORECASE | re.MULTILINE)
 
     def dotenv_unquoted_repl(m: re.Match[str]) -> str:
         nonlocal count
@@ -136,9 +195,7 @@ def mask_text(text: str) -> tuple[str, int]:
 
     text = dotenv_unquoted.sub(dotenv_unquoted_repl, text)
 
-    quoted_key = re.compile(
-        rf'(["\'])({kw})\1\s*[:=]\s*(["\'])(.+?)\3', re.IGNORECASE
-    )
+    quoted_key = re.compile(rf'(["\'])({kw})\1\s*[:=]\s*(["\'])(.+?)\3', re.IGNORECASE)
 
     def quoted_key_repl(m: re.Match[str]) -> str:
         nonlocal count
@@ -148,9 +205,7 @@ def mask_text(text: str) -> tuple[str, int]:
 
     text = quoted_key.sub(quoted_key_repl, text)
 
-    quoted_value = re.compile(
-        rf'({kw})\s*[:=]\s*(["\'])(.+?)\2', re.IGNORECASE
-    )
+    quoted_value = re.compile(rf'({kw})\s*[:=]\s*(["\'])(.+?)\2', re.IGNORECASE)
 
     def quoted_value_repl(m: re.Match[str]) -> str:
         nonlocal count
@@ -172,9 +227,7 @@ def mask_text(text: str) -> tuple[str, int]:
 
     text = unquoted_value.sub(unquoted_value_repl, text)
 
-    bearer = re.compile(
-        r"(Bearer\s+)([A-Za-z0-9\-_]+(?:\.[A-Za-z0-9\-_]+){2,})", re.IGNORECASE
-    )
+    bearer = re.compile(r"(Bearer\s+)([A-Za-z0-9\-_]+(?:\.[A-Za-z0-9\-_]+){2,})", re.IGNORECASE)
 
     def bearer_repl(m: re.Match[str]) -> str:
         nonlocal count
@@ -222,7 +275,9 @@ def main() -> None:
     print()
     print(masked)
     print()
-    note = f"[Note: {count} sensitive value(s) above have been masked with [REDACTED] for security.]"
+    note = (
+        f"[Note: {count} sensitive value(s) above have been masked with [REDACTED] for security.]"
+    )
     print(note)
     print()
 

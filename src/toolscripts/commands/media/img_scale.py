@@ -39,8 +39,10 @@ def main() -> None:
         log.error("scale must be in (0, 1) - got %s", args.scale)
         sys.exit(1)
 
-    output = Path(args.output) if args.output else input_path.with_name(
-        f"{input_path.stem}-output{input_path.suffix}"
+    output = (
+        Path(args.output)
+        if args.output
+        else input_path.with_name(f"{input_path.stem}-output{input_path.suffix}")
     )
     percentage = f"{args.scale * 100:g}%"
     cmd = ["magick", str(input_path), "-resize", percentage, str(output)]

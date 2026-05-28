@@ -35,10 +35,7 @@ def main() -> None:
         log.error("file not found: %s", input_path)
         sys.exit(1)
 
-    vf = (
-        f"scale={args.width}:-1:flags=lanczos,split[s0][s1];"
-        "[s0]palettegen[p];[s1][p]paletteuse"
-    )
+    vf = f"scale={args.width}:-1:flags=lanczos,split[s0][s1];" "[s0]palettegen[p];[s1][p]paletteuse"
     cmd = ["ffmpeg", "-i", str(input_path), "-vf", vf, args.output]
     log.info("running: %s", " ".join(cmd))
     run(cmd)

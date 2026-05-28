@@ -13,9 +13,7 @@ log = get_logger(__name__)
 
 def _config_get(key: str) -> str:
     try:
-        out = subprocess.run(
-            ["git", "config", key], capture_output=True, text=True, check=False
-        )
+        out = subprocess.run(["git", "config", key], capture_output=True, text=True, check=False)
         return out.stdout.strip() or "(not set)"
     except FileNotFoundError:
         return "(git not found)"

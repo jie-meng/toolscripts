@@ -18,7 +18,9 @@ log = get_logger(__name__)
 def _local_ips() -> list[str]:
     if is_windows():
         try:
-            out = subprocess.check_output(["ipconfig"], text=True, encoding="utf-8", errors="ignore")
+            out = subprocess.check_output(
+                ["ipconfig"], text=True, encoding="utf-8", errors="ignore"
+            )
         except (subprocess.CalledProcessError, FileNotFoundError):
             return []
         ips: list[str] = []
@@ -59,9 +61,7 @@ def main() -> None:
         prog="myip",
         description="Show local IPs (from ifconfig/ip/ipconfig) and the public IP.",
     )
-    parser.add_argument(
-        "--no-copy", action="store_true", help="do not copy public IP to clipboard"
-    )
+    parser.add_argument("--no-copy", action="store_true", help="do not copy public IP to clipboard")
     add_logging_flags(parser)
     args = parser.parse_args()
     configure_from_args(args)

@@ -37,8 +37,13 @@ def _crop(input_path: Path, output_path: Path, position: str, width: int, height
         return False
 
     cmd = [
-        "magick", str(input_path),
-        "-gravity", gravity, "-crop", geom, "+repage",
+        "magick",
+        str(input_path),
+        "-gravity",
+        gravity,
+        "-crop",
+        geom,
+        "+repage",
         str(output_path),
     ]
     try:

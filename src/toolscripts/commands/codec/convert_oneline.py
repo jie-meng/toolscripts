@@ -18,9 +18,7 @@ def main() -> None:
         description="Read a file, join all lines into a single line, print and copy it.",
     )
     parser.add_argument("file", help="path to the file")
-    parser.add_argument(
-        "--no-copy", action="store_true", help="print only; do not touch clipboard"
-    )
+    parser.add_argument("--no-copy", action="store_true", help="print only; do not touch clipboard")
     add_logging_flags(parser)
     args = parser.parse_args()
     configure_from_args(args)

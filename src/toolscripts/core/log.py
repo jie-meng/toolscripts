@@ -161,12 +161,8 @@ def set_level(level: str | int) -> None:
 def add_logging_flags(parser: argparse.ArgumentParser) -> None:
     """Add ``-v/--verbose`` and ``-q/--quiet`` to an argparse parser."""
     group = parser.add_mutually_exclusive_group()
-    group.add_argument(
-        "-v", "--verbose", action="store_true", help="enable debug logging"
-    )
-    group.add_argument(
-        "-q", "--quiet", action="store_true", help="only show warnings and errors"
-    )
+    group.add_argument("-v", "--verbose", action="store_true", help="enable debug logging")
+    group.add_argument("-q", "--quiet", action="store_true", help="only show warnings and errors")
 
 
 def configure_from_args(args: argparse.Namespace) -> None:

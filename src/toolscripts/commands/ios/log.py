@@ -32,8 +32,16 @@ def main() -> None:
 
     log_proc = subprocess.Popen(
         [
-            "xcrun", "simctl", "spawn", "booted",
-            "log", "stream", "--level", "debug", "--style", "compact",
+            "xcrun",
+            "simctl",
+            "spawn",
+            "booted",
+            "log",
+            "stream",
+            "--level",
+            "debug",
+            "--style",
+            "compact",
         ],
         stdout=subprocess.PIPE,
     )

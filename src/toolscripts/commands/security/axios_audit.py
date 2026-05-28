@@ -25,9 +25,7 @@ MALICIOUS_PKG = "plain-crypto-js"
 
 _tmp = os.environ.get(
     "TEMP",
-    os.path.join(
-        os.environ.get("USERPROFILE", "C:\\Users\\Default"), "AppData", "Local", "Temp"
-    ),
+    os.path.join(os.environ.get("USERPROFILE", "C:\\Users\\Default"), "AppData", "Local", "Temp"),
 )
 _pd = os.environ.get("PROGRAMDATA", "C:\\ProgramData")
 IOC_PATHS: dict[str, list[str]] = {
@@ -332,15 +330,11 @@ def _add_overrides(filepath: str, safe: str, pm: str) -> bool:
 
 def _run_install(project_dir: str) -> bool:
     pm = _detect_pm(project_dir)
-    cmd = {"npm": ["npm", "install"], "yarn": ["yarn", "install"], "pnpm": ["pnpm", "install"]}[
-        pm
-    ]
+    cmd = {"npm": ["npm", "install"], "yarn": ["yarn", "install"], "pnpm": ["pnpm", "install"]}[pm]
     rel = os.path.relpath(project_dir) or "."
     log.info("running %s in %s", " ".join(cmd), rel)
     try:
-        result = subprocess.run(
-            cmd, cwd=project_dir, capture_output=True, text=True, timeout=120
-        )
+        result = subprocess.run(cmd, cwd=project_dir, capture_output=True, text=True, timeout=120)
         if result.returncode == 0:
             log.success("lockfile regenerated in %s", rel)
             return True

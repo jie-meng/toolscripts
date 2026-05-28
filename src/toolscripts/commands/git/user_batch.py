@@ -19,7 +19,9 @@ def _is_git_repo(path: Path) -> bool:
 
 def _git_repos() -> list[Path]:
     cwd = Path.cwd()
-    return sorted(p for p in cwd.iterdir() if p.is_dir() and not p.name.startswith(".") and _is_git_repo(p))
+    return sorted(
+        p for p in cwd.iterdir() if p.is_dir() and not p.name.startswith(".") and _is_git_repo(p)
+    )
 
 
 def _config_get(repo: Path, key: str) -> str:
@@ -63,12 +65,8 @@ def _do_write() -> None:
         sys.exit(1)
     print("\nUpdating git config for all repositories...\n")
     for repo in repos:
-        subprocess.run(
-            ["git", "-C", str(repo), "config", "user.name", name], check=True
-        )
-        subprocess.run(
-            ["git", "-C", str(repo), "config", "user.email", email], check=True
-        )
+        subprocess.run(["git", "-C", str(repo), "config", "user.name", name], check=True)
+        subprocess.run(["git", "-C", str(repo), "config", "user.email", email], check=True)
         log.success("%s", repo.name)
     print()
     log.success("all repositories updated")

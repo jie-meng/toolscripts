@@ -20,9 +20,7 @@ def main() -> None:
     )
     parser.add_argument("directory", nargs="?", default=".", help="directory (default: cwd)")
     parser.add_argument("-y", "--yes", action="store_true", help="delete without prompting")
-    parser.add_argument(
-        "-n", "--dry-run", action="store_true", help="only list found files"
-    )
+    parser.add_argument("-n", "--dry-run", action="store_true", help="only list found files")
     add_logging_flags(parser)
     args = parser.parse_args()
     configure_from_args(args)

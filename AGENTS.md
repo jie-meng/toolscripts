@@ -341,6 +341,7 @@ to native tools — that's preferred.)
 - Python 3.10+, type hints encouraged, `from __future__ import annotations`
   at the top of new files.
 - `ruff check` and `ruff format` must pass: `ruff check src/ && ruff format src/`.
+- `ruff format` is **not** an automatic pre-commit hook. After a mass reformat (`ruff format src/`), the changes are **not** committed as part of a feature change unless they are truly entangled. Instead, keep the format-only pass separate so the feature commit's diff stays clean and reviewable. The format-only pass itself should be committed as a single commit with a message like `ruff format: apply across the codebase`.
 - Avoid comments that just restate the code. Comments should explain
   non-obvious *why*, not the *what*.
 - Modules: shebang **only** on stand-alone scripts (e.g. things in `scripts/`).

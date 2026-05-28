@@ -37,8 +37,14 @@ def main() -> None:
         sys.exit(1)
 
     cmd = [
-        "ffmpeg", "-i", str(input_path),
-        "-ss", args.start, "-to", args.end, args.output,
+        "ffmpeg",
+        "-i",
+        str(input_path),
+        "-ss",
+        args.start,
+        "-to",
+        args.end,
+        args.output,
     ]
     log.info("running: %s", " ".join(cmd))
     run(cmd)

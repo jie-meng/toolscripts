@@ -35,9 +35,12 @@ def _stop_all() -> int:
 def _play(file: Path, *, ext: str, pcm_format: str, pcm_rate: int) -> bool:
     if ext == "ogg":
         if which("ffplay"):
-            return subprocess.run(
-                ["ffplay", "-nodisp", "-autoexit", str(file)], check=False
-            ).returncode == 0
+            return (
+                subprocess.run(
+                    ["ffplay", "-nodisp", "-autoexit", str(file)], check=False
+                ).returncode
+                == 0
+            )
         if which("ogg123"):
             return subprocess.run(["ogg123", str(file)], check=False).returncode == 0
         log.error("install ffmpeg or vorbis-tools to play .ogg")
@@ -46,19 +49,29 @@ def _play(file: Path, *, ext: str, pcm_format: str, pcm_rate: int) -> bool:
         if not which("ffplay"):
             log.error("install ffmpeg (ffplay) to play .pcm")
             return False
-        return subprocess.run(
-            [
-                "ffplay", "-f", pcm_format, "-ar", str(pcm_rate),
-                "-nodisp", "-autoexit", str(file),
-            ],
-            check=False,
-        ).returncode == 0
+        return (
+            subprocess.run(
+                [
+                    "ffplay",
+                    "-f",
+                    pcm_format,
+                    "-ar",
+                    str(pcm_rate),
+                    "-nodisp",
+                    "-autoexit",
+                    str(file),
+                ],
+                check=False,
+            ).returncode
+            == 0
+        )
     if is_macos() and which("afplay"):
         return subprocess.run(["afplay", str(file)], check=False).returncode == 0
     if which("ffplay"):
-        return subprocess.run(
-            ["ffplay", "-nodisp", "-autoexit", str(file)], check=False
-        ).returncode == 0
+        return (
+            subprocess.run(["ffplay", "-nodisp", "-autoexit", str(file)], check=False).returncode
+            == 0
+        )
     log.error("no suitable audio player found (afplay/ffplay)")
     return False
 

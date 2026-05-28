@@ -38,8 +38,14 @@ def main() -> None:
         log.error("%s", exc)
         sys.exit(1)
 
-    dir1 = Path(args.dir1).expanduser() if args.dir1 else _ask_directory("Enter the first directory: ")
-    dir2 = Path(args.dir2).expanduser() if args.dir2 else _ask_directory("Enter the second directory: ")
+    dir1 = (
+        Path(args.dir1).expanduser() if args.dir1 else _ask_directory("Enter the first directory: ")
+    )
+    dir2 = (
+        Path(args.dir2).expanduser()
+        if args.dir2
+        else _ask_directory("Enter the second directory: ")
+    )
 
     for d in (dir1, dir2):
         if not d.is_dir():

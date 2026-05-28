@@ -19,9 +19,7 @@ def main() -> None:
     )
     parser.add_argument("input", help=".mp3 input file")
     parser.add_argument("--rate", type=int, default=16000, help="sample rate (default: 16000)")
-    parser.add_argument(
-        "--channels", type=int, default=1, help="channel count (default: 1, mono)"
-    )
+    parser.add_argument("--channels", type=int, default=1, help="channel count (default: 1, mono)")
     add_logging_flags(parser)
     args = parser.parse_args()
     configure_from_args(args)
@@ -38,9 +36,17 @@ def main() -> None:
         sys.exit(1)
     output = input_path.with_suffix(".pcm")
     cmd = [
-        "ffmpeg", "-y", "-i", str(input_path),
-        "-f", "s16le", "-ar", str(args.rate),
-        "-ac", str(args.channels), str(output),
+        "ffmpeg",
+        "-y",
+        "-i",
+        str(input_path),
+        "-f",
+        "s16le",
+        "-ar",
+        str(args.rate),
+        "-ac",
+        str(args.channels),
+        str(output),
     ]
     log.info("running: %s", " ".join(cmd))
     run(cmd)
