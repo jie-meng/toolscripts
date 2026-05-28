@@ -158,6 +158,7 @@ translate                 = "toolscripts.commands.text.translate:main"
 mermaid                   = "toolscripts.commands.text.mermaid:main"
 statcounter-os-coverage   = "toolscripts.commands.text.statcounter:main"
 xlsx-text2num             = "toolscripts.commands.text.text2num:main"
+docs-pick                 = "toolscripts.commands.text.doc_pick:main"
 
 # system / files
 toolscripts-list          = "toolscripts.commands.system.list_commands:main"

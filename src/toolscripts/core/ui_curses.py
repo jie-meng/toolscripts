@@ -664,3 +664,304 @@ def _browse_commands_impl(
             search = ""
             cursor[level] = 0
             top[level] = 0
+
+
+# ---------------------------------------------------------------------------
+# Document tree browser with preview
+# ---------------------------------------------------------------------------
+
+
+class DocNode:
+    """A node in a document tree (directory or file)."""
+
+    def __init__(
+        self,
+        name: str,
+        *,
+        is_dir: bool = False,
+        parent: DocNode | None = None,
+        content: str = "",
+    ) -> None:
+        self.name = name
+        self.is_dir = is_dir
+        self.parent = parent
+        self.content = content
+        self.children: list[DocNode] = []
+        self.expanded = False
+
+    @property
+    def display(self) -> str:
+        return self.name + ("/" if self.is_dir else "")
+
+
+def browse_docs(
+    title: str,
+    root: DocNode,
+    *,
+    copy_to_clipboard: Callable[[str], bool] | None = None,
+) -> DocNode | None:
+    """Browse a document tree with a content preview pane.
+
+    Returns the picked file node, or ``None`` on cancel.
+    Pressing ``Enter`` on a file copies its content to the clipboard.
+    """
+    _ensure_curses_available()
+    import curses
+
+    def _run(stdscr: curses.window) -> DocNode | None:
+        return _browse_docs_impl(stdscr, title, root, copy_to_clipboard)
+
+    return curses.wrapper(_run)
+
+
+def _browse_docs_impl(
+    stdscr,
+    title: str,
+    root: DocNode,
+    copy_to_clipboard: Callable[[str], bool] | None,
+) -> DocNode | None:
+    import curses
+
+    with contextlib.suppress(curses.error):
+        curses.curs_set(0)
+    has_color = False
+    with contextlib.suppress(curses.error):
+        curses.use_default_colors()
+        curses.init_pair(1, curses.COLOR_CYAN, -1)
+        curses.init_pair(2, curses.COLOR_GREEN, -1)
+        curses.init_pair(3, curses.COLOR_YELLOW, -1)
+        curses.init_pair(4, -1, -1)
+        curses.init_pair(5, curses.COLOR_MAGENTA, -1)
+        curses.init_pair(6, curses.COLOR_BLUE, -1)
+        has_color = True
+
+    def cp(n: int) -> int:
+        return curses.color_pair(n) if has_color else 0
+
+    root.expanded = True
+
+    def visible_nodes() -> list[DocNode]:
+        out: list[DocNode] = []
+
+        def walk(node: DocNode) -> None:
+            for child in node.children:
+                out.append(child)
+                if child.is_dir and child.expanded:
+                    walk(child)
+
+        walk(root)
+        return out
+
+    cursor = 0
+    top = 0
+    preview_scroll = 0
+    search = ""
+    search_active = False
+    clipboard_msg = ""
+
+    def clamp(val: int, lo: int, hi: int) -> int:
+        return max(lo, min(val, hi))
+
+    def draw() -> None:
+        nonlocal clipboard_msg, cursor, top
+        stdscr.erase()
+        height, width = stdscr.getmaxyx()
+        if height < 6 or width < 40:
+            with contextlib.suppress(curses.error):
+                stdscr.addstr(0, 0, "terminal too small")
+            stdscr.refresh()
+            return
+
+        nodes = visible_nodes()
+        if search:
+            needle = search.lower()
+            nodes = [n for n in nodes if needle in n.name.lower()]
+
+        def _label_len(node: DocNode) -> int:
+            d = 0
+            p = node.parent
+            while p is not None and p is not root:
+                d += 1
+                p = p.parent
+            return d * 2 + len(node.display)
+
+        max_label = max((_label_len(n) for n in nodes), default=0)
+        left_w = max(24, min(max_label + 2, width - 20))
+        right_x = left_w + 2
+        right_w = width - right_x - 1
+
+        with contextlib.suppress(curses.error):
+            stdscr.addstr(0, 0, title[: width - 1], curses.A_BOLD | cp(1))
+
+        if search_active:
+            hint = f"/search: {search}_  (Enter apply, Esc clear)"
+        else:
+            hint = "j/k move  u/d scroll  Enter/o copy  h collapse  / search  q quit"
+        with contextlib.suppress(curses.error):
+            stdscr.addstr(1, 0, hint[: width - 1], cp(3))
+
+        with contextlib.suppress(curses.error):
+            stdscr.hline(2, 0, curses.ACS_HLINE, width)
+
+        list_top = 3
+        list_h = height - list_top - 1
+
+        if nodes:
+            cursor = clamp(cursor, 0, len(nodes) - 1)
+        else:
+            cursor = 0
+
+        if cursor < top:
+            top = cursor
+        elif cursor >= top + list_h:
+            top = cursor - list_h + 1
+
+        for i in range(list_h):
+            idx = top + i
+            if idx >= len(nodes):
+                break
+            node = nodes[idx]
+            depth = 0
+            p = node.parent
+            while p is not None and p is not root:
+                depth += 1
+                p = p.parent
+            indent = "  " * depth
+            label = f"{indent}{node.display}"
+            attr = curses.A_REVERSE if idx == cursor else 0
+            color = cp(5) if node.is_dir else cp(2)
+            with contextlib.suppress(curses.error):
+                stdscr.addstr(list_top + i, 0, label[:left_w].ljust(left_w), attr | color)
+
+        with contextlib.suppress(curses.error):
+            stdscr.vline(list_top, left_w + 1, curses.ACS_VLINE, list_h)
+
+        if 0 <= cursor < len(nodes):
+            node = nodes[cursor]
+            if node.is_dir:
+                msg = "Press Enter/l to expand, h to collapse."
+                with contextlib.suppress(curses.error):
+                    stdscr.addstr(list_top, right_x, msg[:right_w], cp(3))
+            else:
+                with contextlib.suppress(curses.error):
+                    stdscr.addstr(
+                        list_top,
+                        right_x,
+                        node.name[:right_w],
+                        curses.A_BOLD | cp(2),
+                    )
+                content_lines = _wrap_text(node.content or "(empty file)", right_w)
+                for i, line in enumerate(
+                    content_lines[preview_scroll : preview_scroll + list_h - 1]
+                ):
+                    with contextlib.suppress(curses.error):
+                        stdscr.addstr(list_top + 1 + i, right_x, line, cp(4))
+                if len(content_lines) > list_h - 1:
+                    pct = 100 * preview_scroll // max(1, len(content_lines) - list_h + 1)
+                    scroll_hint = f"[{pct}%]"
+                    with contextlib.suppress(curses.error):
+                        stdscr.addstr(
+                            height - 1,
+                            right_x,
+                            scroll_hint[:right_w],
+                            cp(3),
+                        )
+        else:
+            msg = "Pick a document on the left."
+            with contextlib.suppress(curses.error):
+                stdscr.addstr(list_top, right_x, msg[:right_w], cp(3))
+
+        if clipboard_msg:
+            with contextlib.suppress(curses.error):
+                stdscr.addstr(height - 1, 0, clipboard_msg[: width - 1], curses.A_BOLD | cp(2))
+            clipboard_msg = ""
+        else:
+            status = f"  {len(nodes)} item(s)"
+            if search:
+                status += f"  filter: {search!r}"
+            with contextlib.suppress(curses.error):
+                stdscr.addstr(height - 1, 0, status[: width - 1], cp(3))
+
+        stdscr.refresh()
+
+    while True:
+        draw()
+        key = stdscr.getch()
+
+        nodes = visible_nodes()
+        if search:
+            needle = search.lower()
+            nodes = [n for n in nodes if needle in n.name.lower()]
+
+        if search_active:
+            if key in (curses.KEY_ENTER, 10, 13):
+                search_active = False
+            elif key == 27:
+                search = ""
+                search_active = False
+            elif key in (curses.KEY_BACKSPACE, 127, 8):
+                search = search[:-1]
+            elif 32 <= key < 127:
+                search += chr(key)
+                cursor = 0
+                top = 0
+            continue
+
+        if key in (ord("q"),):
+            return None
+        if key == 27:
+            return None
+        if key in (curses.KEY_UP, ord("k")):
+            cursor = max(0, cursor - 1)
+            preview_scroll = 0
+        elif key in (curses.KEY_DOWN, ord("j")):
+            cursor = min(max(0, len(nodes) - 1), cursor + 1)
+            preview_scroll = 0
+        elif key in (curses.KEY_PPAGE,):
+            cursor = max(0, cursor - 10)
+            preview_scroll = 0
+        elif key in (curses.KEY_NPAGE,):
+            cursor = min(max(0, len(nodes) - 1), cursor + 10)
+            preview_scroll = 0
+        elif key == ord("u"):
+            preview_scroll = max(0, preview_scroll - 3)
+        elif key == ord("d"):
+            preview_scroll += 3
+        elif key == ord("g"):
+            cursor = 0
+            preview_scroll = 0
+        elif key == ord("G"):
+            cursor = max(0, len(nodes) - 1)
+            preview_scroll = 0
+        elif key in (curses.KEY_ENTER, 10, 13, ord("l"), ord("o"), curses.KEY_RIGHT):
+            if 0 <= cursor < len(nodes):
+                node = nodes[cursor]
+                if node.is_dir:
+                    node.expanded = not node.expanded
+                else:
+                    if copy_to_clipboard and node.content:
+                        ok = copy_to_clipboard(node.content)
+                        if ok:
+                            clipboard_msg = f"  Copied: {node.name}"
+                        else:
+                            clipboard_msg = f"  Copy failed: {node.name}"
+        elif key in (curses.KEY_BACKSPACE, 127, 8, ord("h"), curses.KEY_LEFT):
+            if 0 <= cursor < len(nodes):
+                node = nodes[cursor]
+                target = node.parent
+                if target is not None and target is not root:
+                    if node.is_dir and node.expanded:
+                        node.expanded = False
+                    else:
+                        target.expanded = False
+                    visible = visible_nodes()
+                    for i, n in enumerate(visible):
+                        if n is target:
+                            cursor = i
+                            break
+                    preview_scroll = 0
+        elif key == ord("/"):
+            search_active = True
+            search = ""
+            cursor = 0
+            top = 0
