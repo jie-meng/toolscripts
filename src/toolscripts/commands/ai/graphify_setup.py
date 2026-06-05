@@ -1,18 +1,12 @@
-"""``graphify-setup`` - install/uninstall graphify skill for AI coding tools.
+"""``graphify-setup`` - install/uninstall the graphify skill for AI coding tools.
 
-Requires the ``graphify`` CLI (``pipx install graphifyy``).  Shows a curses
+Requires the ``graphify`` CLI (``uv tool install graphifyy``).  Shows a curses
 multi-select where tools with graphify already installed are pre-selected.
 Deselecting a tool uninstalls graphify from it; selecting installs.
 
-Each platform has two levels:
-
-* **User-level** — ``graphify install --platform <P>`` installs the skill to
-  the platform's config directory (e.g. ``~/.claude/skills/graphify/``).
-* **Project-level** — ``graphify <P> install`` writes config into the current
-  project directory (e.g. ``CLAUDE.md``, ``.opencode/``).
-
-Install runs both levels.  Uninstall reverses: project-level first, then
-removes the user-level skill directory.
+Only the **user-level** skill is managed here (e.g. ``~/.claude/skills/graphify/``).
+Project-level graph setup is done per-repo by running ``/graphify .`` inside
+your AI coding assistant of choice.
 """
 
 from __future__ import annotations
@@ -104,29 +98,26 @@ def _run_graphify(*args: str) -> bool:
 
 
 def _install_one(plat: _GraphifyPlatform) -> None:
-    """Install graphify for a platform: user-level skill + project-level config."""
+    """Install the graphify user-level skill for a platform."""
     if plat.skill_path is not None:
-        # user-level: install skill to platform config dir
-        _run_graphify("install", "--platform", plat.subcommand)
-    # project-level: write config in current directory
-    if _run_graphify(plat.subcommand, "install"):
-        log.success("graphify installed for %s", plat.subcommand)
+        if _run_graphify("install", "--platform", plat.subcommand):
+            log.success("graphify skill installed for %s", plat.subcommand)
+    else:
+        log.warning("%s has no user-level skill path configured", plat.tool_id)
 
 
 def _uninstall_one(plat: _GraphifyPlatform) -> None:
-    """Uninstall graphify for a platform: project-level first, then user-level skill."""
-    # 1) project-level: remove config from current directory
-    _run_graphify(plat.subcommand, "uninstall")
-    # 2) user-level: remove skill directory / files (if user-level exists)
+    """Remove the graphify user-level skill for a platform."""
     target = plat.skill_path
     if target is not None:
         if target.is_dir():
             shutil.rmtree(target)
-            log.info("removed user-level skill: %s", target)
+            log.success("removed graphify skill for %s: %s", plat.subcommand, target)
         elif target.is_file():
             target.unlink()
-            log.info("removed user-level skill: %s", target)
-    log.success("graphify uninstalled for %s", plat.subcommand)
+            log.success("removed graphify skill for %s: %s", plat.subcommand, target)
+        else:
+            log.info("graphify skill not found for %s (nothing to remove)", plat.subcommand)
 
 
 # ---------------------------------------------------------------------------
@@ -145,6 +136,30 @@ def _check_graphify() -> bool:
     return True
 
 
+def _upgrade_graphify() -> None:
+    """Upgrade graphify to the latest version via ``uv tool upgrade graphifyy``."""
+    if which("uv") is None:
+        log.error(
+            "uv not found — cannot upgrade graphify automatically.\n"
+            "  Install uv: https://docs.astral.sh/uv/getting-started/installation/\n"
+            "  Then run:   uv tool upgrade graphifyy"
+        )
+        return
+    log.info("upgrading graphify via uv …")
+    result = subprocess.run(["uv", "tool", "upgrade", "graphifyy"], capture_output=True, text=True)
+    if result.returncode == 0:
+        output = (result.stdout + result.stderr).strip()
+        if output:
+            log.debug("%s", output)
+        log.success("graphify upgraded")
+    else:
+        log.error(
+            "uv tool upgrade failed (exit %d): %s",
+            result.returncode,
+            (result.stderr or result.stdout).strip(),
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="graphify-setup",
@@ -153,12 +168,23 @@ def main() -> None:
     parser.add_argument("--all", "-a", action="store_true", help="install for all detected tools")
     parser.add_argument("--tool", "-t", help="install for a single tool by id")
     parser.add_argument("--list", "-l", action="store_true", help="list graphify platform status")
+    parser.add_argument(
+        "--upgrade",
+        "-u",
+        action="store_true",
+        help="upgrade graphify to the latest version before setup (requires uv)",
+    )
     add_logging_flags(parser)
     args = parser.parse_args()
     configure_from_args(args)
 
     if not _check_graphify():
         sys.exit(1)
+
+    if args.upgrade:
+        _upgrade_graphify()
+    else:
+        log.info("tip: run with -u / --upgrade to update graphify to the latest version first")
 
     # --list
     if args.list:
