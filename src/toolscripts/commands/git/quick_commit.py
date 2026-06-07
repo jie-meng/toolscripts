@@ -69,6 +69,13 @@ _RE_CONFIG = re.compile(
     re.IGNORECASE,
 )
 
+_RE_VERSION_FILE = re.compile(
+    r"(version\.txt$|VERSION$|package\.json$|pyproject\.toml$|setup\.py$|setup\.cfg$)",
+    re.IGNORECASE,
+)
+
+_RE_VERSION_NUMBER = re.compile(r"(\d+\.\d+\.\d+(?:[-.][a-zA-Z0-9]+)*)")
+
 _STATUS_LABEL: dict[str, str] = {
     "M": "modified",
     "A": "new",
@@ -190,6 +197,36 @@ def _classify_staged(files: list[tuple[str, str]]) -> dict:
     }
 
 
+def _detect_version_bump(files: list[tuple[str, str]]) -> str | None:
+    """If staged files include version changes, return a 'bump version' message."""
+    version_files = [p for _, p in files if _RE_VERSION_FILE.search(p)]
+    if not version_files:
+        return None
+
+    for vf in version_files:
+        diff = capture(["git", "diff", "--cached", "-U0", "--", vf], check=False)
+        if not diff:
+            continue
+
+        old_version: str | None = None
+        new_version: str | None = None
+        for line in diff.splitlines():
+            m = _RE_VERSION_NUMBER.search(line)
+            if not m:
+                continue
+            if line.startswith("-"):
+                old_version = m.group(1)
+            elif line.startswith("+"):
+                new_version = m.group(1)
+
+        if old_version and new_version and old_version != new_version:
+            return f"bump version from {old_version} to {new_version}"
+        if new_version and not old_version:
+            return f"set version to {new_version}"
+
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Message generation
 # ---------------------------------------------------------------------------
@@ -203,8 +240,10 @@ def _fmt(commit_type: str | None, scope: str | None, msg: str) -> str:
     return f"{commit_type}: {msg}"
 
 
-def generate_suggestions(branch: str, file_info: dict) -> list[str]:
+def generate_suggestions(branch: str, file_info: dict, files: list[tuple[str, str]]) -> list[str]:
     """Return up to 5 ranked commit message suggestions (no AI, pure patterns)."""
+    version_msg = _detect_version_bump(files)
+
     commit_type, branch_desc = _parse_branch(branch)
     category = file_info["category"]
     scope = file_info["scope"]
@@ -243,6 +282,10 @@ def generate_suggestions(branch: str, file_info: dict) -> list[str]:
         candidate = _fmt(t, s, msg)
         if candidate not in suggestions:
             suggestions.append(candidate)
+
+    # 0. Version bump (highest priority when detected)
+    if version_msg:
+        _add(effective_type, scope or None, version_msg)
 
     # 1. Most specific: type(scope): branch_desc or derived subject
     _add(effective_type, scope or None, primary)
@@ -499,7 +542,7 @@ def main() -> None:
         sys.exit(1)
 
     file_info = _classify_staged(staged_files)
-    suggestions = generate_suggestions(branch, file_info)
+    suggestions = generate_suggestions(branch, file_info, staged_files)
 
     message = _run_commit_ui(branch, staged_files, shortstat, suggestions)
 
