@@ -220,7 +220,7 @@ def _detect_version_bump(files: list[tuple[str, str]]) -> str | None:
                 new_version = m.group(1)
 
         if old_version and new_version and old_version != new_version:
-            return f"bump version from {old_version} to {new_version}"
+            return f"bump version to {new_version}"
         if new_version and not old_version:
             return f"set version to {new_version}"
 
