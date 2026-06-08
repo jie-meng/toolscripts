@@ -100,6 +100,12 @@ AI_TOOLS: list[AITool] = [
         repo_umbrella_dir=".codex",
     ),
     AITool(
+        "copilot",
+        "GitHub Copilot CLI",
+        ".copilot",
+        "copilot-instructions.md",
+    ),
+    AITool(
         "cursor",
         "Cursor",
         ".cursor",
