@@ -1,7 +1,7 @@
 """``android-log`` - interactive curses-based logcat viewer for Android devices.
 
 Provides a real-time log stream with log level filtering, text filtering,
-and one-key copy/clear operations.
+search highlighting, and one-key copy/clear operations.
 
 Requires ``adb`` on PATH.
 
@@ -19,15 +19,18 @@ Layout::
     │              │                                               │
     │ FILTER       │                                               │
     │ > [MyApp]    │                                               │
+    │ SEARCH       │                                               │
+    │ > [keyword]  │                                               │
     ├──────────────┴───────────────────────────────────────────────┤
-    │ level:d  filter:MyApp  |  / filter | - = level | f freeze   │
+    │ level:d  filter:MyApp  search:keyword  |  f filter | / search│
     └──────────────────────────────────────────────────────────────┘
 
 Keybindings:
 
-- ``/`` Enter filter mode · ``Enter`` Confirm · ``Esc`` Cancel
+- ``f`` Enter filter mode · ``Enter`` Confirm · ``Esc`` Cancel
+- ``/`` Enter search mode (vim-like) · ``n``/``N`` next/prev match
 - ``-``/``=`` Cycle log level (previous/next)
-- ``f`` Freeze/unfreeze log stream
+- ``e`` Freeze/unfreeze log stream
 - ``v`` Enter visual select mode (frozen only)
 - ``k``/``j`` or arrows scroll · ``u``/``d`` half page · ``g``/``G`` top/bottom
 - ``y`` Copy selected (visual) or all visible (normal)
@@ -69,7 +72,14 @@ _THREADTIME_RE = re.compile(
     r"(\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+(\d+)\s+(\d+)\s+([VDIWEF])\s+(\S+?)\s*:\s(.*)"
 )
 _BRIEF_RE = re.compile(r"([VDIWEF])/(.+?)\(\s*(\d+)\):\s(.*)")
-_PRIORITY_TO_LEVEL = {"V": "Verbose", "D": "Debug", "I": "Info", "W": "Warn", "E": "Error", "F": "Fatal"}
+_PRIORITY_TO_LEVEL = {
+    "V": "Verbose",
+    "D": "Debug",
+    "I": "Info",
+    "W": "Warn",
+    "E": "Error",
+    "F": "Fatal",
+}
 _PRIORITY_COLORS = {"V": 6, "D": 4, "I": 2, "W": 3, "E": 1, "F": 5}
 _PRIORITY_SELECTED = {"V": 15, "D": 13, "I": 11, "W": 12, "E": 10, "F": 14}
 
@@ -112,7 +122,7 @@ def _parse_logcat_line(line: str) -> LogEntry | None:
 
 
 class LogViewer:
-    """Curses-based logcat viewer with level and text filtering."""
+    """Curses-based logcat viewer with level, text filtering, and search."""
 
     def __init__(self, device: str, max_logs: int = 50_000) -> None:
         self.device = device
@@ -125,6 +135,10 @@ class LogViewer:
 
         self.filter_text = ""
         self.filter_mode = False
+
+        self.search_text = ""
+        self.search_mode = False
+        self.search_match_idx = -1
 
         self.frozen = False
         self._snapshot: list[LogEntry] | None = None
@@ -160,6 +174,11 @@ class LogViewer:
         curses.init_pair(13, curses.COLOR_BLUE, sel_bg)
         curses.init_pair(14, curses.COLOR_MAGENTA, sel_bg)
         curses.init_pair(15, curses.COLOR_CYAN, sel_bg)
+        curses.init_pair(20, 94, -1)  # brown (color 94) on default
+        curses.init_pair(21, 94, 228)  # brown on light yellow (current match)
+        curses.init_pair(22, -1, 237)  # default fg on dark gray (other matches)
+        self._SEARCH_CUR = curses.color_pair(21) | curses.A_BOLD
+        self._SEARCH_OTH = curses.color_pair(22)
 
     def _cp(self, n: int) -> int:
         return curses.color_pair(n)
@@ -169,14 +188,30 @@ class LogViewer:
             return self._snapshot
         return [e for e in self.logs if self._passes_filter(e)]
 
+    def _find_search_matches(self, entry: LogEntry) -> list[re.Match[str]]:
+        """Return all match objects for search_text in entry's raw line."""
+        if not self.search_text:
+            return []
+        try:
+            return list(re.finditer(re.escape(self.search_text), entry.raw, re.IGNORECASE))
+        except re.error:
+            return []
+
     def _draw_header(self, stdscr: curses.window) -> None:
         _, w = stdscr.getmaxyx()
-        title = f"android-log \u00b7 {self.model} ({self.device})"
+        title = f"android-log · {self.model} ({self.device})"
         with contextlib.suppress(curses.error):
             stdscr.addnstr(0, 0, title, w - 1, curses.A_BOLD | self._cp(6))
 
     def _draw_level_panel(self, stdscr: curses.window, pw: int) -> None:
-        level_short = {"Verbose": "v", "Debug": "d", "Info": "i", "Warn": "w", "Error": "e", "Fatal": "f"}
+        level_short = {
+            "Verbose": "v",
+            "Debug": "d",
+            "Info": "i",
+            "Warn": "w",
+            "Error": "e",
+            "Fatal": "f",
+        }
         with contextlib.suppress(curses.error):
             stdscr.addnstr(2, 0, "LEVEL", pw - 1, curses.A_BOLD)
         for i, level in enumerate(LEVELS):
@@ -200,6 +235,21 @@ class LogViewer:
             color = self._cp(4)
         with contextlib.suppress(curses.error):
             stdscr.addnstr(11, 0, display, pw - 1, color | curses.A_UNDERLINE)
+
+    def _draw_search_panel(self, stdscr: curses.window, pw: int) -> None:
+        with contextlib.suppress(curses.error):
+            stdscr.addnstr(13, 0, "SEARCH", pw - 1, curses.A_BOLD)
+        if self.search_mode:
+            display = f"> [{self.search_text}\u2588]"
+            color = self._cp(20)
+        elif self.search_text:
+            display = f"> [{self.search_text}]"
+            color = self._cp(3)
+        else:
+            display = "> [_]"
+            color = self._cp(4)
+        with contextlib.suppress(curses.error):
+            stdscr.addnstr(14, 0, display, pw - 1, color | curses.A_UNDERLINE)
 
     def _draw_log_area(self, stdscr: curses.window, panel_w: int) -> None:
         h, w = stdscr.getmaxyx()
@@ -253,8 +303,11 @@ class LogViewer:
                 color = curses.A_BOLD | self._cp(2)
 
             text = f"{prefix} {entry.raw.rstrip()}"
+            text_len = len(text)
             with contextlib.suppress(curses.error):
                 stdscr.addnstr(2 + i, log_x, text, log_w, color)
+            if self.search_text and not self.search_mode:
+                self._apply_search_highlight(stdscr, 2 + i, log_x, log_w, entry, text_len)
 
         remaining = len(display) - self.log_top - log_h
         if remaining > 0:
@@ -273,17 +326,21 @@ class LogViewer:
         parts.append(f"level:{self.current_level[0].lower()}")
         if self.filter_text:
             parts.append(f"filter:{self.filter_text}")
+        if self.search_text:
+            parts.append(f"search:{self.search_text}")
         if self.selected:
             parts.append(f"selected:{len(self.selected)}")
 
         if self.filter_mode:
             hints = "type to filter | Enter confirm | Esc cancel"
+        elif self.search_mode:
+            hints = "type to search | Enter confirm | Esc cancel"
         elif self.visual_mode:
             hints = "k/j/u/d select | g/G top/bottom | y copy | Esc exit visual"
         elif self.frozen:
-            hints = "f unfreeze | v select | k/j/u/d scroll | g/G top/bottom | y copy | q quit"
+            hints = "e unfreeze | v select | / search | k/j/u/d scroll | g/G top/bottom | y copy | q quit"
         else:
-            hints = "k/j/u/d scroll | g/G top/bottom | / filter | - = level | f freeze | c clear | y copy | q quit"
+            hints = "k/j/u/d scroll | g/G top/bottom | f filter | / search | - = level | e freeze | c clear | y copy | q quit"
         status = "  ".join(parts) + "  |  " + hints
 
         if self.status_msg:
@@ -307,6 +364,7 @@ class LogViewer:
         self._draw_header(stdscr)
         self._draw_level_panel(stdscr, panel_w)
         self._draw_filter_panel(stdscr, panel_w)
+        self._draw_search_panel(stdscr, panel_w)
         self._draw_log_area(stdscr, panel_w)
         self._draw_status_bar(stdscr)
         stdscr.refresh()
@@ -314,6 +372,8 @@ class LogViewer:
     def _handle_key(self, key: int) -> bool:
         if self.filter_mode:
             return self._handle_filter_key(key)
+        if self.search_mode:
+            return self._handle_search_key(key)
         if self.visual_mode:
             return self._handle_visual_key(key)
         return self._handle_normal_key(key)
@@ -325,9 +385,16 @@ class LogViewer:
         if self.frozen:
             return self._handle_frozen_key(key)
 
-        if key == ord("/"):
+        if key == ord("f"):
             self.filter_mode = True
             curses.curs_set(1)
+        elif key == ord("/"):
+            self.search_mode = True
+            curses.curs_set(1)
+        elif key == ord("n") and self.search_text:
+            self._search_next()
+        elif key == ord("N") and self.search_text:
+            self._search_prev()
         elif key == ord("-"):
             idx = LEVELS.index(self.current_level)
             self.current_level = LEVELS[(idx - 1) % len(LEVELS)]
@@ -336,7 +403,7 @@ class LogViewer:
             idx = LEVELS.index(self.current_level)
             self.current_level = LEVELS[(idx + 1) % len(LEVELS)]
             self.status_msg = f"  Level: {self.current_level}"
-        elif key == ord("f"):
+        elif key == ord("e"):
             self._freeze()
         elif key == ord("c"):
             self.logs.clear()
@@ -377,13 +444,20 @@ class LogViewer:
         if key == ord("q"):
             return False
 
-        if key == ord("f"):
+        if key == ord("e"):
             self._unfreeze()
         elif key == ord("v"):
             self._enter_visual_mode()
-        elif key == ord("/"):
+        elif key == ord("f"):
             self.filter_mode = True
             curses.curs_set(1)
+        elif key == ord("/"):
+            self.search_mode = True
+            curses.curs_set(1)
+        elif key == ord("n") and self.search_text:
+            self._search_next()
+        elif key == ord("N") and self.search_text:
+            self._search_prev()
         elif key == ord("-"):
             idx = LEVELS.index(self.current_level)
             self.current_level = LEVELS[(idx - 1) % len(LEVELS)]
@@ -431,13 +505,21 @@ class LogViewer:
         display = self._get_display_list()
         max_idx = len(display) - 1
 
-        if key == 27:  # Esc - exit visual, stay frozen
+        if key == 27 or key == ord("v"):  # Esc - exit visual, stay frozen
             self._exit_visual_mode()
-        elif key == ord("v"):  # v again - exit visual, stay frozen
-            self._exit_visual_mode()
-        elif key == ord("f"):  # f - exit visual AND unfreeze
+        elif key == ord("e"):  # e - exit visual AND unfreeze
             self._exit_visual_mode()
             self._unfreeze()
+        elif key == ord("f"):  # f - enter filter from visual
+            self._exit_visual_mode()
+            self.filter_mode = True
+            curses.curs_set(1)
+        elif (
+            key == ord("/") and self.search_text or key == ord("n") and self.search_text
+        ):  # / then n/N in visual
+            self._search_next()
+        elif key == ord("N") and self.search_text:
+            self._search_prev()
         elif key == ord("j") or key == curses.KEY_DOWN:
             self.cursor = min(self.cursor + 1, max_idx)
             self._rebuild_selection()
@@ -474,7 +556,9 @@ class LogViewer:
             curses.curs_set(0)
             if self.frozen and self.filter_text:
                 self._refresh_snapshot()
-            self.status_msg = f"  Filter: {self.filter_text}" if self.filter_text else "  Filter cleared"
+            self.status_msg = (
+                f"  Filter: {self.filter_text}" if self.filter_text else "  Filter cleared"
+            )
         elif key in (curses.KEY_BACKSPACE, 127, 8):
             if self.filter_text:
                 self.filter_text = self.filter_text[:-1]
@@ -488,6 +572,103 @@ class LogViewer:
                 self._refresh_snapshot()
 
         return True
+
+    def _handle_search_key(self, key: int) -> bool:
+        if key == 27:
+            self.search_mode = False
+            curses.curs_set(0)
+        elif key in (curses.KEY_ENTER, 10, 13):
+            self.search_mode = False
+            curses.curs_set(0)
+            if self.search_text:
+                self.search_match_idx = -1
+                self._search_next()
+            else:
+                self.search_match_idx = -1
+        elif key in (curses.KEY_BACKSPACE, 127, 8):
+            if self.search_text:
+                self.search_text = self.search_text[:-1]
+                self.search_match_idx = -1
+                if not self.search_text:
+                    self.status_msg = "  Search cleared"
+        elif 32 <= key < 127:
+            self.search_text += chr(key)
+            self.search_match_idx = -1
+
+        return True
+
+    def _search_next(self) -> None:
+        """Move to the next search match."""
+        display = self._get_display_list()
+        if not display or not self.search_text:
+            return
+        start = self.search_match_idx + 1
+        for i in range(len(display)):
+            idx = (start + i) % len(display)
+            matches = self._find_search_matches(display[idx])
+            if matches:
+                self.search_match_idx = idx
+                if idx < self.log_top or idx >= self.log_top + self._visible_log_h:
+                    self.log_top = max(
+                        0, min(idx - self._visible_log_h // 2, len(display) - self._visible_log_h)
+                    )
+                self.auto_scroll = False
+                self.status_msg = f"  Match {idx + 1}/{len(display)}"
+                return
+        self.status_msg = "  No matches found"
+
+    def _search_prev(self) -> None:
+        """Move to the previous search match."""
+        display = self._get_display_list()
+        if not display or not self.search_text:
+            return
+        start = self.search_match_idx - 1
+        for i in range(len(display)):
+            idx = (start - i) % len(display)
+            matches = self._find_search_matches(display[idx])
+            if matches:
+                self.search_match_idx = idx
+                if idx < self.log_top or idx >= self.log_top + self._visible_log_h:
+                    self.log_top = max(
+                        0, min(idx - self._visible_log_h // 2, len(display) - self._visible_log_h)
+                    )
+                self.auto_scroll = False
+                self.status_msg = f"  Match {idx + 1}/{len(display)}"
+                return
+        self.status_msg = "  No matches found"
+
+    def _apply_search_highlight(
+        self,
+        stdscr: curses.window,
+        row: int,
+        col: int,
+        width: int,
+        entry: LogEntry,
+        text_len: int,
+    ) -> None:
+        """Apply search highlighting via chgat() after text is drawn."""
+        if not self.search_text or self.search_mode:
+            return
+
+        matches = self._find_search_matches(entry)
+        if not matches:
+            return
+
+        raw = entry.raw.rstrip()
+        prefix_len = text_len - len(raw) if text_len > len(raw) else 0
+
+        try:
+            for m in matches:
+                start = col + prefix_len + m.start()
+                end = col + prefix_len + m.end()
+                if start >= col + width:
+                    break
+                end = min(end, col + width)
+                n = end - start
+                if n > 0:
+                    stdscr.chgat(row, start, n, self._SEARCH_CUR)
+        except curses.error:
+            pass
 
     def _freeze(self) -> None:
         self.frozen = True
@@ -669,7 +850,8 @@ def main() -> None:
         description="Interactive curses-based logcat viewer with level and text filtering.",
     )
     parser.add_argument(
-        "-m", "--max-logs",
+        "-m",
+        "--max-logs",
         type=int,
         default=5,
         help="max log entries in units of 10,000 (default: 5, i.e. 50,000)",
