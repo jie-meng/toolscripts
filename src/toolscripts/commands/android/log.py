@@ -632,6 +632,8 @@ class LogViewer:
         cur = self.search_match_idx
         for off in range(1, len(all_matches)):
             idx = (cur + off) % len(all_matches)
+            if idx <= cur:
+                break  # wrapped — stop looking in visible window
             line_idx = all_matches[idx][0]
             if vis_top <= line_idx < vis_bot:
                 self.search_match_idx = idx
@@ -669,6 +671,8 @@ class LogViewer:
         cur = self.search_match_idx
         for off in range(1, len(all_matches)):
             idx = (cur - off) % len(all_matches)
+            if idx >= cur:
+                break  # wrapped — stop looking in visible window
             line_idx = all_matches[idx][0]
             if vis_top <= line_idx < vis_bot:
                 self.search_match_idx = idx

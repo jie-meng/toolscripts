@@ -592,17 +592,19 @@ class LogViewer:
         vis_top = self.log_top
         vis_bot = self.log_top + vh
 
-        # 1) Try to find the next match within the visible window
+        # 1) Try to find the next match within the visible window (forward only)
         cur = self.search_match_idx
         for off in range(1, len(all_matches)):
             idx = (cur + off) % len(all_matches)
+            if idx <= cur:
+                break  # wrapped — stop looking in visible window
             line_idx = all_matches[idx][0]
             if vis_top <= line_idx < vis_bot:
                 self.search_match_idx = idx
                 self.status_msg = f"  Match {idx + 1}/{len(all_matches)}"
                 return
 
-        # 2) No visible match — take the next one anywhere and scroll
+        # 2) No visible match — take the next one and scroll
         next_idx = (cur + 1) % len(all_matches)
         self.search_match_idx = next_idx
         line_idx = all_matches[next_idx][0]
@@ -631,17 +633,19 @@ class LogViewer:
         vis_top = self.log_top
         vis_bot = self.log_top + vh
 
-        # 1) Try to find the previous match within the visible window
+        # 1) Try to find the previous match within the visible window (backward only)
         cur = self.search_match_idx
         for off in range(1, len(all_matches)):
             idx = (cur - off) % len(all_matches)
+            if idx >= cur:
+                break  # wrapped — stop looking in visible window
             line_idx = all_matches[idx][0]
             if vis_top <= line_idx < vis_bot:
                 self.search_match_idx = idx
                 self.status_msg = f"  Match {idx + 1}/{len(all_matches)}"
                 return
 
-        # 2) No visible match — take the previous one anywhere and scroll
+        # 2) No visible match — take the previous one and scroll
         prev_idx = (cur - 1) % len(all_matches)
         self.search_match_idx = prev_idx
         line_idx = all_matches[prev_idx][0]
