@@ -113,6 +113,9 @@ class LogViewer:
         self._process: Popen[str] | None = None
         self._visible_log_h = 21
 
+        self._search_cache: list[int] = []
+        self._search_prefix: list[int] = []
+
     def _init_colors(self) -> None:
         curses.use_default_colors()
         curses.init_pair(1, curses.COLOR_RED, -1)
@@ -200,6 +203,18 @@ class LogViewer:
         with contextlib.suppress(curses.error):
             stdscr.addnstr(14, 0, display, pw - 1, color | curses.A_UNDERLINE)
 
+    def _rebuild_search_cache(self, display: list[LogEntry]) -> None:
+        if not self.search_text:
+            self._search_cache = []
+            self._search_prefix = []
+            return
+        self._search_cache = [len(self._find_search_matches(e)) for e in display]
+        total = 0
+        self._search_prefix = []
+        for c in self._search_cache:
+            total += c
+            self._search_prefix.append(total)
+
     def _draw_log_area(self, stdscr: curses.window, panel_w: int) -> None:
         h, w = stdscr.getmaxyx()
         log_w = w - panel_w - 2
@@ -213,6 +228,9 @@ class LogViewer:
             stdscr.vline(2, panel_w, curses.ACS_VLINE, log_h)
 
         display = self._get_display_list()
+
+        if self.search_text:
+            self._rebuild_search_cache(display)
 
         if self.auto_scroll and display and not self.frozen:
             self.log_top = max(0, len(display) - log_h)
@@ -664,21 +682,17 @@ class LogViewer:
         entry_idx: int,
     ) -> None:
         """Apply search highlighting via chgat() after text is drawn."""
-        if not self.search_text:
+        if not self.search_text or entry_idx >= len(self._search_cache):
+            return
+
+        match_count = self._search_cache[entry_idx]
+        if match_count == 0:
             return
 
         matches = self._find_search_matches(entry)
-        if not matches:
-            return
-
         raw = entry.raw.rstrip()
         prefix_len = text_len - len(raw) if text_len > len(raw) else 0
-
-        # Compute global match index offset for this line
-        display = self._get_display_list()
-        global_offset = 0
-        for li in range(entry_idx):
-            global_offset += len(self._find_search_matches(display[li]))
+        global_offset = self._search_prefix[entry_idx - 1] if entry_idx > 0 else 0
 
         try:
             for mi, m in enumerate(matches):
@@ -687,7 +701,6 @@ class LogViewer:
                 attr = self._SEARCH_CUR if is_current else self._SEARCH_OTH
                 start = col + prefix_len + m.start()
                 end = col + prefix_len + m.end()
-                # Clamp to drawn width
                 if start >= col + width:
                     break
                 end = min(end, col + width)
