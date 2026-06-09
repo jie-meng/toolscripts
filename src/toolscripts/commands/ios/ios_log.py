@@ -94,7 +94,8 @@ class LogViewer:
 
         self.search_text = ""
         self.search_mode = False
-        self.search_match_idx = -1
+        self.search_match_idx = -1  # global match index
+        self.search_total = 0
 
         self.frozen = False
         self._snapshot: list[LogEntry] | None = None
@@ -254,7 +255,7 @@ class LogViewer:
             text_len = len(text)
             with contextlib.suppress(curses.error):
                 stdscr.addnstr(2 + i, log_x, text, log_w, color)
-            if self.search_text and not self.search_mode:
+            if self.search_text:
                 self._apply_search_highlight(
                     stdscr, 2 + i, log_x, log_w, entry, text_len, self.log_top + i
                 )
@@ -541,6 +542,8 @@ class LogViewer:
     def _handle_search_key(self, key: int) -> bool:
         if key == 27:
             self.search_mode = False
+            self.search_match_idx = -1
+            self.search_total = 0
             curses.curs_set(0)
         elif key in (curses.KEY_ENTER, 10, 13):
             self.search_mode = False
@@ -550,58 +553,101 @@ class LogViewer:
                 self._search_next()
             else:
                 self.search_match_idx = -1
+                self.search_total = 0
         elif key in (curses.KEY_BACKSPACE, 127, 8):
             if self.search_text:
                 self.search_text = self.search_text[:-1]
                 self.search_match_idx = -1
-                if not self.search_text:
+                self.search_total = 0
+                if self.search_text:
+                    self._search_next()
+                else:
                     self.status_msg = "  Search cleared"
         elif 32 <= key < 127:
             self.search_text += chr(key)
             self.search_match_idx = -1
+            self.search_total = 0
+            self._search_next()
 
         return True
 
     def _search_next(self) -> None:
-        """Move to the next search match."""
+        """Move to the next search match, preferring visible matches first."""
         display = self._get_display_list()
         if not display or not self.search_text:
             return
-        start = self.search_match_idx + 1
-        for i in range(len(display)):
-            idx = (start + i) % len(display)
-            matches = self._find_search_matches(display[idx])
-            if matches:
+
+        all_matches: list[tuple[int, int]] = []
+        for li, entry in enumerate(display):
+            for m in self._find_search_matches(entry):
+                all_matches.append((li, m.start()))
+
+        if not all_matches:
+            self.search_total = 0
+            self.status_msg = "  No matches found"
+            return
+
+        self.search_total = len(all_matches)
+        vh = self._visible_log_h
+        vis_top = self.log_top
+        vis_bot = self.log_top + vh
+
+        # 1) Try to find the next match within the visible window
+        cur = self.search_match_idx
+        for off in range(1, len(all_matches)):
+            idx = (cur + off) % len(all_matches)
+            line_idx = all_matches[idx][0]
+            if vis_top <= line_idx < vis_bot:
                 self.search_match_idx = idx
-                # Ensure the match is visible
-                if idx < self.log_top or idx >= self.log_top + self._visible_log_h:
-                    self.log_top = max(
-                        0, min(idx - self._visible_log_h // 2, len(display) - self._visible_log_h)
-                    )
-                self.auto_scroll = False
-                self.status_msg = f"  Match {idx + 1}/{len(display)}"
+                self.status_msg = f"  Match {idx + 1}/{len(all_matches)}"
                 return
-        self.status_msg = "  No matches found"
+
+        # 2) No visible match — take the next one anywhere and scroll
+        next_idx = (cur + 1) % len(all_matches)
+        self.search_match_idx = next_idx
+        line_idx = all_matches[next_idx][0]
+        self.log_top = max(0, min(line_idx - vh // 2, len(display) - vh))
+        self.auto_scroll = False
+        self.status_msg = f"  Match {next_idx + 1}/{len(all_matches)}"
 
     def _search_prev(self) -> None:
-        """Move to the previous search match."""
+        """Move to the previous search match, preferring visible matches first."""
         display = self._get_display_list()
         if not display or not self.search_text:
             return
-        start = self.search_match_idx - 1
-        for i in range(len(display)):
-            idx = (start - i) % len(display)
-            matches = self._find_search_matches(display[idx])
-            if matches:
+
+        all_matches: list[tuple[int, int]] = []
+        for li, entry in enumerate(display):
+            for m in self._find_search_matches(entry):
+                all_matches.append((li, m.start()))
+
+        if not all_matches:
+            self.search_total = 0
+            self.status_msg = "  No matches found"
+            return
+
+        self.search_total = len(all_matches)
+        vh = self._visible_log_h
+        vis_top = self.log_top
+        vis_bot = self.log_top + vh
+
+        # 1) Try to find the previous match within the visible window
+        cur = self.search_match_idx
+        for off in range(1, len(all_matches)):
+            idx = (cur - off) % len(all_matches)
+            line_idx = all_matches[idx][0]
+            if vis_top <= line_idx < vis_bot:
                 self.search_match_idx = idx
-                if idx < self.log_top or idx >= self.log_top + self._visible_log_h:
-                    self.log_top = max(
-                        0, min(idx - self._visible_log_h // 2, len(display) - self._visible_log_h)
-                    )
-                self.auto_scroll = False
-                self.status_msg = f"  Match {idx + 1}/{len(display)}"
+                self.status_msg = f"  Match {idx + 1}/{len(all_matches)}"
                 return
-        self.status_msg = "  No matches found"
+
+        # 2) No visible match — take the previous one anywhere and scroll
+        prev_idx = (cur - 1) % len(all_matches)
+        self.search_match_idx = prev_idx
+        line_idx = all_matches[prev_idx][0]
+        self.log_top = max(0, min(line_idx - vh // 2, len(display) - vh))
+        self.auto_scroll = False
+        self.status_msg = f"  Match {prev_idx + 1}/{len(all_matches)}"
 
     def _apply_search_highlight(
         self,
@@ -614,7 +660,7 @@ class LogViewer:
         entry_idx: int,
     ) -> None:
         """Apply search highlighting via chgat() after text is drawn."""
-        if not self.search_text or self.search_mode:
+        if not self.search_text:
             return
 
         matches = self._find_search_matches(entry)
@@ -623,11 +669,18 @@ class LogViewer:
 
         raw = entry.raw.rstrip()
         prefix_len = text_len - len(raw) if text_len > len(raw) else 0
-        is_current = entry_idx == self.search_match_idx
-        attr = self._SEARCH_CUR if is_current else self._SEARCH_OTH
+
+        # Compute global match index offset for this line
+        display = self._get_display_list()
+        global_offset = 0
+        for li in range(entry_idx):
+            global_offset += len(self._find_search_matches(display[li]))
 
         try:
-            for m in matches:
+            for mi, m in enumerate(matches):
+                global_idx = global_offset + mi
+                is_current = global_idx == self.search_match_idx
+                attr = self._SEARCH_CUR if is_current else self._SEARCH_OTH
                 start = col + prefix_len + m.start()
                 end = col + prefix_len + m.end()
                 # Clamp to drawn width
