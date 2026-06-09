@@ -307,7 +307,9 @@ class LogViewer:
             with contextlib.suppress(curses.error):
                 stdscr.addnstr(2 + i, log_x, text, log_w, color)
             if self.search_text and not self.search_mode:
-                self._apply_search_highlight(stdscr, 2 + i, log_x, log_w, entry, text_len)
+                self._apply_search_highlight(
+                    stdscr, 2 + i, log_x, log_w, entry, text_len, self.log_top + i
+                )
 
         remaining = len(display) - self.log_top - log_h
         if remaining > 0:
@@ -645,6 +647,7 @@ class LogViewer:
         width: int,
         entry: LogEntry,
         text_len: int,
+        entry_idx: int,
     ) -> None:
         """Apply search highlighting via chgat() after text is drawn."""
         if not self.search_text or self.search_mode:
@@ -656,6 +659,8 @@ class LogViewer:
 
         raw = entry.raw.rstrip()
         prefix_len = text_len - len(raw) if text_len > len(raw) else 0
+        is_current = entry_idx == self.search_match_idx
+        attr = self._SEARCH_CUR if is_current else self._SEARCH_OTH
 
         try:
             for m in matches:
@@ -666,7 +671,7 @@ class LogViewer:
                 end = min(end, col + width)
                 n = end - start
                 if n > 0:
-                    stdscr.chgat(row, start, n, self._SEARCH_CUR)
+                    stdscr.chgat(row, start, n, attr)
         except curses.error:
             pass
 
