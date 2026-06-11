@@ -53,6 +53,7 @@ import re
 import shutil
 import sys
 import threading
+import unicodedata
 from collections import deque
 from dataclasses import dataclass
 from subprocess import PIPE, Popen
@@ -74,6 +75,26 @@ log = get_logger(__name__)
 # Level mapping for display
 _LEVEL_SHORT = {"Debug": "d", "Info": "i", "Default": "w", "Error": "e", "Fault": "f"}
 _PRIORITY_SELECTED = {"Debug": 13, "Info": 11, "Default": 12, "Error": 10, "Fault": 14}
+
+
+def _display_width(s: str) -> int:
+    """Calculate display width of a string, accounting for wide (CJK) characters."""
+    w = 0
+    for ch in s:
+        eaw = unicodedata.east_asian_width(ch)
+        w += 2 if eaw in ("W", "F") else 1
+    return w
+
+
+def _truncate_to_width(s: str, max_width: int) -> str:
+    """Truncate string to fit within *max_width* display columns."""
+    w = 0
+    for i, ch in enumerate(s):
+        cw = 2 if unicodedata.east_asian_width(ch) in ("W", "F") else 1
+        if w + cw > max_width:
+            return s[:i]
+        w += cw
+    return s
 
 
 @dataclass
@@ -269,7 +290,7 @@ class LogViewer:
                 prefix = "*"
                 color = curses.A_BOLD | self._cp(2)
 
-            text = f"{prefix} {entry.raw.rstrip()}"
+            text = _truncate_to_width(f"{prefix} {entry.raw.rstrip()}", log_w)
             text_len = len(text)
             with contextlib.suppress(curses.error):
                 stdscr.addnstr(2 + i, log_x, text, log_w, color)
