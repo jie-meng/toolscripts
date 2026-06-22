@@ -177,7 +177,7 @@ def _single_select_impl(
         nonlocal top
         stdscr.clear()
         stdscr.addstr(0, 0, title, curses.A_BOLD)
-        hint = "j/k move | gg/G jump | Enter/o confirm | q quit"
+        hint = "j/k move | gg/G top/bottom | Enter/o confirm | q quit"
         stdscr.addstr(1, 0, hint, curses.color_pair(3))
 
         height, width = stdscr.getmaxyx()
@@ -266,7 +266,7 @@ def _multi_select_impl(
         nonlocal top
         stdscr.clear()
         stdscr.addstr(0, 0, title, curses.A_BOLD)
-        hint = "j/k move | Space toggle | a all/none | gg/G jump | Enter/o confirm | q quit"
+        hint = "j/k move | Space toggle | a all/none | gg/G top/bottom | Enter/o confirm | q quit"
         stdscr.addstr(1, 0, hint, curses.color_pair(3))
 
         height, width = stdscr.getmaxyx()
