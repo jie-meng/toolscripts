@@ -679,7 +679,7 @@ def _run_curses(stdscr) -> None:
 
         title = " uvcmd - uv command browser "
         stdscr.addstr(0, 0, title.center(width, " "), cp(1) | curses.A_BOLD)
-        hint = "j/k or arrows: move  |  Enter: execute  |  q: quit"
+        hint = "j/k or arrows: move  |  gg/G jump  |  Enter: execute  |  q: quit"
         stdscr.addstr(1, 0, hint[:width], cp(3))
         stdscr.hline(2, 0, curses.ACS_HLINE, width)
 
