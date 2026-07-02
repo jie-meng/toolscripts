@@ -98,6 +98,7 @@ git-apply-patches         = "toolscripts.commands.git.apply_patches:main"
 git-install-sensitive-hook = "toolscripts.commands.git.sensitive_hook:main"
 git-user                  = "toolscripts.commands.git.user:main"
 git-user-batch            = "toolscripts.commands.git.user_batch:main"
+git-alias-setup           = "toolscripts.commands.git.alias_setup:main"
 git-quick-commit          = "toolscripts.commands.git.quick_commit:main"
 
 # android

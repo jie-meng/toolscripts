@@ -126,7 +126,7 @@ toolscripts-list -i <domain>              # 直接跳转到某个领域（如 gi
 | 进制转换   | `dec2bin`、`dec2hex`、`hex2bin`、`hex2dec`、`hex2rgb` |
 | 编解码     | `json-format`、`decode-format-json`、`url-params-decode`、`convert-oneline` |
 | 凭证       | `jwt-decode`、`basic-auth`、`uuid-gen`、`redact-clipboard`、`pem-to-oneline`、`oauth-code` |
-| Git        | `git-copy-diff`、`git-branch-delete`、`git-merge-to-main`、`git-delete-local-branches`、`git-make-patches`、`git-apply-patches`、`git-install-sensitive-hook`、`git-user`、`git-user-batch`、`git-quick-commit` |
+| Git        | `git-alias-setup`、`git-copy-diff`、`git-branch-delete`、`git-merge-to-main`、`git-delete-local-branches`、`git-make-patches`、`git-apply-patches`、`git-install-sensitive-hook`、`git-user`、`git-user-batch`、`git-quick-commit` |
 | Android    | `android-log`、`android-record`、`android-deeplink`、`android-input-text`、`android-screencast`、`android-logcat`、`android-emulator`、`android-batch-install`、`android-retrieve-media`、`android-rename-project`、`android-adbsync`、`android-keystore-generate`、`android-screenshot`、`android-studio` |
 | iOS        | `ios-log`、`ios-log-tail`、`ios-record`、`ios-simulator`、`ios-deeplink`、`xcode-terminal` |
 | 媒体       | `img-resize`、`img-scale`、`imgcat`、`playsound`、`stopsound`、`mp4-compress`、`mov-to-mp4`、`mp4cut`、`mp4togif`、`mp3-to-pcm`、`remove-watermark`、`pdf-merge`、`kindle-pdf-cropper` |
