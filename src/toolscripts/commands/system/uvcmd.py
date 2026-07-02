@@ -272,6 +272,19 @@ _UV_COMMANDS: list[UvCommand] = [
         needs_args=True,
     ),
     UvCommand(
+        name="Pip install (to default)",
+        command="uv pip install --python <DEFAULT_PYTHON> <PACKAGE>",
+        base_args=["pip", "install"],
+        description="Run anywhere — requires a uv-managed default Python. "
+        "Installs packages into the Python set as default via 'Python set default' "
+        "or 'uv python install --default'. Resolves the interpreter from ~/.local/bin/python.",
+        examples=[
+            "uv pip install --python ~/.local/bin/python requests",
+            "uv pip install --python ~/.local/bin/python -r requirements.txt",
+        ],
+        needs_args=False,
+    ),
+    UvCommand(
         name="Pip uninstall",
         command="uv pip uninstall <PACKAGE>",
         base_args=["pip", "uninstall"],
@@ -501,6 +514,10 @@ def _run_interactive_command(cmd: UvCommand) -> None:
         _handle_set_default()
         return
 
+    if cmd.name == "Pip install (to default)":
+        _handle_pip_install_default()
+        return
+
     if cmd.name == "Add dependency":
         _handle_add_dependency()
         return
@@ -662,6 +679,33 @@ def _handle_python_install() -> None:
             idx2 = select_one("Select version to set as default", [versions[i] for i in indices])
             if idx2 is not None:
                 run(["uv", "python", "install", "--default", versions[indices[idx2]]])
+
+
+def _handle_pip_install_default() -> None:
+    default_python = Path.home() / ".local" / "bin" / "python"
+    if not default_python.is_symlink() and not default_python.exists():
+        print(
+            "No uv-managed default Python found.\n"
+            "Hint: use 'Python set default' in this browser to set one first."
+        )
+        return
+
+    try:
+        resolved = str(default_python.resolve())
+    except (OSError, RuntimeError) as exc:
+        print(f"Failed to resolve default Python symlink: {exc}")
+        return
+
+    try:
+        raw = input("Package name (e.g. requests, 'fastapi>=0.100'): ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return
+    if not raw:
+        print("Cancelled.")
+        return
+
+    run(["uv", "pip", "install", "--python", resolved, *raw.split()])
 
 
 def _handle_python_uninstall() -> None:
