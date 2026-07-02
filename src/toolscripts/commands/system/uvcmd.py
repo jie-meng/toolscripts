@@ -103,6 +103,18 @@ _UV_COMMANDS: list[UvCommand] = [
             "uv python pin 3.12 --global     # global user default",
         ],
     ),
+    UvCommand(
+        name="Python set default",
+        command="uv python install <VERSION> --default",
+        base_args=["python", "install"],
+        description="Run anywhere. "
+        "Sets which uv-managed Python is the default 'python' command on your system. "
+        "You will be shown a picker of installed versions; the current default is marked.",
+        examples=[
+            "uv python install 3.12 --default",
+            "uv python install cpython-3.12.2-macos-aarch64-none --default",
+        ],
+    ),
     # ── Dependency management ──────────────────────────────────────────────
     UvCommand(
         name="Add dependency",
@@ -414,6 +426,56 @@ def _get_uv_python_downloadable() -> list[str]:
     return [k for k in downloadable if k not in installed_keys]
 
 
+@dataclass
+class _PythonInfo:
+    key: str
+    version: str
+    label: str  # display string in picker, e.g. "3.12.2  [default]" or "3.11.14"
+
+
+def _get_installed_pythons() -> list[_PythonInfo]:
+    """Return deduplicated installed Python versions, marking which is system default."""
+    import json
+
+    try:
+        out = subprocess.check_output(
+            ["uv", "python", "list", "--only-installed", "--output-format", "json"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return []
+
+    entries = json.loads(out)
+    seen: set[str] = set()
+    result: list[_PythonInfo] = []
+
+    default_python = Path.home() / ".local" / "bin" / "python"
+    default_key: str | None = None
+    if default_python.is_symlink():
+        try:
+            resolved = default_python.resolve()
+        except (OSError, RuntimeError):
+            resolved = None
+        if resolved is not None:
+            for e in entries:
+                if e.get("path") and Path(e["path"]).resolve() == resolved:
+                    default_key = e["key"]
+                    break
+
+    for e in entries:
+        key = e["key"]
+        if key in seen:
+            continue
+        seen.add(key)
+        is_default = key == default_key
+        ver = e["version"]
+        label = f"Python {ver}  [default]" if is_default else f"Python {ver}"
+        result.append(_PythonInfo(key=key, version=ver, label=label))
+
+    return result
+
+
 def _run_interactive_command(cmd: UvCommand) -> None:
     if cmd.needs_project and not _is_project():
         print(
@@ -433,6 +495,10 @@ def _run_interactive_command(cmd: UvCommand) -> None:
 
     if cmd.name == "Python uninstall":
         _handle_python_uninstall()
+        return
+
+    if cmd.name == "Python set default":
+        _handle_set_default()
         return
 
     if cmd.name == "Add dependency":
@@ -501,6 +567,24 @@ def _handle_python_pin() -> None:
         args.append("--global")
 
     run(args)
+
+
+def _handle_set_default() -> None:
+    from toolscripts.core.ui_curses import select_one
+
+    print("Fetching installed Python versions from uv...")
+    pythons = _get_installed_pythons()
+    if not pythons:
+        print("No uv-managed Python versions found.")
+        return
+
+    labels = [p.label for p in pythons]
+    idx = select_one("Select Python version to set as default", labels)
+    if idx is None:
+        print("Cancelled.")
+        return
+
+    run(["uv", "python", "install", "--default", pythons[idx].key])
 
 
 def _handle_venv_create() -> None:
