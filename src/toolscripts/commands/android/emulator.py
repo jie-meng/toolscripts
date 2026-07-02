@@ -80,7 +80,9 @@ def _avd_picker_impl(
         dt_mark = "[x]" if dt else "[ ]"
         with contextlib.suppress(curses.error):
             stdscr.addstr(sep_row + 1, 0, f"  {ws_mark} w  writable-system", curses.color_pair(3))
-            stdscr.addstr(sep_row + 2, 0, f"  {dt_mark} d  detach (background)", curses.color_pair(3))
+            stdscr.addstr(
+                sep_row + 2, 0, f"  {dt_mark} d  detach (background)", curses.color_pair(3)
+            )
 
         stdscr.refresh()
 

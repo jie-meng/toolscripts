@@ -649,6 +649,7 @@ def _handle_python_install() -> None:
         choice = select_one(
             "Set this version as the default 'python' command?",
             ["Yes (uv python install <ver> --default)", "No"],
+            default_index=1,
         )
         if choice == 0:
             run(["uv", "python", "install", "--default", versions[indices[0]]])
