@@ -94,15 +94,14 @@ _UV_COMMANDS: list[UvCommand] = [
     ),
     UvCommand(
         name="Python pin",
-        command="uv python pin <VERSION>",
+        command="uv python pin <VERSION> [--global]",
         base_args=["python", "pin"],
-        description="Run in the project root (where pyproject.toml is). "
-        "Writes .python-version to pin the interpreter used by uv run and uv sync.",
+        description="Pin a Python version — either locally (.python-version) or globally. "
+        "You will be shown a picker of installed versions and asked to choose the scope.",
         examples=[
-            "uv python pin 3.12",
-            "uv python pin 3.11.8",
+            "uv python pin 3.12              # local .python-version",
+            "uv python pin 3.12 --global     # global user default",
         ],
-        needs_args=True,
     ),
     # ── Dependency management ──────────────────────────────────────────────
     UvCommand(
@@ -444,6 +443,10 @@ def _run_interactive_command(cmd: UvCommand) -> None:
         _handle_remove_dependency()
         return
 
+    if cmd.name == "Python pin":
+        _handle_python_pin()
+        return
+
     if cmd.name == "Sync / install":
         _handle_sync()
         return
@@ -462,6 +465,42 @@ def _run_interactive_command(cmd: UvCommand) -> None:
         args = raw.split()
 
     run(["uv", *cmd.base_args, *args])
+
+
+def _handle_python_pin() -> None:
+    from toolscripts.core.ui_curses import select_one
+
+    print("Fetching installed Python versions from uv...")
+    versions = _get_uv_python_installed()
+    if not versions:
+        print(
+            "No Python versions found via uv.\n"
+            "Hint: use 'Python install' in this browser to install one first."
+        )
+        return
+
+    idx = select_one("Select Python version to pin", versions)
+    if idx is None:
+        print("Cancelled.")
+        return
+    selected = versions[idx]
+
+    scope_choice = select_one(
+        "Scope?",
+        [
+            "Local (project)   uv python pin <version>     (.python-version file)",
+            "Global (user)     uv python pin <version> --global",
+        ],
+    )
+    if scope_choice is None:
+        print("Cancelled.")
+        return
+
+    args = ["uv", "python", "pin", selected]
+    if scope_choice == 1:
+        args.append("--global")
+
+    run(args)
 
 
 def _handle_venv_create() -> None:
@@ -519,6 +558,25 @@ def _handle_python_install() -> None:
 
     for i in indices:
         run(["uv", "python", "install", versions[i]])
+
+    from toolscripts.core.ui_curses import select_one
+
+    if len(indices) == 1:
+        choice = select_one(
+            "Set this version as the default 'python' command?",
+            ["Yes (uv python install <ver> --default)", "No"],
+        )
+        if choice == 0:
+            run(["uv", "python", "install", "--default", versions[indices[0]]])
+    else:
+        choice = select_one(
+            "Set one of these as the default 'python' command?",
+            ["Skip", "Pick one to set as default"],
+        )
+        if choice == 1:
+            idx2 = select_one("Select version to set as default", [versions[i] for i in indices])
+            if idx2 is not None:
+                run(["uv", "python", "install", "--default", versions[indices[idx2]]])
 
 
 def _handle_python_uninstall() -> None:
