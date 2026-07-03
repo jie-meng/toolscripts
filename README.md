@@ -81,6 +81,7 @@ Install only what you need:
 | `office`     | `openpyxl`                                    | `xlsx-text2num`                    |
 | `text`       | `markdownify`, `translate`, `binaryornot`     | `web2md`, `translate`, ...         |
 | `windows`    | `windows-curses` (Windows only)               | curses-based pickers               |
+| `llama`      | `huggingface-hub`                             | `llamacmd` (HF search / download)  |
 | `all`        | everything above                              | —                                  |
 | `dev`        | `ruff`, `pytest`, `mypy`                      | development                        |
 
@@ -138,7 +139,7 @@ full options.
 | android    | `android-log`, `android-record`, `android-deeplink`, `android-input-text`, `android-screencast`, `android-logcat`, `android-emulator`, `android-batch-install`, `android-retrieve-media`, `android-rename-project`, `android-adbsync`, `android-keystore-generate`, `android-screenshot`, `android-studio` |
 | ios        | `ios-log`, `ios-log-tail`, `ios-record`, `ios-simulator`, `ios-deeplink`, `xcode-terminal` |
 | media      | `img-resize`, `img-scale`, `imgcat`, `playsound`, `stopsound`, `mp4-compress`, `mov-to-mp4`, `mp4cut`, `mp4togif`, `mp3-to-pcm`, `remove-watermark`, `pdf-merge`, `kindle-pdf-cropper` |
-| ai         | `ccswitch`, `aido`, `aido-models`, `free-models-openrouter`, `free-models-nvidia`, `agents-setup`, `ai-links`, `graphify-setup`, `npm-tools` |
+| ai         | `ccswitch`, `aido`, `aido-models`, `free-models-openrouter`, `free-models-nvidia`, `agents-setup`, `ai-links`, `graphify-setup`, `npm-tools`, `llamacmd` |
 | text/docs  | `markdown-snippet`, `slugify`, `web2md`, `translate`, `mermaid`, `statcounter-os-coverage`, `xlsx-text2num`, `docs-pick` |
 | system     | `toolscripts-list`, `myip`, `checkspace`, `lsdevcu`, `rm-ds-store`, `rm-meta`, `dirdiff`, `intellij`, `pycharm`, `xcode`, `venv-create`, `uvcmd`, `iterm-setup`, `kill-pwchrome` |
 | misc       | `axios-audit`, `extract-games`, `list-include-dirs-from-here`, `list-include-dirs-clang`, `dockercmd`, `mongo-tool` |

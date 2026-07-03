@@ -74,6 +74,7 @@ pip install -e .                        # 等价于 ./manage.py install --pip
 | `office`     | `openpyxl`                                    | `xlsx-text2num`                    |
 | `text`       | `markdownify`、`translate`、`binaryornot`     | `web2md`、`translate` 等           |
 | `windows`    | `windows-curses`（仅 Windows）                | 基于 curses 的交互选择器           |
+| `llama`      | `huggingface-hub`                             | `llamacmd`（HF 搜索/下载）         |
 | `all`        | 以上全部                                      | —                                  |
 | `dev`        | `ruff`、`pytest`、`mypy`                      | 开发                               |
 

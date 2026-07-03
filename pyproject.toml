@@ -40,8 +40,9 @@ text = [
     "binaryornot>=0.4,<0.5",
 ]
 windows = ['windows-curses>=2.3; sys_platform == "win32"']
+llama = ["huggingface-hub>=0.24,<1"]
 all = [
-    "toolscripts[clipboard,media,office,text,windows]",
+    "toolscripts[clipboard,media,office,text,windows,llama]",
 ]
 dev = [
     "ruff>=0.6",
@@ -153,6 +154,7 @@ agents-setup              = "toolscripts.commands.ai.agents_setup:main"
 ai-links                  = "toolscripts.commands.ai.ai_links:main"
 graphify-setup            = "toolscripts.commands.ai.graphify_setup:main"
 npm-tools                 = "toolscripts.commands.ai.npm_tools:main"
+llamacmd                  = "toolscripts.commands.ai.llamacmd:main"
 
 # text / docs / web
 markdown-snippet          = "toolscripts.commands.text.markdown:main"
