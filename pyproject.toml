@@ -167,6 +167,7 @@ xlsx-text2num             = "toolscripts.commands.text.text2num:main"
 docs-pick                 = "toolscripts.commands.text.doc_pick:main"
 
 # system / files
+dotnet-globaljson         = "toolscripts.commands.system.dotnet_globaljson:main"
 dotnet-switch             = "toolscripts.commands.system.dotnet_switch:main"
 toolscripts-list          = "toolscripts.commands.system.list_commands:main"
 myip                      = "toolscripts.commands.system.myip:main"
