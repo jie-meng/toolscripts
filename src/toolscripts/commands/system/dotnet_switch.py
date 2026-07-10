@@ -9,7 +9,7 @@ import sys
 
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
 from toolscripts.core.platform import require_platform
-from toolscripts.core.shell import CommandNotFoundError, capture, require, run
+from toolscripts.core.shell import CommandNotFoundError, capture, require
 from toolscripts.core.ui_curses import select_one
 
 log = get_logger(__name__)
@@ -157,15 +157,15 @@ def main() -> None:
 
     for f in formulas:
         with contextlib.suppress(Exception):
-            run(["brew", "unlink", "--force", f["name"]])
+            capture(["brew", "unlink", f["name"]], check=False)
 
     try:
-        run(["brew", "link", "--force", "--overwrite", chosen["name"]])
+        capture(["brew", "link", "--force", "--overwrite", chosen["name"]])
     except Exception as exc:
         log.error("failed to link %s: %s", chosen["name"], exc)
         sys.exit(1)
 
-    print(f"\nSwitched to {chosen['name']} ({_get_version(chosen)})")
+    log.success("Switched to %s (%s)", chosen["name"], _get_version(chosen))
     try:
         ver = capture(["dotnet", "--version"])
         print(f"  dotnet --version: {ver}")
