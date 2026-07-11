@@ -141,7 +141,7 @@ full options.
 | media      | `img-resize`, `img-scale`, `imgcat`, `playsound`, `stopsound`, `mp4-compress`, `mov-to-mp4`, `mp4cut`, `mp4togif`, `mp3-to-pcm`, `remove-watermark`, `pdf-merge`, `kindle-pdf-cropper` |
 | ai         | `ccswitch`, `aido`, `aido-models`, `free-models-openrouter`, `free-models-nvidia`, `agents-setup`, `ai-links`, `graphify-setup`, `npm-tools`, `llamacmd` |
 | text/docs  | `markdown-snippet`, `slugify`, `web2md`, `translate`, `mermaid`, `statcounter-os-coverage`, `xlsx-text2num`, `docs-pick` |
-| system     | `dotnet-globaljson`, `dotnet-switch`, `toolscripts-list`, `myip`, `checkspace`, `lsdevcu`, `rm-ds-store`, `rm-meta`, `dirdiff`, `intellij`, `pycharm`, `xcode`, `venv-create`, `uvcmd`, `iterm-setup`, `kill-pwchrome` |
+| system     | `dotnet-globaljson`, `toolscripts-list`, `myip`, `checkspace`, `lsdevcu`, `rm-ds-store`, `rm-meta`, `dirdiff`, `intellij`, `pycharm`, `xcode`, `venv-create`, `uvcmd`, `iterm-setup`, `kill-pwchrome` |
 | misc       | `axios-audit`, `extract-games`, `list-include-dirs-from-here`, `list-include-dirs-clang`, `dockercmd`, `mongo-tool` |
 
 The complete list lives in `[project.scripts]` inside `pyproject.toml` — but
