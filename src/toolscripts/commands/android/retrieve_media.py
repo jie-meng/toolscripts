@@ -10,7 +10,7 @@ from toolscripts.adb.devices import select_device
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
 from toolscripts.core.prompts import ask
 from toolscripts.core.shell import capture, run
-from toolscripts.core.ui_curses import select_one
+from toolscripts.core.ui_curses import select_many, select_one
 
 log = get_logger(__name__)
 
@@ -48,7 +48,7 @@ def main() -> None:
         description="Retrieve recent media/download files from an Android device.",
     )
     parser.add_argument(
-        "-n", "--count", type=int, default=None, help="number of latest files to pull"
+        "-n", "--count", type=int, default=None, help="number of latest files to pull/list"
     )
     parser.add_argument("-o", "--output", default=".", help="local output directory (default: .)")
     add_logging_flags(parser)
@@ -64,9 +64,9 @@ def main() -> None:
         return
     _, remote_dir, prefixes, suffixes = _PRESETS[idx]
 
-    listing = capture(["adb", "-s", device, "shell", "ls", remote_dir], check=False)
+    listing = capture(["adb", "-s", device, "shell", "ls", "-p", remote_dir], check=False)
     items = [line.strip() for line in listing.splitlines() if line.strip()]
-    items = [name for name in items if _matches(name, prefixes, suffixes)]
+    items = [name for name in items if not name.endswith("/") and _matches(name, prefixes, suffixes)]
     items.sort(reverse=True)
 
     if not items:
@@ -74,17 +74,49 @@ def main() -> None:
         return
 
     log.info("found %d matching files", len(items))
-    if args.count is not None:
-        count = max(1, args.count)
-    else:
-        raw = ask("How many files to retrieve (latest)?", default="1") or "1"
-        try:
-            count = max(1, int(raw))
-        except ValueError:
-            log.error("not a valid integer: %r", raw)
-            sys.exit(1)
 
-    for name in items[:count]:
+    mode_idx = select_one(
+        "Select mode",
+        ["Pull latest N files", "Browse & select via curses"],
+        default_index=0,
+    )
+    if mode_idx is None:
+        return
+
+    if mode_idx == 0:
+        if args.count is not None:
+            count = max(1, args.count)
+        else:
+            raw = ask("How many files to retrieve (latest)?", default="1") or "1"
+            try:
+                count = max(1, int(raw))
+            except ValueError:
+                log.error("not a valid integer: %r", raw)
+                sys.exit(1)
+        selected = items[:count]
+    else:
+        if args.count is not None:
+            count = max(1, args.count)
+        else:
+            raw = ask("How many recent files to list?", default="20") or "20"
+            try:
+                count = max(1, int(raw))
+            except ValueError:
+                log.error("not a valid integer: %r", raw)
+                sys.exit(1)
+        browse_items = items[:count]
+        indices = select_many(
+            f"Select files to pull from {remote_dir}",
+            browse_items,
+        )
+        if indices is None:
+            return
+        selected = [browse_items[i] for i in indices]
+        if not selected:
+            log.warning("no files selected")
+            return
+
+    for name in selected:
         src = f"{remote_dir}/{name}"
         dst = output_dir / name
         log.info("pulling %s", name)
