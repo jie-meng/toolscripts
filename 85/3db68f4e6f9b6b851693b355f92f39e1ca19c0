@@ -1,0 +1,20 @@
+src/toolscripts/commands/android/retrieve_media.py
+  s_d8794e42ff54cc::t_4b0621282d7357 67,69
+  s_d8794e42ff54cc::t_3a3684d805da99 13,51,77-96,98-119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "853db68f4e6f9b6b851693b355f92f39e1ca19c0",
+  "prompts": {},
+  "sessions": {
+    "s_d8794e42ff54cc": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_073685643ffexkSv0qoymtifRX",
+        "model": "deepseek-v4-flash-free"
+      },
+      "human_author": "Jie Meng <jmengxy@gmail.com>"
+    }
+  }
+}
