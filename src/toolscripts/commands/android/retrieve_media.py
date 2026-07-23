@@ -16,6 +16,7 @@ log = get_logger(__name__)
 
 
 _PRESETS = [
+    ("Download (DLManager)", "/sdcard/Download/DLManager", (), ()),
     ("Image (jpg/png from DCIM/Camera)", "/sdcard/DCIM/Camera", ("IMG_",), (".jpg", ".png")),
     (
         "Screenshot (jpg/png from DCIM/Screenshots)",
@@ -44,7 +45,7 @@ def _matches(name: str, prefixes: tuple[str, ...], suffixes: tuple[str, ...]) ->
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="android-retrieve-media",
-        description="Retrieve recent media files from an Android device's DCIM tree.",
+        description="Retrieve recent media/download files from an Android device.",
     )
     parser.add_argument(
         "-n", "--count", type=int, default=None, help="number of latest files to pull"
