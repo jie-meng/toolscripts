@@ -181,6 +181,7 @@ xcode                     = "toolscripts.commands.system.ide:xcode_main"
 
 venv-create               = "toolscripts.commands.system.venv_create:main"
 uvcmd                     = "toolscripts.commands.system.uvcmd:main"
+graphifycmd               = "toolscripts.commands.system.graphifycmd:main"
 iterm-setup               = "toolscripts.commands.system.iterm_setup:main"
 kill-pwchrome             = "toolscripts.commands.system.kill_pwchrome:main"
 
