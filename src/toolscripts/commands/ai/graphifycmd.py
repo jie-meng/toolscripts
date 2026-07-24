@@ -14,7 +14,10 @@ from pathlib import Path
 from toolscripts.core.colors import GREEN, YELLOW, colored
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
 from toolscripts.core.platform import is_linux, is_macos, is_windows
-from toolscripts.core.shell import run
+from toolscripts.core.shell import run, which
+from toolscripts.core.ui_curses import select_many
+
+from .tools import AI_TOOLS
 
 log = get_logger(__name__)
 
@@ -101,6 +104,101 @@ def _project_name() -> str:
         return PROJECT_ROOT.name
 
 
+# ── platform management (port from graphify-setup) ───────────────────────
+
+
+class _GraphifyPlatform:
+    """Maps an AITool to its graphify CLI subcommand."""
+
+    __slots__ = ("tool_id", "subcommand", "skill_path", "project_marker")
+
+    def __init__(
+        self,
+        tool_id: str,
+        subcommand: str,
+        skill_path: Path | None = None,
+        *,
+        project_marker: str | None = None,
+    ) -> None:
+        self.tool_id = tool_id
+        self.subcommand = subcommand
+        self.skill_path = skill_path
+        self.project_marker = project_marker
+
+    def is_installed(self) -> bool:
+        if self.skill_path is not None:
+            return self.skill_path.is_dir() or self.skill_path.is_file()
+        if self.project_marker is not None:
+            return Path(self.project_marker).exists()
+        return False
+
+
+_HOME = Path.home()
+
+GRAPHIFY_PLATFORMS: list[_GraphifyPlatform] = [
+    _GraphifyPlatform("claude-code", "claude", _HOME / ".claude" / "skills" / "graphify"),
+    _GraphifyPlatform("codex", "codex", _HOME / ".agents" / "skills" / "graphify"),
+    _GraphifyPlatform("copilot", "copilot", _HOME / ".copilot" / "skills" / "graphify"),
+    _GraphifyPlatform("cursor", "cursor", project_marker=".cursor/rules/graphify.mdc"),
+    _GraphifyPlatform("gemini", "gemini", _HOME / ".gemini" / "skills" / "graphify"),
+    _GraphifyPlatform(
+        "opencode", "opencode", _HOME / ".config" / "opencode" / "skills" / "graphify"
+    ),
+]
+
+_PLATFORM_BY_ID: dict[str, _GraphifyPlatform] = {p.tool_id: p for p in GRAPHIFY_PLATFORMS}
+
+
+def _run_graphify(*args: str) -> bool:
+    cmd = ["graphify", *args]
+    log.info("running: %s", " ".join(cmd))
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        stderr = result.stderr.strip()
+        log.error("graphify failed (exit %d): %s", result.returncode, stderr or "(no output)")
+        return False
+    if result.stdout.strip():
+        log.debug("%s", result.stdout.strip())
+    return True
+
+
+def _install_one(plat: _GraphifyPlatform) -> None:
+    if plat.skill_path is not None:
+        if _run_graphify("install", "--platform", plat.subcommand):
+            log.success("graphify skill installed for %s", plat.subcommand)
+    else:
+        log.warning("%s has no user-level skill path configured", plat.tool_id)
+
+
+def _uninstall_one(plat: _GraphifyPlatform) -> None:
+    target = plat.skill_path
+    if target is not None:
+        if target.is_dir():
+            shutil.rmtree(target)
+            log.success("removed graphify skill for %s: %s", plat.subcommand, target)
+        elif target.is_file():
+            target.unlink()
+            log.success("removed graphify skill for %s: %s", plat.subcommand, target)
+        else:
+            log.info("graphify skill not found for %s (nothing to remove)", plat.subcommand)
+
+
+def _list_platforms() -> None:
+    log.info("Graphify platform status:")
+    for integ in AI_TOOLS:
+        plat = _PLATFORM_BY_ID.get(integ.tool_id)
+        if plat is None:
+            continue
+        installed = integ.is_installed()
+        has_graphify = plat.is_installed() if installed else False
+        status = (
+            "graphify installed"
+            if has_graphify
+            else ("installed" if installed else "not installed")
+        )
+        print(f"  {integ.tool_id:<14} {integ.tool_name:<18} [{status}]")
+
+
 # ── action definitions ──────────────────────────────────────────────────
 
 
@@ -185,6 +283,18 @@ _ACTIONS: list[Action] = [
             "graphify claude install",
         ],
         handler="register_claude",
+        needs_graphify=True,
+    ),
+    Action(
+        name="Bulk manage all platforms",
+        category="setup",
+        command="(interactive multi-select)",
+        description="Install or uninstall the graphify user-level skill for any AI coding tool. "
+        "Select a tool to install graphify for it; deselect to uninstall. "
+        "Tools without the underlying platform installed are greyed out. "
+        "Supports: Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI, OpenCode.",
+        samples=[],
+        handler="bulk_manage",
         needs_graphify=True,
     ),
     # ── Hooks ──
@@ -365,6 +475,20 @@ _ACTIONS: list[Action] = [
         samples=[],
         handler="status",
     ),
+    Action(
+        name="Benchmark token savings",
+        category="status",
+        command="graphify benchmark {graph_json}",
+        description="Measure how much the knowledge graph reduces LLM context size "
+        "compared to the naive approach (feeding raw source files). "
+        "Shows: total tokens in codebase vs. subgraph tokens for typical queries, "
+        "compression ratio, and estimated cost savings. "
+        "Run this after building the graph to see concrete numbers.",
+        samples=["graphify benchmark graphify-out/graph.json"],
+        handler="benchmark",
+        needs_graphify=True,
+        needs_graph=True,
+    ),
 ]
 
 _CATEGORY_LABELS = {
@@ -527,6 +651,52 @@ def _handle_status() -> None:
     print()
 
 
+def _handle_bulk_manage() -> None:
+    items: list[str] = []
+    preselected: list[bool] = []
+    disabled: set[int] = set()
+    platform_indices: list[int] = []
+
+    for i, integ in enumerate(AI_TOOLS):
+        plat = _PLATFORM_BY_ID.get(integ.tool_id)
+        if plat is None:
+            continue
+        platform_indices.append(i)
+        if not integ.is_installed():
+            items.append(f"{integ.tool_name} (not installed)")
+            preselected.append(False)
+            disabled.add(len(items) - 1)
+        elif plat.is_installed():
+            items.append(f"{integ.tool_name} [graphify installed]")
+            preselected.append(True)
+        else:
+            items.append(f"{integ.tool_name}")
+            preselected.append(False)
+
+    indices = select_many(
+        "Select AI tools for graphify (deselect to uninstall):",
+        items,
+        preselected=preselected,
+        disabled=disabled,
+    )
+    if indices is None:
+        log.warning("cancelled")
+        return
+
+    selected = set(indices)
+
+    for picker_idx in selected:
+        tool_idx = platform_indices[picker_idx]
+        plat = _PLATFORM_BY_ID[AI_TOOLS[tool_idx].tool_id]
+        _install_one(plat)
+
+    for picker_idx, tool_idx in enumerate(platform_indices):
+        if picker_idx not in selected:
+            plat = _PLATFORM_BY_ID[AI_TOOLS[tool_idx].tool_id]
+            if plat.is_installed():
+                _uninstall_one(plat)
+
+
 def _run_action(action: Action) -> None:
     h = action.handler
     if h == "install":
@@ -541,6 +711,8 @@ def _run_action(action: Action) -> None:
     elif h == "register_claude":
         run(["graphify", "install", "--platform", "claude"])
         run(["graphify", "claude", "install"], cwd=PROJECT_ROOT)
+    elif h == "bulk_manage":
+        _handle_bulk_manage()
     elif h == "hook_install":
         run(["graphify", "hook", "install"], cwd=PROJECT_ROOT)
     elif h == "hook_uninstall":
@@ -567,6 +739,8 @@ def _run_action(action: Action) -> None:
         run(["python", "-m", "graphify.serve", str(_graph_json_path())])
     elif h == "status":
         _handle_status()
+    elif h == "benchmark":
+        run(["graphify", "benchmark", str(_graph_json_path())])
 
 
 # ── curses browser ──────────────────────────────────────────────────────
@@ -745,9 +919,83 @@ def main() -> None:
         default=".",
         help="Project directory (where graphify-out/ lives or will be created). Default: cwd",
     )
+    parser.add_argument(
+        "--list",
+        "-l",
+        action="store_true",
+        help="List graphify install status for all supported AI coding tools",
+    )
+    parser.add_argument(
+        "--upgrade",
+        "-u",
+        action="store_true",
+        help="Upgrade graphify to the latest version before entering the browser",
+    )
+    parser.add_argument(
+        "--all",
+        "-a",
+        action="store_true",
+        help="Install graphify for all detected AI coding tools",
+    )
+    parser.add_argument(
+        "--tool",
+        "-t",
+        help="Install graphify for a single tool (e.g. claude-code, cursor, gemini, opencode)",
+    )
     add_logging_flags(parser)
     args = parser.parse_args()
     configure_from_args(args)
+
+    if which("graphify") is None:
+        log.error(
+            "graphify CLI not found. Install it first:\n"
+            "  uv tool install graphifyy && graphify install\n"
+            "  # or: pipx install graphifyy && graphify install"
+        )
+        sys.exit(1)
+
+    if args.upgrade:
+        log.info("upgrading graphify via uv …")
+        result = subprocess.run(
+            ["uv", "tool", "upgrade", "graphifyy"], capture_output=True, text=True
+        )
+        if result.returncode == 0:
+            output = (result.stdout + result.stderr).strip()
+            if output:
+                log.debug("%s", output)
+            log.success("graphify upgraded")
+        else:
+            log.error(
+                "uv tool upgrade failed (exit %d): %s",
+                result.returncode,
+                (result.stderr or result.stdout).strip(),
+            )
+            sys.exit(1)
+
+    if args.list:
+        _list_platforms()
+        return
+
+    if args.all:
+        for integ in AI_TOOLS:
+            plat = _PLATFORM_BY_ID.get(integ.tool_id)
+            if plat is None:
+                continue
+            if integ.is_installed():
+                _install_one(plat)
+        return
+
+    if args.tool:
+        plat = _PLATFORM_BY_ID.get(args.tool)
+        if plat is None:
+            log.error(
+                "unknown graphify platform: %s (supported: %s)",
+                args.tool,
+                ", ".join(p.tool_id for p in GRAPHIFY_PLATFORMS),
+            )
+            sys.exit(1)
+        _install_one(plat)
+        return
 
     global PROJECT_ROOT
     PROJECT_ROOT = Path(args.dir).resolve()

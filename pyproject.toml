@@ -152,7 +152,6 @@ free-models-openrouter    = "toolscripts.commands.ai.free_models_openrouter:main
 free-models-nvidia        = "toolscripts.commands.ai.free_models_nvidia:main"
 agents-setup              = "toolscripts.commands.ai.agents_setup:main"
 ai-links                  = "toolscripts.commands.ai.ai_links:main"
-graphify-setup            = "toolscripts.commands.ai.graphify_setup:main"
 npm-tools                 = "toolscripts.commands.ai.npm_tools:main"
 llamacmd                  = "toolscripts.commands.ai.llamacmd:main"
 
@@ -181,7 +180,7 @@ xcode                     = "toolscripts.commands.system.ide:xcode_main"
 
 venv-create               = "toolscripts.commands.system.venv_create:main"
 uvcmd                     = "toolscripts.commands.system.uvcmd:main"
-graphifycmd               = "toolscripts.commands.system.graphifycmd:main"
+graphifycmd               = "toolscripts.commands.ai.graphifycmd:main"
 iterm-setup               = "toolscripts.commands.system.iterm_setup:main"
 kill-pwchrome             = "toolscripts.commands.system.kill_pwchrome:main"
 

@@ -66,7 +66,9 @@ def main() -> None:
 
     listing = capture(["adb", "-s", device, "shell", "ls", "-p", remote_dir], check=False)
     items = [line.strip() for line in listing.splitlines() if line.strip()]
-    items = [name for name in items if not name.endswith("/") and _matches(name, prefixes, suffixes)]
+    items = [
+        name for name in items if not name.endswith("/") and _matches(name, prefixes, suffixes)
+    ]
     items.sort(reverse=True)
 
     if not items:

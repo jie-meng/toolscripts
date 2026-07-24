@@ -131,9 +131,9 @@ toolscripts-list -i <domain>              # 直接跳转到某个领域（如 gi
 | Android    | `android-log`、`android-record`、`android-deeplink`、`android-input-text`、`android-screencast`、`android-logcat`、`android-emulator`、`android-batch-install`、`android-retrieve-media`、`android-rename-project`、`android-adbsync`、`android-keystore-generate`、`android-screenshot`、`android-studio` |
 | iOS        | `ios-log`、`ios-log-tail`、`ios-record`、`ios-simulator`、`ios-deeplink`、`xcode-terminal` |
 | 媒体       | `img-resize`、`img-scale`、`imgcat`、`playsound`、`stopsound`、`mp4-compress`、`mov-to-mp4`、`mp4cut`、`mp4togif`、`mp3-to-pcm`、`remove-watermark`、`pdf-merge`、`kindle-pdf-cropper` |
-| AI 工具    | `ccswitch`、`aido`、`aido-models`、`free-models-openrouter`、`free-models-nvidia`、`agents-setup`、`ai-links`、`graphify-setup`、`npm-tools` |
+| AI 工具    | `ccswitch`、`aido`、`aido-models`、`free-models-openrouter`、`free-models-nvidia`、`agents-setup`、`ai-links`、`graphifycmd`、`npm-tools` |
 | 文本/文档  | `markdown-snippet`、`slugify`、`web2md`、`translate`、`mermaid`、`statcounter-os-coverage`、`xlsx-text2num`、`docs-pick` |
-| 系统       | `dotnet-globaljson`、`toolscripts-list`、`myip`、`checkspace`、`lsdevcu`、`rm-ds-store`、`rm-meta`、`dirdiff`、`intellij`、`pycharm`、`xcode`、`venv-create`、`uvcmd`、`graphifycmd`、`iterm-setup`、`kill-pwchrome` |
+| 系统       | `dotnet-globaljson`、`toolscripts-list`、`myip`、`checkspace`、`lsdevcu`、`rm-ds-store`、`rm-meta`、`dirdiff`、`intellij`、`pycharm`、`xcode`、`venv-create`、`uvcmd`、`iterm-setup`、`kill-pwchrome` |
 | 杂项       | `axios-audit`、`extract-games`、`list-include-dirs-from-here`、`list-include-dirs-clang`、`dockercmd`、`mongo-tool` |
 
 完整列表见 `pyproject.toml` 中的 `[project.scripts]` —— 但更方便的做法是
