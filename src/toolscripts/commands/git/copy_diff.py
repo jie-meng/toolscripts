@@ -58,40 +58,43 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
     import contextlib
     import curses
 
-    commits: list[tuple[str, str]] = []
-    fetch_offset = 0
+    pages: dict[int, list[tuple[str, str]]] = {}
+    total_loaded = 0
     page_offset = 0
     selected: set[int] = set()
     cursor = 0
     top = 0
     sel_scroll = 0
-    loading = False
     has_more = True
 
-    def _load_page() -> bool:
-        nonlocal loading, has_more, fetch_offset
-        if loading or not has_more:
-            return False
-        loading = True
-        page = _recent_commits(_PAGE_SIZE, fetch_offset)
-        loading = False
+    def _ensure_page(page_idx: int) -> None:
+        nonlocal has_more, total_loaded
+        if page_idx in pages or not has_more:
+            return
+        offset = page_idx * _PAGE_SIZE
+        page = _recent_commits(_PAGE_SIZE, offset)
         if not page:
             has_more = False
-            return False
-        commits.extend(page)
-        fetch_offset += _PAGE_SIZE
+            return
+        pages[page_idx] = page
+        total_loaded += len(page)
         if len(page) < _PAGE_SIZE:
             has_more = False
-        return True
 
     def _page_commits() -> list[tuple[str, str]]:
-        return commits[page_offset : page_offset + _PAGE_SIZE]
+        idx = page_offset // _PAGE_SIZE
+        return pages.get(idx, [])
+
+    def _get_commit(abs_idx: int) -> tuple[str, str]:
+        page_idx = abs_idx // _PAGE_SIZE
+        local_idx = abs_idx % _PAGE_SIZE
+        return pages[page_idx][local_idx]
 
     def _draw(stdscr: curses.window) -> None:
         nonlocal top, sel_scroll
         stdscr.clear()
         stdscr.addstr(0, 0, "Select commits", curses.A_BOLD)
-        hint = "j/k move | [/] prev/next page | Space toggle | a all/none | Enter confirm | q quit"
+        hint = "j/k move | h/l prev/next page | Space toggle | a all/none | Enter confirm | q quit"
         stdscr.addstr(1, 0, hint, curses.color_pair(3))
 
         height, width = stdscr.getmaxyx()
@@ -136,7 +139,7 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
                     sel_scroll = 0
                 vis_sel = sel_list[sel_scroll : sel_scroll + sel_area_h - 2]
                 for i, idx in enumerate(vis_sel):
-                    h, m = commits[idx]
+                    h, m = _get_commit(idx)
                     with contextlib.suppress(curses.error):
                         text = f"    {i + sel_scroll + 1:2}. {h} {m}"[: width - 1]
                         stdscr.addstr(sel_start + 1 + i, 0, text, curses.color_pair(5))
@@ -145,9 +148,7 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
                     stdscr.addstr(sel_start + 1, 0, "    (none)", curses.color_pair(4))
 
         page_num = page_offset // _PAGE_SIZE + 1
-        status = f"  {count} selected | page {page_num} | {len(commits)} loaded"
-        if loading:
-            status += " | loading..."
+        status = f"  {count} selected | page {page_num} | {total_loaded} loaded"
         with contextlib.suppress(curses.error):
             stdscr.addstr(height - 1, 0, status, curses.color_pair(3))
         stdscr.refresh()
@@ -163,8 +164,8 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
         curses.init_pair(4, curses.COLOR_WHITE, -1)
         curses.init_pair(5, curses.COLOR_GREEN, -1)
 
-        _load_page()
-        if not commits:
+        _ensure_page(0)
+        if not pages:
             return None
 
         while True:
@@ -175,7 +176,7 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
             total_items = len(page_items)
 
             if total_items == 0:
-                if key in (ord("["), ord("q"), 27):
+                if key in (ord("h"), ord("q"), 27):
                     if key in (ord("q"), 27):
                         return None
                     if page_offset >= _PAGE_SIZE:
@@ -194,13 +195,16 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
                     cursor = 0
             elif key == ord("G"):
                 cursor = total_items - 1
-            elif key == ord("]"):
-                if has_more and not loading:
-                    if _load_page():
-                        page_offset += _PAGE_SIZE
-                        cursor = 0
-                        top = 0
-            elif key == ord("["):
+            elif key == ord("l"):
+                next_offset = page_offset + _PAGE_SIZE
+                next_page_idx = next_offset // _PAGE_SIZE
+                if has_more:
+                    _ensure_page(next_page_idx)
+                if next_page_idx in pages:
+                    page_offset = next_offset
+                    cursor = 0
+                    top = 0
+            elif key == ord("h"):
                 if page_offset >= _PAGE_SIZE:
                     page_offset -= _PAGE_SIZE
                     cursor = 0
@@ -219,7 +223,7 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
                 else:
                     selected |= page_abs
             elif key in (curses.KEY_ENTER, 10, 13) or key == ord("o"):
-                return [commits[i] for i in sorted(selected)]
+                return [_get_commit(i) for i in sorted(selected)]
             elif key in (ord("q"), 27):
                 return None
 
