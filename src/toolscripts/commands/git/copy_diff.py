@@ -273,11 +273,16 @@ def _multi_commit_diff(count: int = 50) -> tuple[str | None, dict[str, str]]:
     if mode == 0:
         newest = hashes[0]
         oldest = hashes[-1]
-        parent_out = _run(["git", "rev-parse", f"{oldest}^"])
-        if parent_out:
-            base = parent_out.strip()
-            diff = _run(["git", "diff", f"{base}..{newest}"])
-        else:
+        log_out = _run(["git", "log", "--oneline", f"{oldest}..{newest}"])
+        sequential = log_out is not None and len(log_out.strip().splitlines()) == len(hashes) - 1
+        if sequential:
+            parent_out = _run(["git", "rev-parse", f"{oldest}^"])
+            if parent_out:
+                base = parent_out.strip()
+                diff = _run(["git", "diff", f"{base}..{newest}"])
+            else:
+                sequential = False
+        if not sequential:
             diff = ""
             for h in hashes:
                 d = _run(["git", "show", h])
