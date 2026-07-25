@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 
 from toolscripts.core.clipboard import copy_to_clipboard
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
+from toolscripts.core.ui_curses import select_one
 
 log = get_logger(__name__)
 
@@ -19,38 +20,6 @@ def _run(cmd: list[str]) -> str | None:
         return result.stdout
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
-
-
-def _select_from_list(options: list[str], prompt: str = "Please select: ") -> int:
-    for idx, opt in enumerate(options):
-        print(f"{idx}. {opt}")
-    while True:
-        try:
-            value = int(input(prompt))
-            if 0 <= value < len(options):
-                return value
-        except ValueError:
-            pass
-        print("Invalid input, please try again.")
-
-
-def _print_menu(options: list[str]) -> None:
-    print()
-    for idx, opt in enumerate(options, 1):
-        print(f"{idx}. {opt}")
-    print()
-    print("0. Exit")
-
-
-def _menu_select(num: int) -> int:
-    while True:
-        try:
-            value = int(input("Please select: "))
-            if 0 <= value <= num:
-                return value
-        except ValueError:
-            pass
-        print("Invalid input, please try again.")
 
 
 def _current_branch() -> str:
@@ -97,20 +66,19 @@ def _working_diff() -> tuple[str | None, dict[str, str]]:
 
 
 def _single_commit_diff() -> tuple[str | None, dict[str, str]]:
-    while True:
-        commits = _recent_commits()
-        if not commits:
-            return None, {"empty_msg": "No recent commits found."}
-        opts = ["Back to previous menu"] + [f"{h} {m}" for h, m in commits]
-        sel = _select_from_list(opts, prompt="Select a commit: ")
-        if sel == 0:
-            return None, {}
-        h = commits[sel - 1][0]
-        diff = _run(["git", "show", h])
-        return diff, {
-            "success_msg": f"Diff of commit {h} copied to clipboard.",
-            "empty_msg": "No diff to copy.",
-        }
+    commits = _recent_commits()
+    if not commits:
+        return None, {"empty_msg": "No recent commits found."}
+    items = [f"{h} {m}" for h, m in commits]
+    sel = select_one("Select a commit", items)
+    if sel is None:
+        return None, {}
+    h = commits[sel][0]
+    diff = _run(["git", "show", h])
+    return diff, {
+        "success_msg": f"Diff of commit {h} copied to clipboard.",
+        "empty_msg": "No diff to copy.",
+    }
 
 
 def _multi_commit_diff() -> tuple[str | None, dict[str, str]]:
@@ -248,29 +216,11 @@ _PROMPT_ZH = (
 
 
 def _ask_prompt_type() -> str | None:
-    print("\nDo you want to include a review prompt?")
-    print("1. No")
-    print("2. En (English)")
-    print("3. Zh (中文)")
-    print("0. Back to main menu")
-    while True:
-        raw = input("Please select (default: 1): ").strip()
-        if not raw:
-            return None
-        try:
-            value = int(raw)
-        except ValueError:
-            print("Please enter a number.")
-            continue
-        if value == 0:
-            return "back"
-        if value == 1:
-            return None
-        if value == 2:
-            return "en"
-        if value == 3:
-            return "zh-cn"
-        print("Invalid input, please try again.")
+    items = ["No", "En (English)", "Zh (中文)"]
+    sel = select_one("Include review prompt?", items, default_index=0)
+    if sel is None:
+        return "back"
+    return [None, "en", "zh-cn"][sel]
 
 
 def _format_and_copy(diff: str, prompt_type: str | None, info: dict[str, str]) -> None:
@@ -302,34 +252,22 @@ def _format_and_copy(diff: str, prompt_type: str | None, info: dict[str, str]) -
 
 
 def _review_prompt_only() -> None:
-    options = ["English (en)", "中文 (zh-cn)"]
-    print("\nSelect review prompt language:")
-    for idx, opt in enumerate(options, 1):
-        print(f"{idx}. {opt}")
-    print("0. Exit")
-    while True:
-        try:
-            value = int(input("Please select: "))
-        except ValueError:
-            print("Please enter a number.")
-            continue
-        if value == 0:
-            return
-        if value == 1:
-            text = _PROMPT_EN.format(
-                commit_msg_instruction="   - Generate a concise, accurate, and conventional commit message."
-            )
-            copy_to_clipboard(text)
-            log.success("English review prompt copied to clipboard.")
-            return
-        if value == 2:
-            text = _PROMPT_ZH.format(
-                commit_msg_instruction="   - 为此变更生成简洁、准确且符合规范的提交信息，提交信息使用英文。"
-            )
-            copy_to_clipboard(text)
-            log.success("中文审查提示已复制到剪贴板。")
-            return
-        print("Invalid input, please try again.")
+    items = ["English (en)", "中文 (zh-cn)"]
+    sel = select_one("Select review prompt language", items)
+    if sel is None:
+        return
+    if sel == 0:
+        text = _PROMPT_EN.format(
+            commit_msg_instruction="   - Generate a concise, accurate, and conventional commit message."
+        )
+        copy_to_clipboard(text)
+        log.success("English review prompt copied to clipboard.")
+    elif sel == 1:
+        text = _PROMPT_ZH.format(
+            commit_msg_instruction="   - 为此变更生成简洁、准确且符合规范的提交信息，提交信息使用英文。"
+        )
+        copy_to_clipboard(text)
+        log.success("中文审查提示已复制到剪贴板。")
 
 
 def main() -> None:
@@ -351,39 +289,33 @@ def main() -> None:
         "Generate review prompt for clipboard",
     ]
     handlers = {
-        1: _staged_diff,
-        2: _working_diff,
-        3: _single_commit_diff,
-        4: _multi_commit_diff,
-        5: _branch_diff,
-        6: _pr_diff,
+        0: _staged_diff,
+        1: _working_diff,
+        2: _single_commit_diff,
+        3: _multi_commit_diff,
+        4: _branch_diff,
+        5: _pr_diff,
     }
 
     while True:
-        print("\nPlease select the diff type to copy:")
-        _print_menu(options)
-        try:
-            sel = _menu_select(len(options))
-        except (EOFError, KeyboardInterrupt):
-            print()
+        sel = select_one("Select the diff type to copy", options)
+        if sel is None:
             return
-
-        if sel == 0:
-            return
-        if sel == 7:
+        if sel == 6:
             _review_prompt_only()
             continue
 
         diff, info = handlers[sel]()
         if diff is None or not diff.strip():
             log.info(info.get("empty_msg", "No diff to copy."))
-            continue
+            return
 
         prompt_type = _ask_prompt_type()
         if prompt_type == "back":
             continue
 
         _format_and_copy(diff, prompt_type, info)
+        return
 
 
 if __name__ == "__main__":
