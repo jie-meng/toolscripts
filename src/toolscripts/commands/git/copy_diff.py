@@ -259,75 +259,18 @@ def _single_commit_diff(count: int = 50) -> tuple[str | None, dict[str, str]]:
     }
 
 
-def _combined_diff_via_cherrypick(hashes: list[str], oldest: str, newest: str) -> str:
-    """Create a true combined diff by cherry-picking selected commits onto a temp branch.
-
-    The temp branch is deleted immediately after; only a reflog entry remains
-    (cleaned up by git gc automatically).
-    """
-    import uuid
-
-    parent_out = _run(["git", "rev-parse", f"{oldest}^"])
-    if not parent_out:
-        return ""
-    base = parent_out.strip()
-    branch = f"_gcd-{uuid.uuid4().hex[:8]}"
-
-    try:
-        _run(["git", "checkout", "-b", branch, base])
-        for h in reversed(hashes):
-            r = _run(["git", "cherry-pick", "--no-commit", h])
-            if r != 0:
-                _run(["git", "cherry-pick", "--abort"])
-                return ""
-        diff = _run(["git", "diff", "--cached"]) or ""
-        return diff
-    finally:
-        _run(["git", "cherry-pick", "--abort"], check=False)
-        _run(["git", "reset", "HEAD"], check=False)
-        _run(["git", "checkout", "-"], check=False)
-        _run(["git", "branch", "-D", branch], check=False)
-
-
 def _multi_commit_diff(count: int = 50) -> tuple[str | None, dict[str, str]]:
     commits = _pick_commits_paginated(count)
     if not commits:
         return None, {}
     hashes = [h for h, _ in commits]
 
-    mode_items = ["Separate (each commit individually)", "Combined (like PR diff)"]
-    mode = select_one("How to view the diff?", mode_items, default_index=0)
-    if mode is None:
-        return None, {}
-
-    if mode == 1:
-        newest = hashes[0]
-        oldest = hashes[-1]
-        log_out = _run(["git", "log", "--oneline", f"{oldest}..{newest}"])
-        sequential = log_out is not None and len(log_out.strip().splitlines()) == len(hashes) - 1
-        if sequential:
-            parent_out = _run(["git", "rev-parse", f"{oldest}^"])
-            if parent_out:
-                base = parent_out.strip()
-                diff = _run(["git", "diff", f"{base}..{newest}"])
-            else:
-                sequential = False
-        if not sequential:
-            diff = _combined_diff_via_cherrypick(hashes, oldest, newest)
-            if not diff:
-                chunks = []
-                for h in hashes:
-                    d = _run(["git", "show", h])
-                    if d and d.strip():
-                        chunks.append(d.rstrip())
-                diff = "\n\n".join(chunks)
-    else:
-        chunks = []
-        for h in hashes:
-            d = _run(["git", "show", h])
-            if d and d.strip():
-                chunks.append(d.rstrip())
-        diff = "\n\n".join(chunks)
+    chunks = []
+    for h in hashes:
+        d = _run(["git", "show", h])
+        if d and d.strip():
+            chunks.append(d.rstrip())
+    diff = "\n\n".join(chunks)
 
     if not diff or not diff.strip():
         return None, {"empty_msg": "No diff to copy."}
