@@ -1,0 +1,21 @@
+src/toolscripts/commands/ai/tools.py
+  s_3e788c06018074::t_0b32902eb0797e 134
+src/toolscripts/commands/ai/ai_links.py
+  s_3e788c06018074::t_cd65d88c03b67e 228-231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "046b6e36cd669e8928a5b5dcc8a1349b5d3445a3",
+  "prompts": {},
+  "sessions": {
+    "s_3e788c06018074": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_065f866efffeRyUjblYqkf3PhN",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Jie Meng <jmengxy@gmail.com>"
+    }
+  }
+}
