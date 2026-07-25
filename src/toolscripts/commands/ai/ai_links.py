@@ -100,9 +100,16 @@ def _has_anything_to_link(tool: AITool) -> bool:
     )
 
 
+def _tool_sort_key(tool: AITool) -> tuple[int, str]:
+    """Custom sort key: opencode first, then alphabetical."""
+    if tool.tool_id == "opencode":
+        return (0, "")
+    return (1, tool.tool_id)
+
+
 TOOLS: list[AITool] = sorted(
     (t for t in AI_TOOLS if _has_anything_to_link(t)),
-    key=lambda t: t.tool_id,
+    key=_tool_sort_key,
 )
 
 
