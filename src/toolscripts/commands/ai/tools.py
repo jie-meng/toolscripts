@@ -131,10 +131,7 @@ AI_TOOLS: list[AITool] = [
         "opencode",
         "OpenCode",
         ".config/opencode",
-        # OpenCode reads ``AGENTS.md`` directly at the repo root and natively
-        # discovers ``.agents/skills/``. Treating ``.agents/`` as its
-        # standard layout means ai-links has nothing to link for it — no
-        # need to fabricate ``.opencode/`` directories.
+        repo_umbrella_dir=".opencode",
     ),
     AITool(
         "qwen",

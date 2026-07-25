@@ -225,9 +225,10 @@ def _gitignore_entries(selected: set[str]) -> list[str]:
             continue
         for spec in _link_specs(tool):
             entries.append(str(spec.link))
-    # .opencode — opencode has no repo-level symlinks, but may create a
-    # project-level config directory that should be gitignored.  Always
-    # include it (harmless if the dir doesn't exist).
+    # .opencode — when opencode is selected, the umbrella symlink
+    # (.opencode -> .agents) is already in the link specs above. As a
+    # fallback for when opencode is NOT selected, always gitignore the
+    # directory so OpenCode's auto-generated project config never leaks.
     entries.append(".opencode")
     # graphify — its output directory can be large and is generated, not
     # source.  Always ignore it.
