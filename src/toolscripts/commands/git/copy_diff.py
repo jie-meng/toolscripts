@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 from toolscripts.core.clipboard import copy_to_clipboard
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
-from toolscripts.core.ui_curses import select_one
+from toolscripts.core.ui_curses import select_many, select_one
 
 log = get_logger(__name__)
 
@@ -35,17 +35,175 @@ def _commit_format() -> str | None:
     return f"{parts[0]}[{parts[1]}] <message>"
 
 
-def _recent_commits(n: int = 20) -> list[tuple[str, str]]:
-    out = _run(["git", "log", "--oneline", "-n", str(n)])
+def _recent_commits(n: int = 50, offset: int = 0) -> list[tuple[str, str]]:
+    cmd = ["git", "log", "--oneline", "-n", str(n + offset), "--skip", str(offset)]
+    out = _run(cmd)
     if not out:
         return []
+    lines = out.strip().splitlines()[offset:]
     commits: list[tuple[str, str]] = []
-    for line in out.strip().splitlines():
+    for line in lines:
         if not line:
             continue
         parts = line.split(" ", 1)
         commits.append((parts[0], parts[1] if len(parts) == 2 else ""))
-    return commits
+    return commits[:n]
+
+
+_PAGE_SIZE = 20
+
+
+def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
+    """Curses paginated multi-select for commits. Returns selected commits or None on cancel."""
+    import contextlib
+    import curses
+
+    commits: list[tuple[str, str]] = []
+    offset = 0
+    selected: set[int] = set()
+    cursor = 0
+    top = 0
+    sel_scroll = 0
+    loading = False
+    has_more = True
+
+    def _load_page() -> None:
+        nonlocal loading, has_more, offset
+        if loading or not has_more:
+            return
+        loading = True
+        page = _recent_commits(_PAGE_SIZE, offset)
+        loading = False
+        if not page:
+            has_more = False
+            return
+        commits.extend(page)
+        offset += _PAGE_SIZE
+        if len(page) < _PAGE_SIZE:
+            has_more = False
+
+    def _draw(stdscr: curses.window) -> None:
+        nonlocal top, sel_scroll
+        stdscr.clear()
+        stdscr.addstr(0, 0, "Select commits", curses.A_BOLD)
+        hint = "j/k move | Space toggle | a all/none | gg/G top/btm | Enter confirm | q quit"
+        stdscr.addstr(1, 0, hint, curses.color_pair(3))
+
+        height, width = stdscr.getmaxyx()
+        body_row = 3
+        nav_item = ">> Load more commits..." if has_more else None
+        nav_count = 1 if nav_item else 0
+        total_items = len(commits) + nav_count
+        list_h = min(_PAGE_SIZE, height - body_row - 3)
+
+        if cursor < top:
+            top = cursor
+        elif cursor >= top + list_h:
+            top = cursor - list_h + 1
+
+        visible = range(top, min(top + list_h, total_items))
+        row = body_row
+        for idx in visible:
+            if idx < len(commits):
+                h, m = commits[idx]
+                marker = "[x]" if idx in selected else "[ ]"
+                attr = curses.A_REVERSE if cursor == idx else 0
+                color = curses.color_pair(5) if idx in selected else curses.color_pair(4)
+                with contextlib.suppress(curses.error):
+                    text = f"  {marker}  {h} {m}"[: width - 1]
+                    stdscr.addstr(row, 0, text, attr | color)
+            else:
+                attr = curses.A_REVERSE if cursor == idx else 0
+                with contextlib.suppress(curses.error):
+                    stdscr.addstr(
+                        row,
+                        0,
+                        "  >>  Load more commits..."[: width - 1],
+                        attr | curses.color_pair(1),
+                    )
+            row += 1
+
+        sep_row = body_row + list_h
+        with contextlib.suppress(curses.error):
+            stdscr.addstr(sep_row, 0, " " + "-" * min(width - 2, 60), curses.color_pair(3))
+
+        sel_start = sep_row + 1
+        sel_area_h = height - sel_start - 2
+        if sel_area_h > 0 and selected:
+            with contextlib.suppress(curses.error):
+                stdscr.addstr(sel_start, 0, "  Selected:", curses.A_BOLD | curses.color_pair(5))
+            sel_list = sorted(selected)
+            if sel_scroll >= len(sel_list):
+                sel_scroll = max(0, len(sel_list) - sel_area_h + 1)
+            vis_sel = sel_list[sel_scroll : sel_scroll + sel_area_h - 1]
+            for i, idx in enumerate(vis_sel):
+                h, m = commits[idx]
+                with contextlib.suppress(curses.error):
+                    text = f"    {i + sel_scroll + 1:2}. {h} {m}"[: width - 1]
+                    stdscr.addstr(sel_start + 1 + i, 0, text, curses.color_pair(5))
+
+        count = len(selected)
+        status = f"  {count} selected | {len(commits)} loaded"
+        if loading:
+            status += " | loading..."
+        with contextlib.suppress(curses.error):
+            stdscr.addstr(height - 1, 0, status, curses.color_pair(3))
+        stdscr.refresh()
+
+    def _run(stdscr: curses.window) -> list[tuple[str, str]] | None:
+        nonlocal cursor, top, sel_scroll, selected
+
+        curses.curs_set(0)
+        curses.use_default_colors()
+        curses.init_pair(1, curses.COLOR_CYAN, -1)
+        curses.init_pair(2, curses.COLOR_RED, -1)
+        curses.init_pair(3, curses.COLOR_YELLOW, -1)
+        curses.init_pair(4, curses.COLOR_WHITE, -1)
+        curses.init_pair(5, curses.COLOR_GREEN, -1)
+
+        _load_page()
+        if not commits:
+            return None
+
+        while True:
+            _draw(stdscr)
+            key = stdscr.getch()
+
+            nav_item = ">> Load more commits..." if has_more else None
+            nav_count = 1 if nav_item else 0
+            total_items = len(commits) + nav_count
+
+            if key == curses.KEY_UP or key == ord("k"):
+                cursor = max(0, cursor - 1)
+            elif key == curses.KEY_DOWN or key == ord("j"):
+                cursor = min(total_items - 1, cursor + 1)
+            elif key == ord("g"):
+                key2 = stdscr.getch()
+                if key2 == ord("g"):
+                    cursor = 0
+            elif key == ord("G"):
+                cursor = total_items - 1
+            elif key == ord(" "):
+                if cursor < len(commits):
+                    if cursor in selected:
+                        selected.discard(cursor)
+                    else:
+                        selected.add(cursor)
+                    sel_scroll = max(0, len(selected) - 1)
+                elif has_more and not loading:
+                    _load_page()
+            elif key == ord("a"):
+                if len(selected) == len(commits):
+                    selected.clear()
+                else:
+                    selected = set(range(len(commits)))
+                sel_scroll = max(0, len(selected) - 1)
+            elif key in (curses.KEY_ENTER, 10, 13) or key == ord("o"):
+                return [commits[i] for i in sorted(selected)]
+            elif key in (ord("q"), 27):
+                return None
+
+    return curses.wrapper(_run)
 
 
 def _staged_diff() -> tuple[str | None, dict[str, str]]:
@@ -65,8 +223,8 @@ def _working_diff() -> tuple[str | None, dict[str, str]]:
     )
 
 
-def _single_commit_diff() -> tuple[str | None, dict[str, str]]:
-    commits = _recent_commits()
+def _single_commit_diff(count: int = 50) -> tuple[str | None, dict[str, str]]:
+    commits = _recent_commits(count)
     if not commits:
         return None, {"empty_msg": "No recent commits found."}
     items = [f"{h} {m}" for h, m in commits]
@@ -81,21 +239,45 @@ def _single_commit_diff() -> tuple[str | None, dict[str, str]]:
     }
 
 
-def _multi_commit_diff() -> tuple[str | None, dict[str, str]]:
-    raw = input("Enter commit hashes (comma separated): ")
-    hashes = [h.strip() for h in raw.split(",") if h.strip()]
-    if not hashes:
-        return None, {"empty_msg": "No valid commit hashes entered."}
-    chunks: list[str] = []
-    for h in hashes:
-        d = _run(["git", "show", h])
-        if d and d.strip():
-            chunks.append(d)
+def _multi_commit_diff(count: int = 50) -> tuple[str | None, dict[str, str]]:
+    commits = _recent_commits(count)
+    if not commits:
+        return None, {"empty_msg": "No recent commits found."}
+    items = [f"{h} {m}" for h, m in commits]
+    sel = select_many("Select commits (Space to toggle, Enter to confirm)", items)
+    if not sel:
+        return None, {}
+    hashes = [commits[i][0] for i in sel]
+
+    mode_items = ["Combined (like PR diff)", "Separate (each commit individually)"]
+    mode = select_one("How to view the diff?", mode_items, default_index=0)
+    if mode is None:
+        return None, {}
+
+    if mode == 0:
+        newest = hashes[0]
+        oldest = hashes[-1]
+        parent_out = _run(["git", "rev-parse", f"{oldest}^"])
+        if parent_out:
+            base = parent_out.strip()
+            diff = _run(["git", "diff", f"{base}..{newest}"])
         else:
-            log.warning("could not get diff for commit %s", h)
-    if not chunks:
-        return None, {"empty_msg": "No diffs could be generated."}
-    return "\n\n".join(chunks), {"success_msg": "Combined diffs copied to clipboard."}
+            diff = ""
+            for h in hashes:
+                d = _run(["git", "show", h])
+                if d and d.strip():
+                    diff = (diff + "\n\n" + d).strip()
+    else:
+        diff = ""
+        for h in hashes:
+            d = _run(["git", "show", h])
+            if d and d.strip():
+                diff = (diff + "\n\n" + d).strip()
+
+    if not diff or not diff.strip():
+        return None, {"empty_msg": "No diff to copy."}
+    labels = " ".join(hashes)
+    return diff, {"success_msg": f"Diff of {labels} copied to clipboard."}
 
 
 def _parse_pr(value: str) -> tuple[str | None, str | None, str, str | None]:
@@ -275,6 +457,13 @@ def main() -> None:
         prog="git-copy-diff",
         description="Interactively copy git diffs (staged, working, commit, branch, PR) to clipboard.",
     )
+    parser.add_argument(
+        "-n",
+        "--count",
+        type=int,
+        default=50,
+        help="number of recent commits to list for commit selection (default: 50)",
+    )
     add_logging_flags(parser)
     args = parser.parse_args()
     configure_from_args(args)
@@ -283,7 +472,7 @@ def main() -> None:
         "Staged diff (git diff --cached)",
         "Working directory diff (git diff)",
         "Diff of a specific commit",
-        "Diffs of multiple commits (input hashes)",
+        "Diffs of multiple commits",
         "Branch diff from merge-base (e.g. vs main/master)",
         "PR diff (gh pr diff)",
         "Generate review prompt for clipboard",
@@ -305,7 +494,10 @@ def main() -> None:
             _review_prompt_only()
             continue
 
-        diff, info = handlers[sel]()
+        if sel in (2, 3):
+            diff, info = handlers[sel](args.count)
+        else:
+            diff, info = handlers[sel]()
         if diff is None or not diff.strip():
             log.info(info.get("empty_msg", "No diff to copy."))
             return
