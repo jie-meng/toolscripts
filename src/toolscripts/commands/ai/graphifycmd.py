@@ -424,41 +424,6 @@ _ACTIONS: list[Action] = [
         needs_graphify=True,
         needs_graph=True,
     ),
-    Action(
-        name="Global: register this project",
-        category="global",
-        command="graphify global add {graph_json} --as {project}",
-        description="Register this project's graph.json into the global graph "
-        "(~/.graphify/global-graph.json). "
-        "The global graph lets you query across multiple repos at once. "
-        "Use this after building the graph for each repo in your workspace.",
-        samples=[
-            "graphify global add ./graphify-out/graph.json --as my-project",
-        ],
-        handler="global_add",
-        needs_graphify=True,
-        needs_graph=True,
-    ),
-    Action(
-        name="Global: list registered repos",
-        category="global",
-        command="graphify global list",
-        description="Show all repos currently registered in the global graph. "
-        "Lists repo tags, node counts, and when they were last updated.",
-        samples=["graphify global list"],
-        handler="global_list",
-        needs_graphify=True,
-    ),
-    Action(
-        name="Global: unregister a repo",
-        category="global",
-        command="graphify global remove <tag>",
-        description="Remove a repo from the global graph by its tag. "
-        "Use this when you no longer want a repo included in cross-repo queries.",
-        samples=["graphify global remove my-project"],
-        handler="global_remove",
-        needs_graphify=True,
-    ),
     # ── Query ──
     Action(
         name="Query the graph",
@@ -564,13 +529,12 @@ _CATEGORY_LABELS = {
     "setup": "Setup",
     "hooks": "Git Hooks",
     "build": "Build / Update",
-    "global": "Global Graph",
     "query": "Query",
     "view": "View / Serve",
     "status": "Status",
 }
 
-_CATEGORY_ORDER = ["setup", "hooks", "build", "global", "query", "view", "status"]
+_CATEGORY_ORDER = ["setup", "hooks", "build", "query", "view", "status"]
 
 
 def _display_items() -> list[tuple[str, int | None]]:
@@ -767,49 +731,6 @@ def _handle_bulk_manage() -> None:
                 _uninstall_one(plat)
 
 
-def _handle_global_add() -> None:
-    graph_json = _graph_json_path()
-    if not graph_json.is_file():
-        print(f"No graph.json found at {graph_json}. Build the graph first.")
-        return
-
-    default_tag = _project_name()
-    try:
-        tag = input(f"Repo tag (default: {default_tag}): ").strip()
-    except (EOFError, KeyboardInterrupt):
-        print()
-        return
-    tag = tag or default_tag
-
-    print(f"Registering {graph_json} as '{tag}' in global graph ...")
-    run(["graphify", "global", "add", str(graph_json), "--as", tag], check=False)
-    print()
-    run(["graphify", "global", "list"], check=False)
-
-
-def _handle_global_list() -> None:
-    run(["graphify", "global", "list"], check=False)
-
-
-def _handle_global_remove() -> None:
-    try:
-        result = subprocess.run(["graphify", "global", "list"], capture_output=True, text=True)
-        print(result.stdout.strip() if result.stdout.strip() else "Global graph is empty.")
-    except Exception:
-        print("Could not list global graph.")
-
-    try:
-        tag = input("Repo tag to remove: ").strip()
-    except (EOFError, KeyboardInterrupt):
-        print()
-        return
-    if not tag:
-        print("Cancelled.")
-        return
-
-    run(["graphify", "global", "remove", tag], check=False)
-
-
 def _run_action(action: Action) -> None:
     h = action.handler
     if h == "install":
@@ -846,12 +767,6 @@ def _run_action(action: Action) -> None:
         run(["graphify", "update", str(PROJECT_ROOT)])
     elif h == "cluster_only":
         run(["graphify", "cluster-only", str(PROJECT_ROOT)])
-    elif h == "global_add":
-        _handle_global_add()
-    elif h == "global_list":
-        _handle_global_list()
-    elif h == "global_remove":
-        _handle_global_remove()
     elif h == "query":
         _handle_query()
     elif h == "path":
