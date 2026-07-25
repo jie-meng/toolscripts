@@ -286,6 +286,40 @@ _ACTIONS: list[Action] = [
         needs_graphify=True,
     ),
     Action(
+        name="Register with Cursor",
+        category="setup",
+        command="graphify install --platform cursor"
+        " && graphify install --project --platform cursor",
+        description="Wire graphify into Cursor — both globally and for this project. "
+        "Global: updates ~/.cursor/skills/graphify/ (if supported). "
+        "Project: writes .cursor/rules/graphify.mdc so Cursor's AI assistant "
+        "automatically queries the knowledge graph before reading files. "
+        "Run once after installing graphify.",
+        samples=[
+            "graphify install --platform cursor",
+            "graphify install --project --platform cursor",
+        ],
+        handler="register_cursor",
+        needs_graphify=True,
+    ),
+    Action(
+        name="Register with Copilot",
+        category="setup",
+        command="graphify install --platform copilot"
+        " && graphify install --project --platform copilot",
+        description="Wire graphify into GitHub Copilot CLI — both globally and for this project. "
+        "Global: updates ~/.copilot/skills/graphify/SKILL.md. "
+        "Project: writes rules into copilot-instructions.md so Copilot "
+        "automatically queries the knowledge graph before reading files. "
+        "Run once after installing graphify.",
+        samples=[
+            "graphify install --platform copilot",
+            "graphify install --project --platform copilot",
+        ],
+        handler="register_copilot",
+        needs_graphify=True,
+    ),
+    Action(
         name="Bulk manage all platforms",
         category="setup",
         command="(interactive multi-select)",
@@ -711,6 +745,12 @@ def _run_action(action: Action) -> None:
     elif h == "register_claude":
         run(["graphify", "install", "--platform", "claude"])
         run(["graphify", "claude", "install"], cwd=PROJECT_ROOT)
+    elif h == "register_cursor":
+        run(["graphify", "install", "--platform", "cursor"])
+        run(["graphify", "install", "--project", "--platform", "cursor"], cwd=PROJECT_ROOT)
+    elif h == "register_copilot":
+        run(["graphify", "install", "--platform", "copilot"])
+        run(["graphify", "install", "--project", "--platform", "copilot"], cwd=PROJECT_ROOT)
     elif h == "bulk_manage":
         _handle_bulk_manage()
     elif h == "hook_install":
