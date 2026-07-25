@@ -158,7 +158,7 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
         stdscr.refresh()
 
     def _run(stdscr: curses.window) -> list[tuple[str, str]] | None:
-        nonlocal cursor, top, sel_scroll, page_offset
+        nonlocal cursor, top, sel_scroll, page_offset, selected
 
         curses.curs_set(0)
         curses.use_default_colors()
