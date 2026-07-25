@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 from toolscripts.core.clipboard import copy_to_clipboard
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
-from toolscripts.core.ui_curses import select_many, select_one
+from toolscripts.core.ui_curses import select_one
 
 log = get_logger(__name__)
 
@@ -59,7 +59,8 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
     import curses
 
     commits: list[tuple[str, str]] = []
-    offset = 0
+    fetch_offset = 0
+    page_offset = 0
     selected: set[int] = set()
     cursor = 0
     top = 0
@@ -68,19 +69,22 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
     has_more = True
 
     def _load_page() -> None:
-        nonlocal loading, has_more, offset
+        nonlocal loading, has_more, fetch_offset
         if loading or not has_more:
             return
         loading = True
-        page = _recent_commits(_PAGE_SIZE, offset)
+        page = _recent_commits(_PAGE_SIZE, fetch_offset)
         loading = False
         if not page:
             has_more = False
             return
         commits.extend(page)
-        offset += _PAGE_SIZE
+        fetch_offset += _PAGE_SIZE
         if len(page) < _PAGE_SIZE:
             has_more = False
+
+    def _page_commits() -> list[tuple[str, str]]:
+        return commits[page_offset : page_offset + _PAGE_SIZE]
 
     def _draw(stdscr: curses.window) -> None:
         nonlocal top, sel_scroll
@@ -91,9 +95,10 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
 
         height, width = stdscr.getmaxyx()
         body_row = 3
+        page_items = _page_commits()
         nav_item = ">> Load more commits..." if has_more else None
         nav_count = 1 if nav_item else 0
-        total_items = len(commits) + nav_count
+        total_items = len(page_items) + nav_count
         list_h = min(_PAGE_SIZE, height - body_row - 3)
 
         if cursor < top:
@@ -104,11 +109,12 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
         visible = range(top, min(top + list_h, total_items))
         row = body_row
         for idx in visible:
-            if idx < len(commits):
-                h, m = commits[idx]
-                marker = "[x]" if idx in selected else "[ ]"
+            if idx < len(page_items):
+                h, m = page_items[idx]
+                abs_idx = page_offset + idx
+                marker = "[x]" if abs_idx in selected else "[ ]"
                 attr = curses.A_REVERSE if cursor == idx else 0
-                color = curses.color_pair(5) if idx in selected else curses.color_pair(4)
+                color = curses.color_pair(5) if abs_idx in selected else curses.color_pair(4)
                 with contextlib.suppress(curses.error):
                     text = f"  {marker}  {h} {m}"[: width - 1]
                     stdscr.addstr(row, 0, text, attr | color)
@@ -143,7 +149,8 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
                     stdscr.addstr(sel_start + 1 + i, 0, text, curses.color_pair(5))
 
         count = len(selected)
-        status = f"  {count} selected | {len(commits)} loaded"
+        page_num = page_offset // _PAGE_SIZE + 1
+        status = f"  {count} selected | page {page_num} | {len(commits)} loaded"
         if loading:
             status += " | loading..."
         with contextlib.suppress(curses.error):
@@ -151,7 +158,7 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
         stdscr.refresh()
 
     def _run(stdscr: curses.window) -> list[tuple[str, str]] | None:
-        nonlocal cursor, top, sel_scroll, selected
+        nonlocal cursor, top, sel_scroll, page_offset
 
         curses.curs_set(0)
         curses.use_default_colors()
@@ -169,9 +176,10 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
             _draw(stdscr)
             key = stdscr.getch()
 
+            page_items = _page_commits()
             nav_item = ">> Load more commits..." if has_more else None
             nav_count = 1 if nav_item else 0
-            total_items = len(commits) + nav_count
+            total_items = len(page_items) + nav_count
 
             if key == curses.KEY_UP or key == ord("k"):
                 cursor = max(0, cursor - 1)
@@ -184,19 +192,21 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
             elif key == ord("G"):
                 cursor = total_items - 1
             elif key == ord(" "):
-                if cursor < len(commits):
-                    if cursor in selected:
-                        selected.discard(cursor)
+                if cursor < len(page_items):
+                    abs_idx = page_offset + cursor
+                    if abs_idx in selected:
+                        selected.discard(abs_idx)
                     else:
-                        selected.add(cursor)
+                        selected.add(abs_idx)
                     sel_scroll = max(0, len(selected) - 1)
                 elif has_more and not loading:
                     _load_page()
             elif key == ord("a"):
-                if len(selected) == len(commits):
-                    selected.clear()
+                page_abs = {page_offset + i for i in range(len(page_items))}
+                if selected & page_abs == page_abs:
+                    selected -= page_abs
                 else:
-                    selected = set(range(len(commits)))
+                    selected |= page_abs
                 sel_scroll = max(0, len(selected) - 1)
             elif key in (curses.KEY_ENTER, 10, 13) or key == ord("o"):
                 return [commits[i] for i in sorted(selected)]
@@ -224,14 +234,10 @@ def _working_diff() -> tuple[str | None, dict[str, str]]:
 
 
 def _single_commit_diff(count: int = 50) -> tuple[str | None, dict[str, str]]:
-    commits = _recent_commits(count)
+    commits = _pick_commits_paginated(count)
     if not commits:
-        return None, {"empty_msg": "No recent commits found."}
-    items = [f"{h} {m}" for h, m in commits]
-    sel = select_one("Select a commit", items)
-    if sel is None:
         return None, {}
-    h = commits[sel][0]
+    h = commits[0][0]
     diff = _run(["git", "show", h])
     return diff, {
         "success_msg": f"Diff of commit {h} copied to clipboard.",
@@ -240,14 +246,10 @@ def _single_commit_diff(count: int = 50) -> tuple[str | None, dict[str, str]]:
 
 
 def _multi_commit_diff(count: int = 50) -> tuple[str | None, dict[str, str]]:
-    commits = _recent_commits(count)
+    commits = _pick_commits_paginated(count)
     if not commits:
-        return None, {"empty_msg": "No recent commits found."}
-    items = [f"{h} {m}" for h, m in commits]
-    sel = select_many("Select commits (Space to toggle, Enter to confirm)", items)
-    if not sel:
         return None, {}
-    hashes = [commits[i][0] for i in sel]
+    hashes = [h for h, _ in commits]
 
     mode_items = ["Combined (like PR diff)", "Separate (each commit individually)"]
     mode = select_one("How to view the diff?", mode_items, default_index=0)
