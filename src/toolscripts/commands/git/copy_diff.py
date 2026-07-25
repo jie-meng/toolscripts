@@ -68,20 +68,21 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
     loading = False
     has_more = True
 
-    def _load_page() -> None:
+    def _load_page() -> bool:
         nonlocal loading, has_more, fetch_offset
         if loading or not has_more:
-            return
+            return False
         loading = True
         page = _recent_commits(_PAGE_SIZE, fetch_offset)
         loading = False
         if not page:
             has_more = False
-            return
+            return False
         commits.extend(page)
         fetch_offset += _PAGE_SIZE
         if len(page) < _PAGE_SIZE:
             has_more = False
+        return True
 
     def _page_commits() -> list[tuple[str, str]]:
         return commits[page_offset : page_offset + _PAGE_SIZE]
@@ -132,7 +133,7 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
             if selected:
                 sel_list = sorted(selected)
                 if sel_scroll >= len(sel_list):
-                    sel_scroll = max(0, len(sel_list) - sel_area_h + 2)
+                    sel_scroll = 0
                 vis_sel = sel_list[sel_scroll : sel_scroll + sel_area_h - 2]
                 for i, idx in enumerate(vis_sel):
                     h, m = commits[idx]
@@ -173,6 +174,16 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
             page_items = _page_commits()
             total_items = len(page_items)
 
+            if total_items == 0:
+                if key in (ord("["), ord("q"), 27):
+                    if key in (ord("q"), 27):
+                        return None
+                    if page_offset >= _PAGE_SIZE:
+                        page_offset -= _PAGE_SIZE
+                        cursor = 0
+                        top = 0
+                continue
+
             if key == curses.KEY_UP or key == ord("k"):
                 cursor = max(0, cursor - 1)
             elif key == curses.KEY_DOWN or key == ord("j"):
@@ -185,10 +196,10 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
                 cursor = total_items - 1
             elif key == ord("]"):
                 if has_more and not loading:
-                    _load_page()
-                    page_offset += _PAGE_SIZE
-                    cursor = 0
-                    top = 0
+                    if _load_page():
+                        page_offset += _PAGE_SIZE
+                        cursor = 0
+                        top = 0
             elif key == ord("["):
                 if page_offset >= _PAGE_SIZE:
                     page_offset -= _PAGE_SIZE
@@ -201,14 +212,12 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
                         selected.discard(abs_idx)
                     else:
                         selected.add(abs_idx)
-                    sel_scroll = max(0, len(selected) - 1)
             elif key == ord("a"):
                 page_abs = {page_offset + i for i in range(len(page_items))}
                 if selected & page_abs == page_abs:
                     selected -= page_abs
                 else:
                     selected |= page_abs
-                sel_scroll = max(0, len(selected) - 1)
             elif key in (curses.KEY_ENTER, 10, 13) or key == ord("o"):
                 return [commits[i] for i in sorted(selected)]
             elif key in (ord("q"), 27):
