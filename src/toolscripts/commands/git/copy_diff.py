@@ -260,14 +260,18 @@ def _single_commit_diff(count: int = 50) -> tuple[str | None, dict[str, str]]:
 
 
 def _combined_diff_via_cherrypick(hashes: list[str], oldest: str, newest: str) -> str:
-    """Create a true combined diff by cherry-picking selected commits onto a temp branch."""
+    """Create a true combined diff by cherry-picking selected commits onto a temp branch.
+
+    The temp branch is deleted immediately after; only a reflog entry remains
+    (cleaned up by git gc automatically).
+    """
     import uuid
 
     parent_out = _run(["git", "rev-parse", f"{oldest}^"])
     if not parent_out:
         return ""
     base = parent_out.strip()
-    branch = f"_git-copy-diff-{uuid.uuid4().hex[:8]}"
+    branch = f"_gcd-{uuid.uuid4().hex[:8]}"
 
     saved = _run(["git", "rev-parse", "--abbrev-ref", "HEAD"])
     current = (saved or "").strip()
@@ -278,19 +282,13 @@ def _combined_diff_via_cherrypick(hashes: list[str], oldest: str, newest: str) -
             r = _run(["git", "cherry-pick", "--no-commit", h])
             if r != 0:
                 _run(["git", "cherry-pick", "--abort"])
-                _run(["git", "checkout", current])
-                _run(["git", "branch", "-D", branch])
                 return ""
         diff = _run(["git", "diff", "--cached"]) or ""
+        return diff
+    finally:
         _run(["git", "reset", "HEAD"])
         _run(["git", "checkout", current])
         _run(["git", "branch", "-D", branch])
-        return diff
-    except Exception:
-        _run(["git", "cherry-pick", "--abort"])
-        _run(["git", "checkout", current])
-        _run(["git", "branch", "-D", branch])
-        return ""
 
 
 def _multi_commit_diff(count: int = 50) -> tuple[str | None, dict[str, str]]:
