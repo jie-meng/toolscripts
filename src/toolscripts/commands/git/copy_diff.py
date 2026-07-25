@@ -273,9 +273,6 @@ def _combined_diff_via_cherrypick(hashes: list[str], oldest: str, newest: str) -
     base = parent_out.strip()
     branch = f"_gcd-{uuid.uuid4().hex[:8]}"
 
-    saved = _run(["git", "rev-parse", "--abbrev-ref", "HEAD"])
-    current = (saved or "").strip()
-
     try:
         _run(["git", "checkout", "-b", branch, base])
         for h in reversed(hashes):
@@ -286,9 +283,10 @@ def _combined_diff_via_cherrypick(hashes: list[str], oldest: str, newest: str) -
         diff = _run(["git", "diff", "--cached"]) or ""
         return diff
     finally:
-        _run(["git", "reset", "HEAD"])
-        _run(["git", "checkout", current])
-        _run(["git", "branch", "-D", branch])
+        _run(["git", "cherry-pick", "--abort"], check=False)
+        _run(["git", "reset", "HEAD"], check=False)
+        _run(["git", "checkout", "-"], check=False)
+        _run(["git", "branch", "-D", branch], check=False)
 
 
 def _multi_commit_diff(count: int = 50) -> tuple[str | None, dict[str, str]]:
