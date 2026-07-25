@@ -283,17 +283,19 @@ def _multi_commit_diff(count: int = 50) -> tuple[str | None, dict[str, str]]:
             else:
                 sequential = False
         if not sequential:
-            diff = ""
+            chunks = []
             for h in hashes:
                 d = _run(["git", "show", h])
                 if d and d.strip():
-                    diff = (diff + "\n\n" + d).strip()
+                    chunks.append(d.rstrip())
+            diff = "\n\n".join(chunks)
     else:
-        diff = ""
+        chunks = []
         for h in hashes:
             d = _run(["git", "show", h])
             if d and d.strip():
-                diff = (diff + "\n\n" + d).strip()
+                chunks.append(d.rstrip())
+        diff = "\n\n".join(chunks)
 
     if not diff or not diff.strip():
         return None, {"empty_msg": "No diff to copy."}
@@ -427,7 +429,7 @@ def _ask_prompt_type() -> str | None:
 
 
 def _format_and_copy(diff: str, prompt_type: str | None, info: dict[str, str]) -> None:
-    payload = "```\n" + diff + "```\n"
+    payload = "```\n" + diff + "\n```\n"
     if prompt_type:
         current = info.get("current_branch") or _current_branch()
         fmt = _commit_format()
