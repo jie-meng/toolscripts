@@ -123,20 +123,26 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
 
         sel_start = sep_row + 1
         sel_area_h = height - sel_start - 2
-        if sel_area_h > 0 and selected:
-            with contextlib.suppress(curses.error):
-                stdscr.addstr(sel_start, 0, "  Selected:", curses.A_BOLD | curses.color_pair(5))
-            sel_list = sorted(selected)
-            if sel_scroll >= len(sel_list):
-                sel_scroll = max(0, len(sel_list) - sel_area_h + 1)
-            vis_sel = sel_list[sel_scroll : sel_scroll + sel_area_h - 1]
-            for i, idx in enumerate(vis_sel):
-                h, m = commits[idx]
-                with contextlib.suppress(curses.error):
-                    text = f"    {i + sel_scroll + 1:2}. {h} {m}"[: width - 1]
-                    stdscr.addstr(sel_start + 1 + i, 0, text, curses.color_pair(5))
-
         count = len(selected)
+        if sel_area_h > 0:
+            with contextlib.suppress(curses.error):
+                stdscr.addstr(
+                    sel_start, 0, f"  Selected ({count}):", curses.A_BOLD | curses.color_pair(5)
+                )
+            if selected:
+                sel_list = sorted(selected)
+                if sel_scroll >= len(sel_list):
+                    sel_scroll = max(0, len(sel_list) - sel_area_h + 2)
+                vis_sel = sel_list[sel_scroll : sel_scroll + sel_area_h - 2]
+                for i, idx in enumerate(vis_sel):
+                    h, m = commits[idx]
+                    with contextlib.suppress(curses.error):
+                        text = f"    {i + sel_scroll + 1:2}. {h} {m}"[: width - 1]
+                        stdscr.addstr(sel_start + 1 + i, 0, text, curses.color_pair(5))
+            else:
+                with contextlib.suppress(curses.error):
+                    stdscr.addstr(sel_start + 1, 0, "    (none)", curses.color_pair(4))
+
         page_num = page_offset // _PAGE_SIZE + 1
         status = f"  {count} selected | page {page_num} | {len(commits)} loaded"
         if loading:
