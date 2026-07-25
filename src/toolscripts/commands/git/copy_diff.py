@@ -297,12 +297,12 @@ def _multi_commit_diff(count: int = 50) -> tuple[str | None, dict[str, str]]:
         return None, {}
     hashes = [h for h, _ in commits]
 
-    mode_items = ["Combined (like PR diff)", "Separate (each commit individually)"]
+    mode_items = ["Separate (each commit individually)", "Combined (like PR diff)"]
     mode = select_one("How to view the diff?", mode_items, default_index=0)
     if mode is None:
         return None, {}
 
-    if mode == 0:
+    if mode == 1:
         newest = hashes[0]
         oldest = hashes[-1]
         log_out = _run(["git", "log", "--oneline", f"{oldest}..{newest}"])
