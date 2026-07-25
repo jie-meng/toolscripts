@@ -259,6 +259,40 @@ def _single_commit_diff(count: int = 50) -> tuple[str | None, dict[str, str]]:
     }
 
 
+def _combined_diff_via_cherrypick(hashes: list[str], oldest: str, newest: str) -> str:
+    """Create a true combined diff by cherry-picking selected commits onto a temp branch."""
+    import uuid
+
+    parent_out = _run(["git", "rev-parse", f"{oldest}^"])
+    if not parent_out:
+        return ""
+    base = parent_out.strip()
+    branch = f"_git-copy-diff-{uuid.uuid4().hex[:8]}"
+
+    saved = _run(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+    current = (saved or "").strip()
+
+    try:
+        _run(["git", "checkout", "-b", branch, base])
+        for h in reversed(hashes):
+            r = _run(["git", "cherry-pick", "--no-commit", h])
+            if r != 0:
+                _run(["git", "cherry-pick", "--abort"])
+                _run(["git", "checkout", current])
+                _run(["git", "branch", "-D", branch])
+                return ""
+        diff = _run(["git", "diff", "--cached"]) or ""
+        _run(["git", "reset", "HEAD"])
+        _run(["git", "checkout", current])
+        _run(["git", "branch", "-D", branch])
+        return diff
+    except Exception:
+        _run(["git", "cherry-pick", "--abort"])
+        _run(["git", "checkout", current])
+        _run(["git", "branch", "-D", branch])
+        return ""
+
+
 def _multi_commit_diff(count: int = 50) -> tuple[str | None, dict[str, str]]:
     commits = _pick_commits_paginated(count)
     if not commits:
@@ -283,12 +317,14 @@ def _multi_commit_diff(count: int = 50) -> tuple[str | None, dict[str, str]]:
             else:
                 sequential = False
         if not sequential:
-            chunks = []
-            for h in hashes:
-                d = _run(["git", "show", h])
-                if d and d.strip():
-                    chunks.append(d.rstrip())
-            diff = "\n\n".join(chunks)
+            diff = _combined_diff_via_cherrypick(hashes, oldest, newest)
+            if not diff:
+                chunks = []
+                for h in hashes:
+                    d = _run(["git", "show", h])
+                    if d and d.strip():
+                        chunks.append(d.rstrip())
+                diff = "\n\n".join(chunks)
     else:
         chunks = []
         for h in hashes:
