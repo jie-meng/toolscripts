@@ -90,15 +90,13 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
         nonlocal top, sel_scroll
         stdscr.clear()
         stdscr.addstr(0, 0, "Select commits", curses.A_BOLD)
-        hint = "j/k move | Space toggle | a all/none | gg/G top/btm | Enter confirm | q quit"
+        hint = "j/k move | [/] prev/next page | Space toggle | a all/none | Enter confirm | q quit"
         stdscr.addstr(1, 0, hint, curses.color_pair(3))
 
         height, width = stdscr.getmaxyx()
         body_row = 3
         page_items = _page_commits()
-        nav_item = ">> Load more commits..." if has_more else None
-        nav_count = 1 if nav_item else 0
-        total_items = len(page_items) + nav_count
+        total_items = len(page_items)
         list_h = min(_PAGE_SIZE, height - body_row - 3)
 
         if cursor < top:
@@ -109,24 +107,14 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
         visible = range(top, min(top + list_h, total_items))
         row = body_row
         for idx in visible:
-            if idx < len(page_items):
-                h, m = page_items[idx]
-                abs_idx = page_offset + idx
-                marker = "[x]" if abs_idx in selected else "[ ]"
-                attr = curses.A_REVERSE if cursor == idx else 0
-                color = curses.color_pair(5) if abs_idx in selected else curses.color_pair(4)
-                with contextlib.suppress(curses.error):
-                    text = f"  {marker}  {h} {m}"[: width - 1]
-                    stdscr.addstr(row, 0, text, attr | color)
-            else:
-                attr = curses.A_REVERSE if cursor == idx else 0
-                with contextlib.suppress(curses.error):
-                    stdscr.addstr(
-                        row,
-                        0,
-                        "  >>  Load more commits..."[: width - 1],
-                        attr | curses.color_pair(1),
-                    )
+            h, m = page_items[idx]
+            abs_idx = page_offset + idx
+            marker = "[x]" if abs_idx in selected else "[ ]"
+            attr = curses.A_REVERSE if cursor == idx else 0
+            color = curses.color_pair(5) if abs_idx in selected else curses.color_pair(4)
+            with contextlib.suppress(curses.error):
+                text = f"  {marker}  {h} {m}"[: width - 1]
+                stdscr.addstr(row, 0, text, attr | color)
             row += 1
 
         sep_row = body_row + list_h
@@ -177,9 +165,7 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
             key = stdscr.getch()
 
             page_items = _page_commits()
-            nav_item = ">> Load more commits..." if has_more else None
-            nav_count = 1 if nav_item else 0
-            total_items = len(page_items) + nav_count
+            total_items = len(page_items)
 
             if key == curses.KEY_UP or key == ord("k"):
                 cursor = max(0, cursor - 1)
@@ -191,6 +177,17 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
                     cursor = 0
             elif key == ord("G"):
                 cursor = total_items - 1
+            elif key == ord("]"):
+                if has_more and not loading:
+                    _load_page()
+                    page_offset += _PAGE_SIZE
+                    cursor = 0
+                    top = 0
+            elif key == ord("["):
+                if page_offset >= _PAGE_SIZE:
+                    page_offset -= _PAGE_SIZE
+                    cursor = 0
+                    top = 0
             elif key == ord(" "):
                 if cursor < len(page_items):
                     abs_idx = page_offset + cursor
@@ -199,8 +196,6 @@ def _pick_commits_paginated(max_count: int) -> list[tuple[str, str]] | None:
                     else:
                         selected.add(abs_idx)
                     sel_scroll = max(0, len(selected) - 1)
-                elif has_more and not loading:
-                    _load_page()
             elif key == ord("a"):
                 page_abs = {page_offset + i for i in range(len(page_items))}
                 if selected & page_abs == page_abs:
