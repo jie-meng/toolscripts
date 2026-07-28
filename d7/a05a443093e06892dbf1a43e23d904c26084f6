@@ -1,0 +1,36 @@
+README.zh-CN.md
+  s_2de8c7fb31b6d5::t_df213c894ab88c 134
+src/toolscripts/commands/ai/agents_cleanup.py
+  s_2de8c7fb31b6d5::t_5c682bc94534e6 119
+  s_2de8c7fb31b6d5::t_2ecfdb3209d4cf 1-118
+src/toolscripts/commands/ai/agents_common.py
+  s_2de8c7fb31b6d5::t_13ab339a6f1e1b 91
+  s_2de8c7fb31b6d5::t_5c682bc94534e6 215
+  s_2de8c7fb31b6d5::t_f884e1b1bb26b2 58-65
+  s_2de8c7fb31b6d5::t_e3b2ce656c7673 1-57,66-90,92-214
+pyproject.toml
+  s_2de8c7fb31b6d5::t_ff25afba2cad90 154
+src/toolscripts/commands/ai/agents_setup.py
+  s_2de8c7fb31b6d5::t_e650e0de3dbd46 3-5,16-21,23-24,38-39,44-46,50-51,57-58,61-63,67-77,79,81-82,84,92-98,100
+  s_2de8c7fb31b6d5::t_5c682bc94534e6 35-37
+  s_2de8c7fb31b6d5::t_0d99c1df49c049 52-53
+  s_2de8c7fb31b6d5::t_4353dc2fcb31f8 22,25
+README.md
+  s_2de8c7fb31b6d5::t_bc109dadba14a3 142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d7a05a443093e06892dbf1a43e23d904c26084f6",
+  "prompts": {},
+  "sessions": {
+    "s_2de8c7fb31b6d5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_057647391ffeq0rdi8gDFtH0ZS",
+        "model": "deepseek-v4-flash-free"
+      },
+      "human_author": "Jie Meng <jmengxy@gmail.com>"
+    }
+  }
+}
