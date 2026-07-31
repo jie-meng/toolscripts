@@ -1,4 +1,4 @@
-"""``aido`` and ``aido-models`` - run prompts via opencode + a saved free model."""
+"""``ocdo`` and ``ocdo-models`` - run prompts via opencode + a saved free model."""
 
 from __future__ import annotations
 
@@ -15,7 +15,8 @@ log = get_logger(__name__)
 
 CONFIG_DIR = Path.home() / ".config" / "toolscripts"
 CONFIG_FILE = CONFIG_DIR / "config.json"
-CONFIG_KEY = "aido_model"
+CONFIG_KEY = "ocdo_model"
+LEGACY_CONFIG_KEY = "aido_model"
 
 
 def _load_config() -> dict:
@@ -48,8 +49,8 @@ def _fetch_free_models() -> list[str]:
 
 def models_main() -> None:
     parser = argparse.ArgumentParser(
-        prog="aido-models",
-        description="Pick a free opencode model to use with `aido`.",
+        prog="ocdo-models",
+        description="Pick a free opencode model to use with `ocdo`.",
     )
     add_logging_flags(parser)
     args = parser.parse_args()
@@ -74,7 +75,7 @@ def models_main() -> None:
 
     display = [f"* {m}" if m == saved else f"  {m}" for m in models]
     idx = select_one(
-        "Select a free model for aido:",
+        "Select a free model for ocdo:",
         display,
         default_index=preselected,
     )
@@ -90,7 +91,7 @@ def models_main() -> None:
 
 def run_main() -> None:
     parser = argparse.ArgumentParser(
-        prog="aido",
+        prog="ocdo",
         description="Run a prompt via `opencode run` using the saved free model.",
         add_help=False,
     )
@@ -100,13 +101,13 @@ def run_main() -> None:
     configure_from_args(args)
 
     if not args.prompt:
-        log.error("usage: aido <prompt> [...]")
+        log.error("usage: ocdo <prompt> [...]")
         sys.exit(1)
 
     config = _load_config()
-    model = config.get(CONFIG_KEY)
+    model = config.get(CONFIG_KEY) or config.get(LEGACY_CONFIG_KEY)
     if not model:
-        log.error("no model configured. Run `aido-models` to select one.")
+        log.error("no model configured. Run `ocdo-models` to select one.")
         sys.exit(1)
 
     try:

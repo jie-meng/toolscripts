@@ -146,8 +146,9 @@ audio-trim                = "toolscripts.commands.media.trim_audio:main"
 
 # ai tooling
 ccswitch                  = "toolscripts.commands.ai.ccswitch:main"
-aido                      = "toolscripts.commands.ai.aido:run_main"
-aido-models               = "toolscripts.commands.ai.aido:models_main"
+ocdo                      = "toolscripts.commands.ai.ocdo:run_main"
+ocdo-models               = "toolscripts.commands.ai.ocdo:models_main"
+cbdo                      = "toolscripts.commands.ai.cbdo:main"
 free-models-openrouter    = "toolscripts.commands.ai.free_models_openrouter:main"
 free-models-nvidia        = "toolscripts.commands.ai.free_models_nvidia:main"
 agents-setup              = "toolscripts.commands.ai.agents_setup:main"

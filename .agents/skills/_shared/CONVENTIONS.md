@@ -160,7 +160,7 @@ agent discovers it on the reflex pass.
 - `agents-setup`, `agents-cleanup`, and `ai-links` share their AI tool
   registry via `commands/ai/tools.py` (a domain-shared `AITool` dataclass
   + `AI_TOOLS` list) — **not** by importing from each other.
-- `aido-models` reused / generalized the curses single-picker rather than
+- `ocdo-models` reused / generalized the curses single-picker rather than
   copying multi-select code; the result lives in
   `core.ui_curses.select_one`.
 - Every `android-*` command goes through `toolscripts.adb` for ADB calls
@@ -202,7 +202,7 @@ shared pickers in `toolscripts.core.ui_curses`:
 
 Reference implementations in the codebase:
 
-- `select_one` → `commands/ai/aido.py` (`aido-models` model picker).
+- `select_one` → `commands/ai/ocdo.py` (`ocdo-models` model picker).
 - `select_many` → `commands/ai/agents_setup.py` and `agents_cleanup.py`
   (multi-tool pick with `disabled=` for not-installed tools).
 - `browse_commands` → `commands/system/list_commands.py`

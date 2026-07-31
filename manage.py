@@ -174,6 +174,110 @@ def _pyproject_changed_since_install() -> bool:
 
 
 # ---------------------------------------------------------------------------
+# orphaned command cleanup
+#
+# `uv tool install --force` does NOT prune removed entry points, and a stale
+# pyenv pip install keeps advertising old command names via shims. After a
+# rename/removal in pyproject.toml these dangling commands linger on $PATH.
+# `manage install --force` (and uninstall) should clear them.
+# ---------------------------------------------------------------------------
+
+import re as _re
+
+TOOL_MARKER = "tools/toolscripts/bin"  # uv symlink target substring
+
+
+def _current_entry_points() -> set[str]:
+    """Names declared under [project.scripts] in pyproject.toml."""
+    try:
+        text = _PYPROJECT.read_text(encoding="utf-8")
+    except OSError:
+        return set()
+    names: set[str] = set()
+    in_block = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            in_block = stripped == "[project.scripts]"
+            continue
+        if in_block:
+            m = _re.match(r"^\s*([A-Za-z0-9_.\-]+)\s*=", line)
+            if m:
+                names.add(m.group(1))
+    return names
+
+
+def _uv_bin_dirs() -> list[Path]:
+    dirs: list[Path] = []
+    seen: set[Path] = set()
+    candidates: list[Path] = []
+    if env_bin := os.environ.get("UV_TOOL_BIN_DIR"):
+        candidates.append(Path(env_bin))
+    candidates.append(Path.home() / ".local" / "bin")
+    for p in os.environ.get("PATH", "").split(os.pathsep):
+        if p:
+            candidates.append(Path(p))
+    for d in candidates:
+        if d in seen or not d.is_dir():
+            continue
+        seen.add(d)
+        try:
+            has_ours = any(
+                e.is_symlink() and TOOL_MARKER in os.readlink(e)
+                for e in d.iterdir()
+            )
+        except OSError:
+            has_ours = False
+        if has_ours and d not in dirs:
+            dirs.append(d)
+    return dirs
+
+
+def _cleanup_uv_orphans(allowed: set[str]) -> None:
+    removed: list[str] = []
+    for d in _uv_bin_dirs():
+        try:
+            entries = list(d.iterdir())
+        except OSError:
+            continue
+        for e in entries:
+            if not e.is_symlink():
+                continue
+            try:
+                target = os.readlink(e)
+            except OSError:
+                continue
+            if TOOL_MARKER not in target:
+                continue
+            if e.name in allowed:
+                continue
+            try:
+                e.unlink()
+                removed.append(e.name)
+            except OSError as exc:
+                warn(f"could not remove stale command {e.name}: {exc}")
+    if removed:
+        warn("removed stale uv commands: " + ", ".join(sorted(removed)))
+
+
+def _rehash_pyenv() -> None:
+    if not _have("pyenv"):
+        return
+    code, out = _capture(["pyenv", "rehash"])
+    if code != 0:
+        warn(f"pyenv rehash failed: {out}")
+    else:
+        info("pyenv rehash (regenerated shims from installed packages)")
+
+
+def cleanup_orphans() -> None:
+    """Drop commands on $PATH that are no longer declared in pyproject.toml."""
+    allowed = _current_entry_points()
+    _cleanup_uv_orphans(allowed)
+    _rehash_pyenv()
+
+
+# ---------------------------------------------------------------------------
 # commands
 # ---------------------------------------------------------------------------
 
@@ -191,6 +295,7 @@ def cmd_install(args: argparse.Namespace) -> int:
         if args.force:
             cmd.append("--force-reinstall")
         _run(cmd, check=True)
+        cleanup_orphans()
         _write_stamp()
         success(f"{PACKAGE} installed via pip into {sys.executable}")
         return 0
@@ -211,6 +316,7 @@ def cmd_install(args: argparse.Namespace) -> int:
     if args.force or already:
         cmd.append("--force")
     _run(cmd, check=True)
+    cleanup_orphans()
     _write_stamp()
     success(f"{PACKAGE} installed via uv (extras: {args.extras or 'none'})")
     info("commands are now available on $PATH (~/.local/bin)")
@@ -244,6 +350,7 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
             )
 
     if did_anything:
+        cleanup_orphans()
         with contextlib.suppress(OSError):
             _STAMP.unlink(missing_ok=True)
         success("uninstall complete")
