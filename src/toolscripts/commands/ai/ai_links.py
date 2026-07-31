@@ -4,9 +4,9 @@ For every AI coding tool selected by the user, ``ai-links`` creates up to
 three symlinks at the repository root:
 
 * ``<tool's instructions filename> -> AGENTS.md`` — only for tools that
-  insist on their own filename (claude → ``CLAUDE.md``, gemini → ``GEMINI.md``,
-  qwen → ``QWEN.md``). Tools that already read ``AGENTS.md`` directly get
-  no root link.
+  insist on their own filename (claude → ``CLAUDE.md``, codebuddy →
+  ``CODEBUDDY.md``, gemini → ``GEMINI.md``, qwen → ``QWEN.md``). Tools that
+  already read ``AGENTS.md`` directly get no root link.
 * ``<tool>/agents -> ../.agents/agents`` — exposes the project's shared
   agent definitions (when the tool supports it).
 * ``<tool>/skills -> ../.agents/skills`` — only created for tools where

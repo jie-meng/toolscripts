@@ -94,6 +94,14 @@ AI_TOOLS: list[AITool] = [
         repo_umbrella_dir=".claude",
     ),
     AITool(
+        "codebuddy",
+        "CodeBuddy",
+        ".codebuddy",
+        "CODEBUDDY.md",
+        repo_instructions_filename="CODEBUDDY.md",
+        repo_umbrella_dir=".codebuddy",
+    ),
+    AITool(
         "codex",
         "Codex",
         ".codex",
