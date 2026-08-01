@@ -816,6 +816,10 @@ def _run_curses(stdscr) -> None:
     cursor_pos = 0
     top = 0
 
+    # Cache CLI status — re-running the version subprocess on every keystroke
+    # (the old behavior) made up/down navigation feel laggy.
+    cli_state = {"version": _graphify_version(), "installed": _graphify_installed()}
+
     while True:
         stdscr.clear()
         height, width = stdscr.getmaxyx()
@@ -890,10 +894,10 @@ def _run_curses(stdscr) -> None:
 
         # status line
         status_parts = [f"  {cursor_pos + 1}/{len(selectable)}"]
-        ver = _graphify_version()
+        ver = cli_state["version"]
         if ver:
             status_parts.append(f"[{ver}]")
-        if _graphify_installed():
+        if cli_state["installed"]:
             status_parts.append("[cli: V]")
         else:
             status_parts.append("[cli: X]")
@@ -932,6 +936,8 @@ def _run_curses(stdscr) -> None:
                     _run_action(sel_action)
                 except Exception as exc:
                     print(f"Error: {exc}")
+                cli_state["version"] = _graphify_version()
+                cli_state["installed"] = _graphify_installed()
             input("\nPress Enter to return...")
             curses.noecho()
             curses.cbreak()
