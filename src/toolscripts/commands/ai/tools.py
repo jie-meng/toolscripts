@@ -57,9 +57,10 @@ class AITool:
     When ``repo_umbrella_dir`` is set, ``repo_agents_dir`` and
     ``repo_skills_dir`` are ignored — the umbrella covers them. Leave it
     None for tools whose agents/skills directories live under a directory
-    that the project may also use for other purposes (e.g. copilot's
-    agents go under ``.github/``, which also holds GitHub Actions and
-    issue templates — we can't shadow it)."""
+    the project also uses for other things (e.g. a shared ``.config/``
+    dir). copilot is the deliberate exception: it umbrellas ``.github ->
+    .agents`` because this repo keeps no other `.github` content, so
+    shadowing is not a concern here."""
 
     repo_agents_dir: str | None = None
     """Used only when ``repo_umbrella_dir`` is None. Path (relative to the
@@ -111,13 +112,13 @@ AI_TOOLS: list[AITool] = [
         "copilot",
         "GitHub Copilot CLI",
         ".copilot",  # user-home: ~/.copilot
-        # Copilot reads repo-level skills/agents from .github/, never the
-        # repo root. .github also holds Actions/issue templates, so we link
-        # the two subdirs individually (no umbrella dir). Its instructions
-        # file must be .github/copilot-instructions.md, not a root symlink,
-        # so repo_instructions_filename stays None.
-        repo_agents_dir=".github/agents",
-        repo_skills_dir=".github/skills",
+        # This repo keeps no other .github content (no Actions / issue
+        # templates), so we umbrella the whole .github dir to .agents —
+        # exposing .github/agents and .github/skills at once.
+        # repo_instructions_filename stays None: copilot's instructions file
+        # is .github/copilot-instructions.md, which the umbrella already
+        # surfaces from .agents.
+        repo_umbrella_dir=".github",
     ),
     AITool(
         "cursor",

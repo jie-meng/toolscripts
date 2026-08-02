@@ -11,9 +11,10 @@ three symlinks at the repository root:
   agent definitions (when the tool supports it).
 * ``<tool>/skills -> ../.agents/skills`` — only created for tools where
   the link genuinely helps (claude only reads ``.claude/skills``; cursor's
-  slash commands only fire from ``.cursor/skills``; copilot reads
-  ``.github/skills``). Tools that natively discover ``.agents/skills/``
-  (codex, gemini, qwen, opencode) skip this link to avoid clutter.
+  slash commands only fire from ``.cursor/skills``). Tools that natively
+  discover ``.agents/skills/`` (codex, gemini, qwen, opencode) skip this
+  link to avoid clutter. copilot instead umbrellas the whole ``.github``
+  dir to ``.agents`` (see below), so its agents/skills come along for free.
 
 Every per-tool path is declared on its ``AITool`` row in ``tools.py`` —
 that module is the single source of truth shared with ``agents-setup`` and
