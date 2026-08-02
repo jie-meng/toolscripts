@@ -95,6 +95,19 @@ AI_TOOLS: list[AITool] = [
         repo_umbrella_dir=".claude",
     ),
     AITool(
+        "cline",
+        "Cline",
+        ".cline",
+        # Cline already reads AGENTS.md at the repo root natively, so
+        # no root instructions link. Project skills/agents live under
+        # .cline/, which also hosts rules/hooks/plugins/cron — so ai-links
+        # links the two subdirs individually instead of umbrella-ing the
+        # whole .cline dir. In the user-home scope, ~/.cline/agents is
+        # where Cline's global agent definitions live.
+        repo_agents_dir=".cline/agents",
+        repo_skills_dir=".cline/skills",
+    ),
+    AITool(
         "codebuddy",
         "CodeBuddy",
         ".codebuddy",
