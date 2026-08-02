@@ -415,6 +415,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="install via pip into the active Python env (not recommended)",
     )
     p_install.add_argument(
+        "-f",
         "--force",
         action="store_true",
         help="force reinstall if already present",
