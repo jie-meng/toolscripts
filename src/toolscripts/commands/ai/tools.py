@@ -110,8 +110,14 @@ AI_TOOLS: list[AITool] = [
     AITool(
         "copilot",
         "GitHub Copilot CLI",
-        ".copilot",
-        "copilot-instructions.md",
+        ".copilot",  # user-home: ~/.copilot
+        # Copilot reads repo-level skills/agents from .github/, never the
+        # repo root. .github also holds Actions/issue templates, so we link
+        # the two subdirs individually (no umbrella dir). Its instructions
+        # file must be .github/copilot-instructions.md, not a root symlink,
+        # so repo_instructions_filename stays None.
+        repo_agents_dir=".github/agents",
+        repo_skills_dir=".github/skills",
     ),
     AITool(
         "cursor",
