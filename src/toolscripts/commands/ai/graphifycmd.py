@@ -13,7 +13,9 @@ from pathlib import Path
 
 from toolscripts.core.colors import GREEN, YELLOW, colored
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
+from toolscripts.core.clipboard import copy_to_clipboard
 from toolscripts.core.platform import is_linux, is_macos, is_windows
+from toolscripts.core.prompts import yes_no
 from toolscripts.core.shell import run, which
 from toolscripts.core.ui_curses import select_many
 
@@ -499,17 +501,6 @@ _ACTIONS: list[Action] = [
     ),
     # ── Status ──
     Action(
-        name="Check project status",
-        category="status",
-        command="(summary report)",
-        description="Show a comprehensive overview of graphify setup for this project: "
-        "whether the CLI is installed, whether graphify-out/ exists, how many "
-        "nodes and edges the graph has, whether git hooks are active, and whether "
-        "AGENTS.md has the graphify rules for your assistant.",
-        samples=[],
-        handler="status",
-    ),
-    Action(
         name="Benchmark token savings",
         category="status",
         command="graphify benchmark {graph_json}",
@@ -522,6 +513,17 @@ _ACTIONS: list[Action] = [
         handler="benchmark",
         needs_graphify=True,
         needs_graph=True,
+    ),
+    Action(
+        name="Check project status",
+        category="status",
+        command="(summary report)",
+        description="Show a comprehensive overview of graphify setup for this project: "
+        "whether the CLI is installed, whether graphify-out/ exists, how many "
+        "nodes and edges the graph has, whether git hooks are active, and whether "
+        "AGENTS.md has the graphify rules for your assistant.",
+        samples=[],
+        handler="status",
     ),
 ]
 
@@ -680,6 +682,32 @@ def _handle_status() -> None:
         print(f"  {colored('AGENTS.md     graphify rules present', GREEN)}")
     else:
         print(f"  {colored('AGENTS.md     no graphify rules found', YELLOW)}")
+        print()
+        print("  To wire graphify into your assistant, paste this prompt into your")
+        print("  AI coding tool (Claude Code, Cursor, Copilot, OpenCode, ...):")
+        print()
+
+        rule_prompt = (
+            "Add a section to AGENTS.md / CLAUDE.md documenting the graphify "
+            "knowledge graph for this project. It lives at graphify-out/graph.json "
+            "(and graph.html). When answering code questions, query it first with "
+            "`graphify query \"...\"`, `graphify path \"A\" \"B\"`, and "
+            "`graphify explain \"Concept\"` instead of grepping files or reading "
+            "code blindly. Run `graphify update .` after modifying code to keep the "
+            "graph current (AST-only, no API cost). Explain the rules so future "
+            "sessions auto-use the graph."
+        )
+        print(f"    {colored(rule_prompt, '', bold=True)}")
+        print()
+
+        try:
+            if yes_no("Copy this prompt to the clipboard?", default=True):
+                if copy_to_clipboard(rule_prompt):
+                    log.success("prompt copied to clipboard")
+                else:
+                    log.error("could not copy to clipboard; copy it manually above")
+        except (EOFError, KeyboardInterrupt):
+            print()
     print()
     print(sep)
     print()
