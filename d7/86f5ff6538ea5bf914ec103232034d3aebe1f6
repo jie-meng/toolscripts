@@ -1,0 +1,14 @@
+src/toolscripts/commands/ai/graphifycmd.py
+  h_e0538e51a4c5ef 142-143,326-356,621-650,790-803,829-832,837-842,866-870
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d786f5ff6538ea5bf914ec103232034d3aebe1f6",
+  "prompts": {},
+  "humans": {
+    "h_e0538e51a4c5ef": {
+      "author": "Jie Meng <jmengxy@gmail.com>"
+    }
+  }
+}
