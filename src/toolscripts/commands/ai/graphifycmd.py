@@ -5,19 +5,20 @@ from __future__ import annotations
 import argparse
 import contextlib
 import json
+import re
 import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from toolscripts.core.clipboard import copy_to_clipboard
 from toolscripts.core.colors import GREEN, YELLOW, colored
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
-from toolscripts.core.clipboard import copy_to_clipboard
 from toolscripts.core.platform import is_linux, is_macos, is_windows
 from toolscripts.core.prompts import yes_no
 from toolscripts.core.shell import run, which
-from toolscripts.core.ui_curses import select_many
+from toolscripts.core.ui_curses import select_many, select_one
 
 from .tools import AI_TOOLS
 
@@ -52,11 +53,13 @@ def _graphify_installed() -> bool:
 
 
 def _graphify_version() -> str | None:
+    """Bare CLI version (e.g. ``0.9.36``), matching the skill's ``.graphify_version``."""
     try:
         out = subprocess.check_output(
             ["graphify", "--version"], text=True, stderr=subprocess.DEVNULL
         )
-        return out.strip()
+        raw = out.strip()
+        return raw.split()[-1] if raw else None
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
 
@@ -131,7 +134,7 @@ class _GraphifyPlatform:
         if self.skill_path is not None:
             return self.skill_path.is_dir() or self.skill_path.is_file()
         if self.project_marker is not None:
-            return Path(self.project_marker).exists()
+            return (PROJECT_ROOT / self.project_marker).exists()
         return False
 
 
@@ -167,24 +170,12 @@ def _run_graphify(*args: str) -> bool:
 
 
 def _install_one(plat: _GraphifyPlatform) -> None:
-    if plat.skill_path is not None:
-        if _run_graphify("install", "--platform", plat.subcommand):
-            log.success("graphify skill installed for %s", plat.subcommand)
-    else:
-        log.warning("%s has no user-level skill path configured", plat.tool_id)
-
-
-def _uninstall_one(plat: _GraphifyPlatform) -> None:
-    target = plat.skill_path
-    if target is not None:
-        if target.is_dir():
-            shutil.rmtree(target)
-            log.success("removed graphify skill for %s: %s", plat.subcommand, target)
-        elif target.is_file():
-            target.unlink()
-            log.success("removed graphify skill for %s: %s", plat.subcommand, target)
-        else:
-            log.info("graphify skill not found for %s (nothing to remove)", plat.subcommand)
+    if plat.tool_id == "cline":
+        # graphify has no native cline platform; the rule file is the integration
+        _register_cline()
+        return
+    if _run_graphify("install", "--platform", plat.subcommand):
+        log.success("graphify integration installed for %s", plat.subcommand)
 
 
 def _list_platforms() -> None:
@@ -201,6 +192,157 @@ def _list_platforms() -> None:
             else ("installed" if installed else "not installed")
         )
         print(f"  {integ.tool_id:<14} {integ.tool_name:<18} [{status}]")
+
+
+# ── graphify-out gitignore policy (moved from ai-links) ─────────────────
+
+
+GITIGNORE_FILE = ".gitignore"
+GRAPHIFY_GITIGNORE_HEADER = "# graphify-out"
+
+# Official graphify docs recommend committing graphify-out/ so the team
+# shares the knowledge graph; the only per-user noise is the cost ledger and
+# (optionally) the rebuild cache. Some repos (e.g. corporate) must not track
+# generated output at all — that's the "ignore the whole dir" alternative,
+# which is also the default when no policy is configured yet.
+GRAPHIFY_ENTRY_IGNORE_ALL = "**/graphify-out/"
+GRAPHIFY_IGNORE_DATES = "**/graphify-out/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/"
+# Canonical committed artifacts that are .json — a repo-wide `*.json` catch-all
+# (common for config-heavy projects) would otherwise silently keep them out of
+# git, defeating the commit policy. Negations are inert when no catch-all exists.
+GRAPHIFY_COMMIT_ALLOWS = (
+    "!**/graphify-out/graph.json",
+    "!**/graphify-out/manifest.json",
+    "!**/graphify-out/.graphify_labels.json",
+    "!**/graphify-out/.graphify_analysis.json",
+)
+# Build-scratch files: the graphify skill's Step 9 cleanup removes
+# detect/extract/ast/semantic after a completed build; a --update or watch
+# run can leave them behind. .graphify_python is a machine-specific
+# interpreter path and .pending_changes is the incremental-change queue —
+# both are runtime state that must never reach git.
+_GRAPHIFY_SCRATCH_ENTRIES = (
+    "**/graphify-out/.graphify_detect.json",
+    "**/graphify-out/.graphify_extract.json",
+    "**/graphify-out/.graphify_ast.json",
+    "**/graphify-out/.graphify_semantic.json",
+    "**/graphify-out/.graphify_python",
+    "**/graphify-out/.pending_changes",
+)
+GRAPHIFY_COMMIT_IGNORES = (
+    "**/graphify-out/cost.json",
+    "**/graphify-out/cache/",
+    # per-rebuild rollback snapshots (duplicate graph.json + report); the
+    # current graph in git is the real artifact, so the dated archive stays out
+    GRAPHIFY_IGNORE_DATES,
+    # transient rebuild lock (post-commit hook / watch); never commit it
+    "**/graphify-out/.rebuild.lock",
+    *_GRAPHIFY_SCRATCH_ENTRIES,
+)
+GRAPHIFY_STATE_COMMIT = "commit"
+GRAPHIFY_STATE_IGNORE_ALL = "ignore_all"
+GRAPHIFY_STATE_UNKNOWN = "unknown"
+_GRAPHIFY_STATE_LABELS = {
+    GRAPHIFY_STATE_IGNORE_ALL: "fully ignored (not committed)",
+    GRAPHIFY_STATE_COMMIT: "committed (only cost.json + cache/ + dated snapshots ignored)",
+    GRAPHIFY_STATE_UNKNOWN: "not configured yet",
+}
+
+# Entries old ai-links versions could have left anywhere in .gitignore —
+# this feature now lives here, so applying a policy also cleans those up.
+_LEGACY_GRAPHIFY_ENTRIES = (
+    GRAPHIFY_ENTRY_IGNORE_ALL,
+    "graphify-out/",
+    *GRAPHIFY_COMMIT_IGNORES,
+)
+
+
+def _detect_graphify_gitignore() -> str:
+    """Return the current graphify-out gitignore policy.
+
+    A whole-directory ignore (``**/graphify-out/`` or ``graphify-out/``)
+    wins as "ignore_all". Otherwise any ``graphify-out/cost.json`` /
+    ``graphify-out/cache/`` entry implies "commit". Neither -> "unknown".
+    """
+    gitignore = PROJECT_ROOT / GITIGNORE_FILE
+    if not gitignore.exists():
+        return GRAPHIFY_STATE_UNKNOWN
+    ignore_all = False
+    commit = False
+    for raw in gitignore.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line in (GRAPHIFY_ENTRY_IGNORE_ALL, "graphify-out/"):
+            ignore_all = True
+        elif "graphify-out/" in line and ("cost.json" in line or "cache/" in line):
+            commit = True
+    if ignore_all:
+        return GRAPHIFY_STATE_IGNORE_ALL
+    if commit:
+        return GRAPHIFY_STATE_COMMIT
+    return GRAPHIFY_STATE_UNKNOWN
+
+
+def _prompt_graphify_policy(state: str) -> bool | None:
+    """Ask the user how ``graphify-out/`` should appear in ``.gitignore``.
+
+    Returns True to ignore the whole directory, False to commit it (ignoring
+    only cost.json + cache/), or None if the user cancels. The current policy
+    is highlighted on entry; unknown state defaults to ignoring everything.
+    """
+    default_ignore_all = state != GRAPHIFY_STATE_COMMIT
+    items = [
+        "Ignore graphify-out/ entirely (don't commit its output)",
+        "Commit graphify-out/ to git (ignore only cost.json + cache/ + dated snapshots)",
+    ]
+    idx = select_one(
+        f"graphify-out handling in .gitignore (currently: {_GRAPHIFY_STATE_LABELS[state]}):",
+        items,
+        default_index=0 if default_ignore_all else 1,
+    )
+    if idx is None:
+        return None
+    return idx == 0
+
+
+def _apply_gitignore_policy(ignore_all: bool) -> None:
+    """Rewrite the graphify-out block in ``.gitignore`` to match the policy."""
+    gitignore = PROJECT_ROOT / GITIGNORE_FILE
+    if not gitignore.exists():
+        log.warning("%s not found; nothing to update", gitignore)
+        return
+
+    content = gitignore.read_text(encoding="utf-8")
+    pattern = re.compile(
+        rf"\n*{re.escape(GRAPHIFY_GITIGNORE_HEADER)}\n(?:[^\n]*\n)*?(?=\n*(?:# |\Z))",
+        re.MULTILINE,
+    )
+    cleaned = pattern.sub("\n", content)
+    # Drop stale graphify-out entries left behind by old ai-links versions
+    # (their block is otherwise untouched; ai-links cleans its own up).
+    lines = [line for line in cleaned.splitlines() if line.strip() not in _LEGACY_GRAPHIFY_ENTRIES]
+    cleaned = "\n".join(lines).strip("\n")
+
+    entries = [GRAPHIFY_ENTRY_IGNORE_ALL] if ignore_all else [*GRAPHIFY_COMMIT_IGNORES, *GRAPHIFY_COMMIT_ALLOWS]
+    block = "\n".join([GRAPHIFY_GITIGNORE_HEADER, *entries])
+    new = (cleaned + "\n\n" if cleaned else "") + block + "\n"
+
+    if new != content:
+        gitignore.write_text(new, encoding="utf-8")
+        state = GRAPHIFY_STATE_IGNORE_ALL if ignore_all else GRAPHIFY_STATE_COMMIT
+        log.success("updated %s — %s", gitignore, _GRAPHIFY_STATE_LABELS[state])
+    else:
+        log.info("%s already matches the chosen policy", gitignore)
+
+
+def _handle_gitignore_policy() -> None:
+    state = _detect_graphify_gitignore()
+    ignore_all = _prompt_graphify_policy(state)
+    if ignore_all is None:
+        log.warning("cancelled")
+        return
+    _apply_gitignore_policy(ignore_all)
 
 
 # ── action definitions ──────────────────────────────────────────────────
@@ -227,22 +369,14 @@ _ACTIONS: list[Action] = [
         category="setup",
         command="uv tool install graphifyy",
         description="Install the graphify CLI tool using uv (recommended). "
-        "After this, run 'Register with OpenCode' to wire graphify into your editor, "
-        "then run 'Build graph' to create your first knowledge graph. "
-        "The CLI itself is the 'graphify' command; the PyPI package is 'graphifyy'.",
+        "The CLI itself is the 'graphify' command; the PyPI package is 'graphifyy'. "
+        "After this, run 'Register with AI tools' to wire graphify into your editor, "
+        "then 'Build graph (code only)' to create your first knowledge graph. "
+        "Optional extras (PDF text extraction, faster-whisper transcription, "
+        "Office .docx/.xlsx parsing, MCP server mode, Neo4j/FalkorDB push, ...) "
+        "are available via 'graphifyy[all]'.",
         samples=["uv tool install graphifyy", "uv tool install 'graphifyy[all]'"],
         handler="install",
-    ),
-    Action(
-        name="Install graphify (all extras)",
-        category="setup",
-        command="uv tool install 'graphifyy[all]'",
-        description="Same as above but with all optional extras: PDF text extraction, "
-        "video/audio transcription via faster-whisper, Office .docx/.xlsx parsing, "
-        "MCP server mode, SVG export, Neo4j/FalkorDB database push, and more. "
-        "Use this if you want everything in one shot.",
-        samples=["uv tool install 'graphifyy[all]'"],
-        handler="install_all",
     ),
     Action(
         name="Upgrade graphify",
@@ -255,116 +389,32 @@ _ACTIONS: list[Action] = [
         handler="upgrade",
     ),
     Action(
-        name="Register with OpenCode",
-        category="setup",
-        command="graphify install --platform opencode"
-        " && graphify install --project --platform opencode",
-        description="Wire graphify into OpenCode — both globally and for this project. "
-        "Global: updates ~/.config/opencode/skills/graphify/SKILL.md "
-        "(silences the version warning on every CLI run). "
-        "Project: writes rules into AGENTS.md and installs a tool.execute.before plugin "
-        "so the assistant queries the knowledge graph before grepping files or reading code. "
-        "Run once after installing graphify.",
-        samples=[
-            "graphify install --platform opencode",
-            "graphify install --project --platform opencode",
-        ],
-        handler="register_opencode",
-        needs_graphify=True,
-    ),
-    Action(
-        name="Register with Claude Code",
-        category="setup",
-        command="graphify install --platform claude" " && graphify claude install",
-        description="Wire graphify into Claude Code — both globally and for this project. "
-        "Global: updates ~/.claude/skills/graphify/SKILL.md. "
-        "Project: writes rules into CLAUDE.md and installs a PreToolUse hook "
-        "so Claude automatically queries the knowledge graph before reading files "
-        "or running search commands. "
-        "Run once after installing graphify.",
-        samples=[
-            "graphify install --platform claude",
-            "graphify claude install",
-        ],
-        handler="register_claude",
-        needs_graphify=True,
-    ),
-    Action(
-        name="Register with Cursor",
-        category="setup",
-        command="graphify install --platform cursor"
-        " && graphify install --project --platform cursor",
-        description="Wire graphify into Cursor — both globally and for this project. "
-        "Global: updates ~/.cursor/skills/graphify/ (if supported). "
-        "Project: writes .cursor/rules/graphify.mdc so Cursor's AI assistant "
-        "automatically queries the knowledge graph before reading files. "
-        "Run once after installing graphify.",
-        samples=[
-            "graphify install --platform cursor",
-            "graphify install --project --platform cursor",
-        ],
-        handler="register_cursor",
-        needs_graphify=True,
-    ),
-    Action(
-        name="Register with Copilot",
-        category="setup",
-        command="graphify install --platform copilot"
-        " && graphify install --project --platform copilot",
-        description="Wire graphify into GitHub Copilot CLI — both globally and for this project. "
-        "Global: updates ~/.copilot/skills/graphify/SKILL.md. "
-        "Project: writes rules into copilot-instructions.md so Copilot "
-        "automatically queries the knowledge graph before reading files. "
-        "Run once after installing graphify.",
-        samples=[
-            "graphify install --platform copilot",
-            "graphify install --project --platform copilot",
-        ],
-        handler="register_copilot",
-        needs_graphify=True,
-    ),
-    Action(
-        name="Register with CodeBuddy",
-        category="setup",
-        command="graphify install --platform codebuddy"
-        " && graphify codebuddy install",
-        description="Wire graphify into CodeBuddy — both globally and for this project. "
-        "Global: updates ~/.codebuddy/skills/graphify/SKILL.md. "
-        "Project: writes a graphify section into CODEBUDDY.md and installs a PreToolUse hook "
-        "so CodeBuddy automatically queries the knowledge graph before reading files "
-        "or running search commands. "
-        "Run once after installing graphify.",
-        samples=[
-            "graphify install --platform codebuddy",
-            "graphify codebuddy install",
-        ],
-        handler="register_codebuddy",
-        needs_graphify=True,
-    ),
-    Action(
-        name="Register with Cline",
-        category="setup",
-        command="(writes .cline/rules/graphify.mdc)",
-        description="Wire graphify into Cline, the VS Code AI coding extension. "
-        "Cline reads Cursor-style .mdc rule files from .cline/rules/, so this "
-        "writes the same always-apply graphify rule used by the Cursor integration "
-        "(mandatory graphify query before file reads / greps). "
-        "graphify has no native cline platform, so the rule is written directly. "
-        "Run once after building the graph.",
-        samples=[".cline/rules/graphify.mdc"],
-        handler="register_cline",
-    ),
-    Action(
-        name="Bulk manage all platforms",
+        name="Register with AI tools",
         category="setup",
         command="(interactive multi-select)",
-        description="Install or uninstall the graphify user-level skill for any AI coding tool. "
-        "Select a tool to install graphify for it; deselect to uninstall. "
-        "Tools without the underlying platform installed are greyed out. "
-        "Supports: Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI, OpenCode.",
+        description="Wire graphify into your AI coding tools — the first step after installing. "
+        "Auto-detects which agents are installed on this machine: tools whose graphify "
+        "skill is missing or out of date are pre-checked for install/update, tools already "
+        "up to date are left unchecked, and uninstalled agents are greyed out. "
+        "Checked tools get installed/updated; unchecked ones are left untouched. "
+        "Supports Claude Code, Cursor, Codex, Gemini, GitHub Copilot CLI, CodeBuddy, Cline, OpenCode.",
         samples=[],
-        handler="bulk_manage",
+        handler="register",
         needs_graphify=True,
+    ),
+    Action(
+        name="Set graphify-out gitignore policy",
+        category="setup",
+        command="(interactive .gitignore edit)",
+        description="Decide how graphify-out/ should appear in .gitignore: "
+        "commit it (the official recommendation — ignore only cost.json + "
+        "cache/ + the dated rollback snapshots) or ignore the whole directory "
+        "(for repos that must not track generated output). "
+        "The current policy is detected and pre-selected; when nothing is "
+        "configured it defaults to ignoring the whole directory. "
+        "Stale graphify-out entries left by old ai-links versions are cleaned up.",
+        samples=[],
+        handler="gitignore_policy",
     ),
     # ── Hooks ──
     Action(
@@ -444,6 +494,18 @@ _ACTIONS: list[Action] = [
         needs_graphify=True,
     ),
     Action(
+        name="Watch folder & auto-rebuild",
+        category="build",
+        command="graphify watch {project}",
+        description="Watch the project folder and rebuild the graph automatically "
+        "whenever a file changes. Runs in the foreground until you press Ctrl+C. "
+        "Handy while actively refactoring — the graph stays current without "
+        "running update manually or waiting for a commit hook.",
+        samples=["graphify watch {project}"],
+        handler="watch",
+        needs_graphify=True,
+    ),
+    Action(
         name="Re-cluster communities",
         category="build",
         command="graphify cluster-only {project}",
@@ -456,6 +518,19 @@ _ACTIONS: list[Action] = [
             "graphify cluster-only {project} --resolution 1.5",
         ],
         handler="cluster_only",
+        needs_graphify=True,
+        needs_graph=True,
+    ),
+    Action(
+        name="Label communities (LLM)",
+        category="build",
+        command="graphify label {project}",
+        description="Give every community a descriptive name using the configured "
+        "LLM backend (needs an API key). Unlike re-clustering, this only renames "
+        "existing communities and regenerates GRAPH_REPORT.md — no re-clustering. "
+        "Use when you built with --no-label or want better community names.",
+        samples=["graphify label {project}", "graphify label {project} --missing-only"],
+        handler="label",
         needs_graphify=True,
         needs_graph=True,
     ),
@@ -505,10 +580,9 @@ _ACTIONS: list[Action] = [
         needs_graphify=True,
         needs_graph=True,
     ),
-    # ── View / Serve ──
     Action(
         name="Open graph.html in browser",
-        category="view",
+        category="query",
         command="open {graph_html}",
         description="Open the interactive force-directed graph visualization "
         "in your default browser. You can click nodes to inspect them, filter "
@@ -520,7 +594,7 @@ _ACTIONS: list[Action] = [
     ),
     Action(
         name="Start MCP server",
-        category="view",
+        category="query",
         command="python -m graphify.serve {graph_json}",
         description="Expose the knowledge graph as an MCP (Model Context Protocol) "
         "server via stdio. Your editor/assistant can then query it through "
@@ -533,6 +607,17 @@ _ACTIONS: list[Action] = [
         needs_graph=True,
     ),
     # ── Status ──
+    Action(
+        name="Check project status",
+        category="status",
+        command="(summary report)",
+        description="Show a comprehensive overview of graphify setup for this project: "
+        "whether the CLI is installed, whether graphify-out/ exists, how many "
+        "nodes and edges the graph has, whether git hooks are active, and whether "
+        "AGENTS.md has the graphify rules for your assistant.",
+        samples=[],
+        handler="status",
+    ),
     Action(
         name="Benchmark token savings",
         category="status",
@@ -548,28 +633,27 @@ _ACTIONS: list[Action] = [
         needs_graph=True,
     ),
     Action(
-        name="Check project status",
+        name="Uninstall graphify",
         category="status",
-        command="(summary report)",
-        description="Show a comprehensive overview of graphify setup for this project: "
-        "whether the CLI is installed, whether graphify-out/ exists, how many "
-        "nodes and edges the graph has, whether git hooks are active, and whether "
-        "AGENTS.md has the graphify rules for your assistant.",
-        samples=[],
-        handler="status",
+        command="graphify uninstall",
+        description="Remove graphify from every detected AI coding tool at once "
+        "(skill files, hooks, AGENTS.md sections). Add --purge to also delete "
+        "graphify-out/. Use when you no longer want graphify in this environment.",
+        samples=["graphify uninstall", "graphify uninstall --purge"],
+        handler="uninstall",
+        needs_graphify=True,
     ),
 ]
 
 _CATEGORY_LABELS = {
     "setup": "Setup",
-    "hooks": "Git Hooks",
     "build": "Build / Update",
-    "query": "Query",
-    "view": "View / Serve",
+    "hooks": "Git Hooks",
+    "query": "Query / View",
     "status": "Status",
 }
 
-_CATEGORY_ORDER = ["setup", "hooks", "build", "query", "view", "status"]
+_CATEGORY_ORDER = ["setup", "build", "hooks", "query", "status"]
 
 
 def _display_items() -> list[tuple[str, int | None]]:
@@ -635,9 +719,9 @@ def _register_cline() -> None:
         "This project has a graphify knowledge graph at graphify-out/.\n\n"
         "**MANDATORY: Before using Read, Grep, Glob, or search to explore the codebase, "
         "you MUST run graphify first:**\n"
-        "- `graphify query \"<question>\"` — scoped subgraph for any codebase or architecture question\n"
-        "- `graphify path \"<A>\" \"<B>\"` — dependency path between two symbols\n"
-        "- `graphify explain \"<concept>\"` — all nodes related to a concept\n\n"
+        '- `graphify query "<question>"` — scoped subgraph for any codebase or architecture question\n'
+        '- `graphify path "<A>" "<B>"` — dependency path between two symbols\n'
+        '- `graphify explain "<concept>"` — all nodes related to a concept\n\n'
         "Only use Read/Grep/Glob directly when graphify has already oriented you and you "
         "need to modify or debug specific lines, or when graphify-out/graph.json does not exist yet.\n"
         "- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files.\n"
@@ -754,8 +838,8 @@ def _handle_status() -> None:
             "Add a section to AGENTS.md / CLAUDE.md documenting the graphify "
             "knowledge graph for this project. It lives at graphify-out/graph.json "
             "(and graph.html). When answering code questions, query it first with "
-            "`graphify query \"...\"`, `graphify path \"A\" \"B\"`, and "
-            "`graphify explain \"Concept\"` instead of grepping files or reading "
+            '`graphify query "..."`, `graphify path "A" "B"`, and '
+            '`graphify explain "Concept"` instead of grepping files or reading '
             "code blindly. Run `graphify update .` after modifying code to keep the "
             "graph current (AST-only, no API cost). Explain the rules so future "
             "sessions auto-use the graph."
@@ -776,7 +860,35 @@ def _handle_status() -> None:
     print()
 
 
-def _handle_bulk_manage() -> None:
+def _installed_skill_version(plat: _GraphifyPlatform) -> str | None:
+    """Version of the installed graphify skill for ``plat``, if recorded.
+
+    ``graphify install`` writes a ``.graphify_version`` file next to the
+    skill; comparing it with the CLI version tells us whether the
+    integration is stale. Project-rule platforms (cursor, cline) have no
+    version file — they are either configured or not.
+    """
+    if plat.skill_path is None:
+        return None
+    vf = Path(plat.skill_path) / ".graphify_version"
+    if not vf.is_file():
+        return None
+    try:
+        return vf.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+
+
+def _handle_register() -> None:
+    """Multi-select install/update of graphify integrations.
+
+    Semantics: checked = act, unchecked = leave alone. The picker
+    pre-checks tools that need action (not registered yet, or skill version
+    behind the CLI) and leaves up-to-date ones unchecked, so re-running
+    register never uninstalls anything by accident. Tools whose agent isn't
+    installed on this machine are greyed out.
+    """
+    cli_version = _graphify_version()
     items: list[str] = []
     preselected: list[bool] = []
     disabled: set[int] = set()
@@ -787,32 +899,37 @@ def _handle_bulk_manage() -> None:
         if plat is None:
             continue
         platform_indices.append(i)
-        if plat.tool_id == "cline":
-            # Cline has no user-level skill; its state is the project rule file.
-            rule_file = PROJECT_ROOT / ".cline" / "rules" / "graphify.mdc"
-            if rule_file.is_file():
-                items.append(f"{integ.tool_name} [rule installed]")
-                preselected.append(True)
-            elif integ.is_installed():
-                items.append(f"{integ.tool_name}")
-                preselected.append(False)
-            else:
-                items.append(f"{integ.tool_name} (not installed)")
-                preselected.append(False)
-                disabled.add(len(items) - 1)
-        elif not integ.is_installed():
-            items.append(f"{integ.tool_name} (not installed)")
+        if not integ.is_installed():
+            items.append(f"{integ.tool_name} (agent not installed)")
             preselected.append(False)
             disabled.add(len(items) - 1)
-        elif plat.is_installed():
-            items.append(f"{integ.tool_name} [graphify installed]")
-            preselected.append(True)
+            continue
+        if plat.tool_id == "cline":
+            # Cline's integration is the project rule file — no version concept.
+            rule_file = PROJECT_ROOT / ".cline" / "rules" / "graphify.mdc"
+            if rule_file.is_file():
+                items.append(f"{integ.tool_name} [up to date]")
+                preselected.append(False)
+            else:
+                items.append(f"{integ.tool_name}")
+                preselected.append(True)
+            continue
+        if plat.is_installed():
+            skill_ver = _installed_skill_version(plat)
+            if skill_ver is None or (cli_version and skill_ver == cli_version):
+                items.append(f"{integ.tool_name} [up to date]")
+                preselected.append(False)
+            else:
+                items.append(
+                    f"{integ.tool_name} [update available: {skill_ver} → {cli_version or '?'}]"
+                )
+                preselected.append(True)
         else:
             items.append(f"{integ.tool_name}")
-            preselected.append(False)
+            preselected.append(True)
 
     indices = select_many(
-        "Select AI tools for graphify (deselect to uninstall):",
+        "Register graphify with AI tools (checked = install/update, unchecked = leave as-is):",
         items,
         preselected=preselected,
         disabled=disabled,
@@ -821,9 +938,7 @@ def _handle_bulk_manage() -> None:
         log.warning("cancelled")
         return
 
-    selected = set(indices)
-
-    for picker_idx in selected:
+    for picker_idx in indices:
         tool_idx = platform_indices[picker_idx]
         plat = _PLATFORM_BY_ID[AI_TOOLS[tool_idx].tool_id]
         if plat.tool_id == "cline":
@@ -831,45 +946,17 @@ def _handle_bulk_manage() -> None:
         else:
             _install_one(plat)
 
-    for picker_idx, tool_idx in enumerate(platform_indices):
-        if picker_idx not in selected:
-            plat = _PLATFORM_BY_ID[AI_TOOLS[tool_idx].tool_id]
-            if plat.tool_id == "cline":
-                rule_file = PROJECT_ROOT / ".cline" / "rules" / "graphify.mdc"
-                if rule_file.is_file():
-                    rule_file.unlink()
-                    log.success("removed graphify rule for cline: %s", rule_file)
-            elif plat.is_installed():
-                _uninstall_one(plat)
-
 
 def _run_action(action: Action) -> None:
     h = action.handler
     if h == "install":
         run(["uv", "tool", "install", "graphifyy"])
-    elif h == "install_all":
-        run(["uv", "tool", "install", "graphifyy[all]"])
     elif h == "upgrade":
         run(["uv", "tool", "upgrade", "graphifyy"])
-    elif h == "register_opencode":
-        run(["graphify", "install", "--platform", "opencode"])
-        run(["graphify", "install", "--project", "--platform", "opencode"], cwd=PROJECT_ROOT)
-    elif h == "register_claude":
-        run(["graphify", "install", "--platform", "claude"])
-        run(["graphify", "claude", "install"], cwd=PROJECT_ROOT)
-    elif h == "register_cursor":
-        run(["graphify", "install", "--platform", "cursor"])
-        run(["graphify", "install", "--project", "--platform", "cursor"], cwd=PROJECT_ROOT)
-    elif h == "register_copilot":
-        run(["graphify", "install", "--platform", "copilot"])
-        run(["graphify", "install", "--project", "--platform", "copilot"], cwd=PROJECT_ROOT)
-    elif h == "register_codebuddy":
-        run(["graphify", "install", "--platform", "codebuddy"])
-        run(["graphify", "codebuddy", "install"], cwd=PROJECT_ROOT)
-    elif h == "register_cline":
-        _register_cline()
-    elif h == "bulk_manage":
-        _handle_bulk_manage()
+    elif h == "register":
+        _handle_register()
+    elif h == "gitignore_policy":
+        _handle_gitignore_policy()
     elif h == "hook_install":
         run(["graphify", "hook", "install"], cwd=PROJECT_ROOT)
     elif h == "hook_uninstall":
@@ -882,8 +969,12 @@ def _run_action(action: Action) -> None:
         run(["graphify", "extract", str(PROJECT_ROOT)])
     elif h == "update":
         run(["graphify", "update", str(PROJECT_ROOT)])
+    elif h == "watch":
+        run(["graphify", "watch", str(PROJECT_ROOT)])
     elif h == "cluster_only":
         run(["graphify", "cluster-only", str(PROJECT_ROOT)])
+    elif h == "label":
+        run(["graphify", "label", str(PROJECT_ROOT)])
     elif h == "query":
         _handle_query()
     elif h == "path":
@@ -898,6 +989,8 @@ def _run_action(action: Action) -> None:
         _handle_status()
     elif h == "benchmark":
         run(["graphify", "benchmark", str(_graph_json_path())])
+    elif h == "uninstall":
+        run(["graphify", "uninstall"])
 
 
 # ── curses browser ──────────────────────────────────────────────────────
@@ -1110,12 +1203,18 @@ def main() -> None:
     configure_from_args(args)
 
     if which("graphify") is None:
-        log.error(
-            "graphify CLI not found. Install it first:\n"
-            "  uv tool install graphifyy && graphify install\n"
-            "  # or: pipx install graphifyy && graphify install"
+        if args.upgrade or args.all or args.tool:
+            log.error(
+                "graphify CLI not found. Install it first:\n"
+                "  uv tool install graphifyy\n"
+                "  # or: pipx install graphifyy"
+            )
+            sys.exit(1)
+        # The browser can still be useful without the CLI (Setup has the
+        # install action; actions that need graphify are blocked on Enter).
+        log.warning(
+            "graphify CLI not found — install it from the Setup section (status bar shows [cli: X])"
         )
-        sys.exit(1)
 
     if args.upgrade:
         log.info("upgrading graphify via uv …")

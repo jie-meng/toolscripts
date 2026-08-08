@@ -37,7 +37,7 @@ Behavior
  * ``.gitignore`` is rewritten to ignore exactly the symlinks ai-links
  * would create — no blind appending, no ignoring of the user's other
  * config files.  ``.opencode`` is always included (opencode may create a
- * project-level config dir).
+ * project-level config dir). (graphify-out handling lives in ``graphifycmd``.)
 """
 
 from __future__ import annotations
@@ -238,9 +238,6 @@ def _gitignore_entries(selected: set[str]) -> list[str]:
     # fallback for when opencode is NOT selected, always gitignore the
     # directory so OpenCode's auto-generated project config never leaks.
     entries.append(".opencode")
-    # graphify — its output directory can be large and is generated, not
-    # source.  Always ignore it.
-    entries.append("**/graphify-out/")
     # playwright-mcp — playwright config dir that may be created per-project
     entries.append(".playwright-mcp/")
     seen: set[str] = set()

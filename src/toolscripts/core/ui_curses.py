@@ -178,10 +178,10 @@ def _single_select_impl(
         stdscr.clear()
         stdscr.addstr(0, 0, title, curses.A_BOLD)
         hint = "j/k move | gg/G top/bottom | Enter/o confirm | q quit"
-        stdscr.addstr(1, 0, hint, curses.color_pair(3))
+        stdscr.addstr(2, 0, hint, curses.color_pair(3))
 
         height, width = stdscr.getmaxyx()
-        body_row = 3
+        body_row = 4
         list_h = height - body_row - 1
 
         if cursor < top:
@@ -267,10 +267,10 @@ def _multi_select_impl(
         stdscr.clear()
         stdscr.addstr(0, 0, title, curses.A_BOLD)
         hint = "j/k move | Space toggle | a all/none | gg/G top/bottom | Enter/o confirm | q quit"
-        stdscr.addstr(1, 0, hint, curses.color_pair(3))
+        stdscr.addstr(2, 0, hint, curses.color_pair(3))
 
         height, width = stdscr.getmaxyx()
-        body_row = 3
+        body_row = 4
         list_h = height - body_row - 3
 
         if cursor < top:
