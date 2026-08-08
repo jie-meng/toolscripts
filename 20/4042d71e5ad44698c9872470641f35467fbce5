@@ -1,0 +1,25 @@
+.gitignore
+  s_f6cc657d5fdebb::t_81288e7059784f 133,141-145,147,149
+src/toolscripts/commands/ai/graphifycmd.py
+  s_f6cc657d5fdebb::t_dbabd9b324f4de 306
+  s_f6cc657d5fdebb::t_a3df5b27f5f697 256
+  s_f6cc657d5fdebb::t_97fdf4fce631ed 423-426
+  s_f6cc657d5fdebb::t_15431f8e5c6bd8 216,336-340
+  s_f6cc657d5fdebb::t_64a985084bacf4 203-209,212-215,218-224,230-234,236,238,242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "204042d71e5ad44698c9872470641f35467fbce5",
+  "prompts": {},
+  "sessions": {
+    "s_f6cc657d5fdebb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_01dfd75e9ffeNt1aYqkbT6uxZH",
+        "model": "deepseek-v4-flash-free"
+      },
+      "human_author": "Jie Meng <jmengxy@gmail.com>"
+    }
+  }
+}
