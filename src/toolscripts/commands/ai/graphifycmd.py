@@ -139,6 +139,8 @@ _HOME = Path.home()
 
 GRAPHIFY_PLATFORMS: list[_GraphifyPlatform] = [
     _GraphifyPlatform("claude-code", "claude", _HOME / ".claude" / "skills" / "graphify"),
+    _GraphifyPlatform("cline", "cline", None, project_marker=".cline/rules/graphify.mdc"),
+    _GraphifyPlatform("codebuddy", "codebuddy", _HOME / ".codebuddy" / "skills" / "graphify"),
     _GraphifyPlatform("codex", "codex", _HOME / ".agents" / "skills" / "graphify"),
     _GraphifyPlatform("copilot", "copilot", _HOME / ".copilot" / "skills" / "graphify"),
     _GraphifyPlatform("cursor", "cursor", project_marker=".cursor/rules/graphify.mdc"),
@@ -320,6 +322,37 @@ _ACTIONS: list[Action] = [
         ],
         handler="register_copilot",
         needs_graphify=True,
+    ),
+    Action(
+        name="Register with CodeBuddy",
+        category="setup",
+        command="graphify install --platform codebuddy"
+        " && graphify codebuddy install",
+        description="Wire graphify into CodeBuddy — both globally and for this project. "
+        "Global: updates ~/.codebuddy/skills/graphify/SKILL.md. "
+        "Project: writes a graphify section into CODEBUDDY.md and installs a PreToolUse hook "
+        "so CodeBuddy automatically queries the knowledge graph before reading files "
+        "or running search commands. "
+        "Run once after installing graphify.",
+        samples=[
+            "graphify install --platform codebuddy",
+            "graphify codebuddy install",
+        ],
+        handler="register_codebuddy",
+        needs_graphify=True,
+    ),
+    Action(
+        name="Register with Cline",
+        category="setup",
+        command="(writes .cline/rules/graphify.mdc)",
+        description="Wire graphify into Cline, the VS Code AI coding extension. "
+        "Cline reads Cursor-style .mdc rule files from .cline/rules/, so this "
+        "writes the same always-apply graphify rule used by the Cursor integration "
+        "(mandatory graphify query before file reads / greps). "
+        "graphify has no native cline platform, so the rule is written directly. "
+        "Run once after building the graph.",
+        samples=[".cline/rules/graphify.mdc"],
+        handler="register_cline",
     ),
     Action(
         name="Bulk manage all platforms",
@@ -585,6 +618,36 @@ def _wrap(text: str, width: int) -> list[str]:
 # ── interactive handlers ────────────────────────────────────────────────
 
 
+def _register_cline() -> None:
+    """Write the graphify .mdc rule into Cline's rules directory.
+
+    graphify has no native cline platform. Cline (a VS Code extension) reads
+    Cursor-style .mdc rule files from ``.cline/rules/``, so we reuse the same
+    always-apply rule the Cursor integration relies on.
+    """
+    rule_path = PROJECT_ROOT / ".cline" / "rules" / "graphify.mdc"
+    rule_path.parent.mkdir(parents=True, exist_ok=True)
+    content = (
+        "---\n"
+        "description: graphify knowledge graph context\n"
+        "alwaysApply: true\n"
+        "---\n\n"
+        "This project has a graphify knowledge graph at graphify-out/.\n\n"
+        "**MANDATORY: Before using Read, Grep, Glob, or search to explore the codebase, "
+        "you MUST run graphify first:**\n"
+        "- `graphify query \"<question>\"` — scoped subgraph for any codebase or architecture question\n"
+        "- `graphify path \"<A>\" \"<B>\"` — dependency path between two symbols\n"
+        "- `graphify explain \"<concept>\"` — all nodes related to a concept\n\n"
+        "Only use Read/Grep/Glob directly when graphify has already oriented you and you "
+        "need to modify or debug specific lines, or when graphify-out/graph.json does not exist yet.\n"
+        "- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files.\n"
+        "- After modifying code files, run `graphify update .` to keep the graph current "
+        "(AST-only, no API cost).\n"
+    )
+    rule_path.write_text(content)
+    log.success("graphify rule written for Cline: %s", rule_path)
+
+
 def _handle_query() -> None:
     try:
         q = input("Enter your question: ").strip()
@@ -724,7 +787,20 @@ def _handle_bulk_manage() -> None:
         if plat is None:
             continue
         platform_indices.append(i)
-        if not integ.is_installed():
+        if plat.tool_id == "cline":
+            # Cline has no user-level skill; its state is the project rule file.
+            rule_file = PROJECT_ROOT / ".cline" / "rules" / "graphify.mdc"
+            if rule_file.is_file():
+                items.append(f"{integ.tool_name} [rule installed]")
+                preselected.append(True)
+            elif integ.is_installed():
+                items.append(f"{integ.tool_name}")
+                preselected.append(False)
+            else:
+                items.append(f"{integ.tool_name} (not installed)")
+                preselected.append(False)
+                disabled.add(len(items) - 1)
+        elif not integ.is_installed():
             items.append(f"{integ.tool_name} (not installed)")
             preselected.append(False)
             disabled.add(len(items) - 1)
@@ -750,12 +826,20 @@ def _handle_bulk_manage() -> None:
     for picker_idx in selected:
         tool_idx = platform_indices[picker_idx]
         plat = _PLATFORM_BY_ID[AI_TOOLS[tool_idx].tool_id]
-        _install_one(plat)
+        if plat.tool_id == "cline":
+            _register_cline()
+        else:
+            _install_one(plat)
 
     for picker_idx, tool_idx in enumerate(platform_indices):
         if picker_idx not in selected:
             plat = _PLATFORM_BY_ID[AI_TOOLS[tool_idx].tool_id]
-            if plat.is_installed():
+            if plat.tool_id == "cline":
+                rule_file = PROJECT_ROOT / ".cline" / "rules" / "graphify.mdc"
+                if rule_file.is_file():
+                    rule_file.unlink()
+                    log.success("removed graphify rule for cline: %s", rule_file)
+            elif plat.is_installed():
                 _uninstall_one(plat)
 
 
@@ -779,6 +863,11 @@ def _run_action(action: Action) -> None:
     elif h == "register_copilot":
         run(["graphify", "install", "--platform", "copilot"])
         run(["graphify", "install", "--project", "--platform", "copilot"], cwd=PROJECT_ROOT)
+    elif h == "register_codebuddy":
+        run(["graphify", "install", "--platform", "codebuddy"])
+        run(["graphify", "codebuddy", "install"], cwd=PROJECT_ROOT)
+    elif h == "register_cline":
+        _register_cline()
     elif h == "bulk_manage":
         _handle_bulk_manage()
     elif h == "hook_install":
