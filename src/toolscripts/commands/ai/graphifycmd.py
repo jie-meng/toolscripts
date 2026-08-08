@@ -200,37 +200,46 @@ def _list_platforms() -> None:
 GITIGNORE_FILE = ".gitignore"
 GRAPHIFY_GITIGNORE_HEADER = "# graphify-out"
 
-# Official graphify docs recommend committing graphify-out/ so the team
-# shares the knowledge graph; the only per-user noise is the cost ledger and
-# (optionally) the rebuild cache. Some repos (e.g. corporate) must not track
-# generated output at all — that's the "ignore the whole dir" alternative,
-# which is also the default when no policy is configured yet.
+# Official graphify guidance (maintainer, discussion #426): commit the
+# shareable artifacts graph.json + graph.html + GRAPH_REPORT.md so the team
+# shares the knowledge graph; ignore manifest.json (mtime-based, invalid
+# after clone), cost.json (local token ledger) and cache/ (optional rebuild
+# speedup). Some repos (e.g. corporate) must not track generated output at
+# all — that's the "ignore the whole dir" alternative, which is also the
+# default when no policy is configured yet.
 GRAPHIFY_ENTRY_IGNORE_ALL = "**/graphify-out/"
 GRAPHIFY_IGNORE_DATES = "**/graphify-out/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/"
-# Canonical committed artifacts that are .json — a repo-wide `*.json` catch-all
-# (common for config-heavy projects) would otherwise silently keep them out of
-# git, defeating the commit policy. Negations are inert when no catch-all exists.
-GRAPHIFY_COMMIT_ALLOWS = (
-    "!**/graphify-out/graph.json",
-    "!**/graphify-out/manifest.json",
-    "!**/graphify-out/.graphify_labels.json",
-    "!**/graphify-out/.graphify_analysis.json",
-)
+# The one canonical committed artifact that is .json — a repo-wide `*.json`
+# catch-all (common for config-heavy projects) would otherwise silently keep
+# it out of git, defeating the commit policy. Negations are inert when no
+# catch-all exists.
+GRAPHIFY_COMMIT_ALLOWS = ("!**/graphify-out/graph.json",)
 # Build-scratch files: the graphify skill's Step 9 cleanup removes
-# detect/extract/ast/semantic after a completed build; a --update or watch
-# run can leave them behind. .graphify_python is a machine-specific
-# interpreter path and .pending_changes is the incremental-change queue —
-# both are runtime state that must never reach git.
+# detect/extract/ast/semantic/analysis after a completed build; a --update or
+# watch run can leave them behind. .graphify_python is a machine-specific
+# interpreter path, .graphify_root the local project root, and
+# .graphify_labels.json(.sig) is intermediate community-naming state — all
+# runtime state that must never reach git. .graphify_chunk_*.txt are LLM
+# chunk scratch from the semantic pass (cleanup only deletes the .json
+# variant).
 _GRAPHIFY_SCRATCH_ENTRIES = (
     "**/graphify-out/.graphify_detect.json",
     "**/graphify-out/.graphify_extract.json",
     "**/graphify-out/.graphify_ast.json",
     "**/graphify-out/.graphify_semantic.json",
+    "**/graphify-out/.graphify_analysis.json",
+    "**/graphify-out/.graphify_labels.json",
+    "**/graphify-out/.graphify_labels.json.sig",
+    "**/graphify-out/.graphify_chunk_*.json",
+    "**/graphify-out/.graphify_chunk_*.txt",
     "**/graphify-out/.graphify_python",
+    "**/graphify-out/.graphify_root",
     "**/graphify-out/.pending_changes",
+    "**/graphify-out/.needs_update",
 )
 GRAPHIFY_COMMIT_IGNORES = (
     "**/graphify-out/cost.json",
+    "**/graphify-out/manifest.json",
     "**/graphify-out/cache/",
     # per-rebuild rollback snapshots (duplicate graph.json + report); the
     # current graph in git is the real artifact, so the dated archive stays out
@@ -244,7 +253,7 @@ GRAPHIFY_STATE_IGNORE_ALL = "ignore_all"
 GRAPHIFY_STATE_UNKNOWN = "unknown"
 _GRAPHIFY_STATE_LABELS = {
     GRAPHIFY_STATE_IGNORE_ALL: "fully ignored (not committed)",
-    GRAPHIFY_STATE_COMMIT: "committed (only cost.json + cache/ + dated snapshots ignored)",
+    GRAPHIFY_STATE_COMMIT: "committed (graph.json + graph.html + GRAPH_REPORT.md; cost.json + manifest.json + cache/ + build files ignored)",
     GRAPHIFY_STATE_UNKNOWN: "not configured yet",
 }
 
@@ -294,7 +303,7 @@ def _prompt_graphify_policy(state: str) -> bool | None:
     default_ignore_all = state != GRAPHIFY_STATE_COMMIT
     items = [
         "Ignore graphify-out/ entirely (don't commit its output)",
-        "Commit graphify-out/ to git (ignore only cost.json + cache/ + dated snapshots)",
+        "Commit graphify-out/ to git (share graph.json + graph.html + GRAPH_REPORT.md; ignore cost.json + manifest.json + cache/ + build files)",
     ]
     idx = select_one(
         f"graphify-out handling in .gitignore (currently: {_GRAPHIFY_STATE_LABELS[state]}):",
@@ -324,7 +333,11 @@ def _apply_gitignore_policy(ignore_all: bool) -> None:
     lines = [line for line in cleaned.splitlines() if line.strip() not in _LEGACY_GRAPHIFY_ENTRIES]
     cleaned = "\n".join(lines).strip("\n")
 
-    entries = [GRAPHIFY_ENTRY_IGNORE_ALL] if ignore_all else [*GRAPHIFY_COMMIT_IGNORES, *GRAPHIFY_COMMIT_ALLOWS]
+    entries = (
+        [GRAPHIFY_ENTRY_IGNORE_ALL]
+        if ignore_all
+        else [*GRAPHIFY_COMMIT_IGNORES, *GRAPHIFY_COMMIT_ALLOWS]
+    )
     block = "\n".join([GRAPHIFY_GITIGNORE_HEADER, *entries])
     new = (cleaned + "\n\n" if cleaned else "") + block + "\n"
 
@@ -407,9 +420,10 @@ _ACTIONS: list[Action] = [
         category="setup",
         command="(interactive .gitignore edit)",
         description="Decide how graphify-out/ should appear in .gitignore: "
-        "commit it (the official recommendation — ignore only cost.json + "
-        "cache/ + the dated rollback snapshots) or ignore the whole directory "
-        "(for repos that must not track generated output). "
+        "commit it (the official recommendation — graph.json + graph.html + "
+        "GRAPH_REPORT.md are the shared knowledge artifacts; cost.json + "
+        "manifest.json + cache/ + build scratch stay out) or ignore the whole "
+        "directory (for repos that must not track generated output). "
         "The current policy is detected and pre-selected; when nothing is "
         "configured it defaults to ignoring the whole directory. "
         "Stale graphify-out entries left by old ai-links versions are cleaned up.",
