@@ -109,9 +109,29 @@ def _project_name() -> str:
         return PROJECT_ROOT.name
 
 
-def _install_graphify() -> None:
-    """Install the graphify CLI via uv; an existing install is also upgraded to latest."""
-    run(["uv", "tool", "install", "graphifyy"])
+def _install_graphify() -> bool:
+    """Install the graphify CLI via uv; an existing install is also upgraded to latest.
+
+    Returns True on success. uv's "is already installed" line (its wording for
+    "already up to date") is dropped and replaced with a clearer success message.
+    """
+    result = subprocess.run(
+        ["uv", "tool", "install", "graphifyy"],
+        capture_output=True,
+        text=True,
+    )
+    combined = result.stdout + result.stderr
+    for line in combined.splitlines():
+        if line.strip() and "is already installed" not in line:
+            print(line)
+    if result.returncode != 0:
+        log.error("uv tool install failed (exit %d)", result.returncode)
+        return False
+    if "is already installed" in combined:
+        log.success("graphify is up to date")
+    else:
+        log.success("graphify installed/upgraded")
+    return True
 
 
 # ── platform management (port from graphify-setup) ───────────────────────
@@ -1227,12 +1247,8 @@ def main() -> None:
 
     if args.upgrade:
         log.info("upgrading graphify via uv …")
-        try:
-            _install_graphify()
-        except subprocess.CalledProcessError as exc:
-            log.error("uv tool install failed (exit %d)", exc.returncode)
+        if not _install_graphify():
             sys.exit(1)
-        log.success("graphify upgraded")
 
     if args.list:
         _list_platforms()
