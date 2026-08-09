@@ -1,0 +1,24 @@
+src/toolscripts/commands/ai/graphifycmd.py
+  s_0a901db5084261::t_31af22cad106f3 228-235
+  s_0a901db5084261::t_8086d2b0e4c0c7 238,240,242-245
+  s_0a901db5084261::t_687eae1c21e940 284
+  s_0a901db5084261::t_276e89e87dc422 445-446
+  s_0a901db5084261::t_3b1080a384942a 288-289,293
+  s_0a901db5084261::t_4c3379973230e5 335
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "51f3c1d86a45ab5b8cc515d4e285f98e3ba0a513",
+  "prompts": {},
+  "sessions": {
+    "s_0a901db5084261": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_01b7e647bffeEU7uTpd3Q0f9mP",
+        "model": "deepseek-v4-flash-free"
+      },
+      "human_author": "Jie Meng <jmengxy@gmail.com>"
+    }
+  }
+}
