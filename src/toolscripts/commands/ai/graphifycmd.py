@@ -225,20 +225,24 @@ def _list_platforms() -> None:
 GITIGNORE_FILE = ".gitignore"
 GRAPHIFY_GITIGNORE_HEADER = "# graphify-out"
 
-# Official graphify guidance (maintainer, discussion #426): commit the
-# shareable artifacts graph.json + graph.html + GRAPH_REPORT.md so the team
-# shares the knowledge graph; ignore manifest.json (mtime-based, invalid
-# after clone), cost.json (local token ledger) and cache/ (optional rebuild
-# speedup). Some repos (e.g. corporate) must not track generated output at
-# all — that's the "ignore the whole dir" alternative, which is also the
-# default when no policy is configured yet.
+# Official graphify guidance (README "Team setup"): commit the whole
+# graphify-out/ so the team shares the knowledge graph — graph.json +
+# graph.html + GRAPH_REPORT.md + manifest.json (portable since v0.4.19;
+# committing it avoids a full rebuild on fresh checkout); ignore cost.json
+# (local token ledger) and cache/ (optional — commit for speed, skip to keep
+# the repo small). Some repos (e.g. corporate) must not track generated
+# output at all — that's the "ignore the whole dir" alternative, which is
+# also the default when no policy is configured yet.
 GRAPHIFY_ENTRY_IGNORE_ALL = "**/graphify-out/"
 GRAPHIFY_IGNORE_DATES = "**/graphify-out/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/"
-# The one canonical committed artifact that is .json — a repo-wide `*.json`
+# The canonical committed artifacts that are .json — a repo-wide `*.json`
 # catch-all (common for config-heavy projects) would otherwise silently keep
-# it out of git, defeating the commit policy. Negations are inert when no
+# them out of git, defeating the commit policy. Negations are inert when no
 # catch-all exists.
-GRAPHIFY_COMMIT_ALLOWS = ("!**/graphify-out/graph.json",)
+GRAPHIFY_COMMIT_ALLOWS = (
+    "!**/graphify-out/graph.json",
+    "!**/graphify-out/manifest.json",
+)
 # Build-scratch files: the graphify skill's Step 9 cleanup removes
 # detect/extract/ast/semantic/analysis after a completed build; a --update or
 # watch run can leave them behind. .graphify_python is a machine-specific
@@ -264,7 +268,6 @@ _GRAPHIFY_SCRATCH_ENTRIES = (
 )
 GRAPHIFY_COMMIT_IGNORES = (
     "**/graphify-out/cost.json",
-    "**/graphify-out/manifest.json",
     "**/graphify-out/cache/",
     # per-rebuild rollback snapshots (duplicate graph.json + report); the
     # current graph in git is the real artifact, so the dated archive stays out
@@ -278,15 +281,16 @@ GRAPHIFY_STATE_IGNORE_ALL = "ignore_all"
 GRAPHIFY_STATE_UNKNOWN = "unknown"
 _GRAPHIFY_STATE_LABELS = {
     GRAPHIFY_STATE_IGNORE_ALL: "fully ignored (not committed)",
-    GRAPHIFY_STATE_COMMIT: "committed (graph.json + graph.html + GRAPH_REPORT.md; cost.json + manifest.json + cache/ + build files ignored)",
+    GRAPHIFY_STATE_COMMIT: "committed (graph.json + graph.html + GRAPH_REPORT.md + manifest.json; cost.json + cache/ + build files ignored)",
     GRAPHIFY_STATE_UNKNOWN: "not configured yet",
 }
 
-# Entries old ai-links versions could have left anywhere in .gitignore —
-# this feature now lives here, so applying a policy also cleans those up.
+# Entries old ai-links / graphifycmd versions could have left anywhere in
+# .gitignore — applying a policy also cleans those up.
 _LEGACY_GRAPHIFY_ENTRIES = (
     GRAPHIFY_ENTRY_IGNORE_ALL,
     "graphify-out/",
+    "**/graphify-out/manifest.json",
     *GRAPHIFY_COMMIT_IGNORES,
 )
 
@@ -328,7 +332,7 @@ def _prompt_graphify_policy(state: str) -> bool | None:
     default_ignore_all = state != GRAPHIFY_STATE_COMMIT
     items = [
         "Ignore graphify-out/ entirely (don't commit its output)",
-        "Commit graphify-out/ to git (share graph.json + graph.html + GRAPH_REPORT.md; ignore cost.json + manifest.json + cache/ + build files)",
+        "Commit graphify-out/ to git (share graph.json + graph.html + GRAPH_REPORT.md + manifest.json; ignore cost.json + cache/ + build files)",
     ]
     idx = select_one(
         f"graphify-out handling in .gitignore (currently: {_GRAPHIFY_STATE_LABELS[state]}):",
@@ -438,8 +442,8 @@ _ACTIONS: list[Action] = [
         command="(interactive .gitignore edit)",
         description="Decide how graphify-out/ should appear in .gitignore: "
         "commit it (the official recommendation — graph.json + graph.html + "
-        "GRAPH_REPORT.md are the shared knowledge artifacts; cost.json + "
-        "manifest.json + cache/ + build scratch stay out) or ignore the whole "
+        "GRAPH_REPORT.md + manifest.json are the shared knowledge artifacts; "
+        "cost.json + cache/ + build scratch stay out) or ignore the whole "
         "directory (for repos that must not track generated output). "
         "The current policy is detected and pre-selected; when nothing is "
         "configured it defaults to ignoring the whole directory. "
