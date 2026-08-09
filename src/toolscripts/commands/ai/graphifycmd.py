@@ -109,6 +109,11 @@ def _project_name() -> str:
         return PROJECT_ROOT.name
 
 
+def _install_graphify() -> None:
+    """Install the graphify CLI via uv; an existing install is also upgraded to latest."""
+    run(["uv", "tool", "install", "graphifyy"])
+
+
 # ── platform management (port from graphify-setup) ───────────────────────
 
 
@@ -378,28 +383,20 @@ class Action:
 _ACTIONS: list[Action] = [
     # ── Setup ──
     Action(
-        name="Install graphify (uv)",
+        name="Install / Upgrade graphify (uv)",
         category="setup",
         command="uv tool install graphifyy",
-        description="Install the graphify CLI tool using uv (recommended). "
+        description="Install the graphify CLI tool using uv (recommended); "
+        "an already-installed version is brought up to date in the same step. "
         "The CLI itself is the 'graphify' command; the PyPI package is 'graphifyy'. "
         "After this, run 'Register with AI tools' to wire graphify into your editor, "
         "then 'Build graph (code only)' to create your first knowledge graph. "
         "Optional extras (PDF text extraction, faster-whisper transcription, "
         "Office .docx/.xlsx parsing, MCP server mode, Neo4j/FalkorDB push, ...) "
-        "are available via 'graphifyy[all]'.",
+        "are available via 'graphifyy[all]'. "
+        "If you installed via pipx instead of uv, use: pipx upgrade graphifyy",
         samples=["uv tool install graphifyy", "uv tool install 'graphifyy[all]'"],
         handler="install",
-    ),
-    Action(
-        name="Upgrade graphify",
-        category="setup",
-        command="uv tool upgrade graphifyy",
-        description="Upgrade graphify to the latest version on PyPI. "
-        "Run this periodically to get new features, bug fixes, and language grammar updates. "
-        "If you installed via pipx instead of uv, use: pipx upgrade graphifyy",
-        samples=["uv tool upgrade graphifyy"],
-        handler="upgrade",
     ),
     Action(
         name="Register with AI tools",
@@ -964,9 +961,7 @@ def _handle_register() -> None:
 def _run_action(action: Action) -> None:
     h = action.handler
     if h == "install":
-        run(["uv", "tool", "install", "graphifyy"])
-    elif h == "upgrade":
-        run(["uv", "tool", "upgrade", "graphifyy"])
+        _install_graphify()
     elif h == "register":
         _handle_register()
     elif h == "gitignore_policy":
@@ -1232,21 +1227,12 @@ def main() -> None:
 
     if args.upgrade:
         log.info("upgrading graphify via uv …")
-        result = subprocess.run(
-            ["uv", "tool", "upgrade", "graphifyy"], capture_output=True, text=True
-        )
-        if result.returncode == 0:
-            output = (result.stdout + result.stderr).strip()
-            if output:
-                log.debug("%s", output)
-            log.success("graphify upgraded")
-        else:
-            log.error(
-                "uv tool upgrade failed (exit %d): %s",
-                result.returncode,
-                (result.stderr or result.stdout).strip(),
-            )
+        try:
+            _install_graphify()
+        except subprocess.CalledProcessError as exc:
+            log.error("uv tool install failed (exit %d)", exc.returncode)
             sys.exit(1)
+        log.success("graphify upgraded")
 
     if args.list:
         _list_platforms()
