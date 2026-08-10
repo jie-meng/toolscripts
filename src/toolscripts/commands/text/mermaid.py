@@ -10,30 +10,22 @@ import uuid
 from pathlib import Path
 
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
+from toolscripts.core.mermaid_options import (
+    BACKGROUNDS,
+    FORMATS,
+    SCALES,
+    THEMES,
+    build_mmdc_command,
+    numbered,
+)
 from toolscripts.core.shell import CommandNotFoundError, require, run
 
 log = get_logger(__name__)
 
-_THEMES = {
-    "1": ("default", "Default Theme"),
-    "2": ("dark", "Dark Theme"),
-    "3": ("forest", "Forest Theme"),
-    "4": ("neutral", "Neutral Theme"),
-}
-
-_BACKGROUNDS = {
-    "1": ("white", "White (default)"),
-    "2": ("transparent", "Transparent"),
-    "3": ("black", "Black"),
-    "4": ("#F0F0F0", "Light Gray"),
-    "5": ("red", "Red"),
-}
-
-_FORMATS = {
-    "1": ("png", "PNG image"),
-    "2": ("svg", "SVG vector"),
-    "3": ("pdf", "PDF document"),
-}
+_FORMATS = numbered(FORMATS)
+_THEMES = numbered(THEMES)
+_BACKGROUNDS = numbered(BACKGROUNDS)
+_SCALES = numbered(SCALES)
 
 
 def _print_options(options: dict[str, tuple[str, str]], title: str) -> None:
@@ -56,12 +48,14 @@ def _choose(options: dict[str, tuple[str, str]], default_key: str, prompt: str) 
         log.warning("invalid choice. Use one of: %s", ", ".join(options.keys()))
 
 
-def _run_mmdc(input_file: str, output_file: str, theme: str | None, background: str | None) -> bool:
-    cmd = ["mmdc", "-i", input_file, "-o", output_file]
-    if theme:
-        cmd.extend(["-t", theme])
-    if background:
-        cmd.extend(["-b", background])
+def _run_mmdc(
+    input_file: str,
+    output_file: str,
+    theme: str | None,
+    background: str | None,
+    scale: str | None = None,
+) -> bool:
+    cmd = build_mmdc_command(input_file, output_file, theme, background, scale)
     log.info("running: %s", " ".join(cmd))
     try:
         run(cmd)
@@ -85,7 +79,9 @@ def _interactive(input_file: str) -> bool:
     theme = _choose(_THEMES, "1", "Choose theme (default: 1-default): ")
     _print_options(_BACKGROUNDS, "Select background")
     background = _choose(_BACKGROUNDS, "1", "Choose background (default: 1-white): ")
-    return _run_mmdc(input_file, output, theme, background)
+    _print_options(_SCALES, "Select scale (sharpness)")
+    scale = _choose(_SCALES, "2", "Choose scale (default: 2-sharp): ")
+    return _run_mmdc(input_file, output, theme, background, scale)
 
 
 def main() -> None:
