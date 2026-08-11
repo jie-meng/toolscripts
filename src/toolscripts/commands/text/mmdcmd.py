@@ -126,7 +126,7 @@ def _run_curses(stdscr) -> None:
         "Step 5 of 5 — select scale (sharpness):",
         scale_labels(),
         SCALES,
-        "2",
+        "3",
     )
     if not scale:
         return
