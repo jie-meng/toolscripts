@@ -1,0 +1,19 @@
+src/toolscripts/commands/text/mmdcmd.py
+  s_a255cdf55ac220::t_0565b48689a91d 129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e824bfcaf0a18bd8fa1017e7e2dacf0f7fc65212",
+  "prompts": {},
+  "sessions": {
+    "s_a255cdf55ac220": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_010625fa2ffeGqXeUCpGiphneh",
+        "model": "deepseek-v4-flash-free"
+      },
+      "human_author": "Jie Meng <jmengxy@gmail.com>"
+    }
+  }
+}
