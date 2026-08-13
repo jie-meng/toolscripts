@@ -9,6 +9,8 @@ answered automatically — no keyboard input needed.
 from __future__ import annotations
 
 import argparse
+import subprocess
+import sys
 
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
 from toolscripts.core.platform import require_platform
@@ -41,12 +43,24 @@ def main() -> None:
         "yes | brew upgrade",
         "yes | brew cleanup",
     ]
+    failures: list[str] = []
     for cmd in action_commands:
         log.info("$ %s", cmd)
-        if args.no_output:
-            capture(["bash", "-c", cmd])
-        else:
-            run(["bash", "-c", cmd])
+        try:
+            if args.no_output:
+                capture(["bash", "-c", cmd])
+            else:
+                run(["bash", "-c", cmd])
+        except subprocess.CalledProcessError as exc:
+            # brew can exit non-zero even after doing useful work (e.g. one
+            # cask fails to upgrade while 10 formulae succeed). Keep going so
+            # cleanup still runs, then report the failed steps at the end.
+            log.warning("%s exited with status %d", cmd, exc.returncode)
+            failures.append(cmd)
+
+    if failures:
+        log.error("failed steps: %s", ", ".join(failures))
+        sys.exit(1)
 
     log.success("brew is up to date and cleaned up")
 
