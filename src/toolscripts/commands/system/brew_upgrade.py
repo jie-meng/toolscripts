@@ -2,8 +2,9 @@
 
 Requires the ``brew`` binary on PATH (macOS / Linux only). Runs
 ``brew update``, ``brew upgrade`` then ``brew cleanup``, echoing each command
-as it runs, and pipes ``yes`` into each so any interactive ``y/n`` prompt is
-answered automatically — no keyboard input needed.
+as it runs. Stdin is redirected from ``/dev/null`` so brew runs
+non-interactively: its y/n confirmation prompt is skipped when stdin is not a
+TTY, so no keyboard input is needed and no ``yes``-spam reaches the terminal.
 """
 
 from __future__ import annotations
@@ -25,7 +26,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(
         prog="brew-upgrade",
-        description="Run ``brew update``, ``brew upgrade`` and ``brew cleanup`` and auto-answer any y/n prompts.",
+        description="Run ``brew update``, ``brew upgrade`` and ``brew cleanup`` non-interactively (skips brew's y/n prompt).",
     )
     parser.add_argument(
         "--no-output",
@@ -36,12 +37,14 @@ def main() -> None:
     args = parser.parse_args()
     configure_from_args(args)
 
-    # `yes |` feeds an endless stream of "y" to brew's stdin via bash, so any
-    # prompt is confirmed without user input.
+    # Redirect stdin from /dev/null so brew runs non-interactively: its y/n
+    # confirmation prompt is skipped when stdin is not a TTY. Piping `yes |`
+    # instead would flood the terminal with "y" lines — brew's sandbox copies
+    # all of stdin into a PTY during installs and the PTY echoes every byte.
     action_commands = [
-        "yes | brew update",
-        "yes | brew upgrade",
-        "yes | brew cleanup",
+        "brew update </dev/null",
+        "brew upgrade </dev/null",
+        "brew cleanup </dev/null",
     ]
     failures: list[str] = []
     for cmd in action_commands:
