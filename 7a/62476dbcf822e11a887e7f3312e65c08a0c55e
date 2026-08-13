@@ -1,0 +1,20 @@
+src/toolscripts/commands/system/brew_upgrade.py
+  s_d999b936442c18::t_2687bfd946d29f 46,49-63
+  s_d999b936442c18::t_8eca002e30f277 12-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7a62476dbcf822e11a887e7f3312e65c08a0c55e",
+  "prompts": {},
+  "sessions": {
+    "s_d999b936442c18": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00677e9f8ffenic7Pdna61VkON",
+        "model": "deepseek-v4-flash-free"
+      },
+      "human_author": "Jie Meng <jmengxy@gmail.com>"
+    }
+  }
+}
