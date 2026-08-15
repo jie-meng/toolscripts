@@ -138,6 +138,14 @@ AI_TOOLS: list[AITool] = [
         repo_umbrella_dir=".cursor",
     ),
     AITool(
+        "deepseek-harness",
+        "DeepSeek Harness",
+        ".agents",
+        # DeepSeek Harness reads AGENTS.md and agents/*.md from ~/.agents/.
+        # No repo-level scope fields — DeepSeek Harness doesn't have a
+        # per-repo config directory.
+    ),
+    AITool(
         "gemini",
         "Gemini CLI",
         ".gemini",
