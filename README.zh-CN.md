@@ -133,7 +133,7 @@ toolscripts-list -i <domain>              # 直接跳转到某个领域（如 gi
 | 媒体       | `img-resize`、`img-scale`、`imgcat`、`playsound`、`stopsound`、`mp4-compress`、`mov-to-mp4`、`mp4cut`、`mp4togif`、`mp3-to-pcm`、`remove-watermark`、`pdf-merge`、`kindle-pdf-cropper` |
 | AI 工具    | `ccswitch`、`ocdo`、`ocdo-models`、`cbdo`、`free-models-openrouter`、`free-models-nvidia`、`agents-setup`、`agents-cleanup`、`ai-links`、`graphifycmd`、`npm-tools` |
 | 文本/文档  | `markdown-snippet`、`slugify`、`web2md`、`translate`、`mermaid`、`mmdcmd`、`statcounter-os-coverage`、`xlsx-text2num`、`docs-pick` |
-| 系统       | `dotnet-globaljson`、`toolscripts-list`、`myip`、`checkspace`、`lsdevcu`、`rm-ds-store`、`rm-meta`、`dirdiff`、`intellij`、`pycharm`、`xcode`、`venv-create`、`uvcmd`、`iterm-setup`、`kill-pwchrome`、`brew-upgrade` |
+| 系统       | `dotnet-globaljson`、`toolscripts-list`、`myip`、`checkspace`、`lsdevcu`、`rm-ds-store`、`rm-meta`、`dirdiff`、`intellij`、`pycharm`、`xcode`、`venv-create`、`uvcmd`、`iterm-setup`、`kill-pwchrome`、`brew-upgrade`、`npm-gsync` |
 | 杂项       | `axios-audit`、`extract-games`、`list-include-dirs-from-here`、`list-include-dirs-clang`、`dockercmd`、`mongo-tool` |
 
 完整列表见 `pyproject.toml` 中的 `[project.scripts]` —— 但更方便的做法是

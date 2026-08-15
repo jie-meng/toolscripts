@@ -4,17 +4,17 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import json
 import subprocess
 import sys
 import threading
+from pathlib import Path
 
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
-from toolscripts.core.shell import CommandNotFoundError, require
+from toolscripts.core.npm_global import read_global_packages
+from toolscripts.core.shell import CommandNotFoundError, capture, require
 
 log = get_logger(__name__)
 
-_BUILTINS = {"npm", "corepack"}
 _PENDING = object()
 
 
@@ -27,17 +27,11 @@ def _run(cmd: list[str], *, timeout: int | None = None) -> tuple[int, str]:
 
 
 def _list_installed() -> dict[str, str]:
-    code, out = _run(["npm", "list", "-g", "--depth=0", "--json"], timeout=30)
-    if code != 0 or not out:
+    """Return name -> version for the active node's global packages."""
+    prefix = capture(["npm", "prefix", "-g"], check=False)
+    if not prefix:
         return {}
-    try:
-        data = json.loads(out)
-    except json.JSONDecodeError:
-        return {}
-    deps = data.get("dependencies", {})
-    return {
-        name: info.get("version", "unknown") for name, info in deps.items() if name not in _BUILTINS
-    }
+    return read_global_packages(Path(prefix) / "lib" / "node_modules")
 
 
 def _latest_version(name: str) -> str:

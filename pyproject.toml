@@ -187,6 +187,7 @@ graphifycmd               = "toolscripts.commands.ai.graphifycmd:main"
 iterm-setup               = "toolscripts.commands.system.iterm_setup:main"
 kill-pwchrome             = "toolscripts.commands.system.kill_pwchrome:main"
 brew-upgrade              = "toolscripts.commands.system.brew_upgrade:main"
+npm-gsync                 = "toolscripts.commands.system.npm_gsync:main"
 
 # security / docker / db / cpp / games
 axios-audit               = "toolscripts.commands.security.axios_audit:main"

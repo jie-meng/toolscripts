@@ -178,6 +178,7 @@ agent discovers it on the reflex pass.
 | Capture stdout | `capture([...])` | `toolscripts.core.shell` |
 | Probe / require binary | `which("foo")`, `require("foo")` | `toolscripts.core.shell` |
 | Best-effort run | `try_run([...])` | `toolscripts.core.shell` |
+| Read npm global packages (skips node-bundled `npm`/`corepack`) | `read_global_packages(modules_dir)` → `dict[str, str]` | `toolscripts.core.npm_global` |
 | Clipboard | `copy_to_clipboard(text)` | `toolscripts.core.clipboard` |
 | Platform gate | `require_platform("macos")` (also `"linux"`, `"windows"`) | `toolscripts.core.platform` |
 | Prompts | `yes_no(...)`, `choice(...)`, `ask(...)` | `toolscripts.core.prompts` |
