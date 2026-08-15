@@ -1,7 +1,10 @@
-"""``npm-gsync`` - sync npm global packages across fnm node versions.
+"""``npm-gsync`` - sync npm global packages across node versions.
 
-Requires the ``fnm`` binary on PATH. Package lists are read offline from
-each version's ``lib/node_modules`` directory; copy/move/clean operations
+Run with no subcommand (or ``npm-gsync wizard``) to open an interactive
+curses flow that picks versions and packages for you.
+
+Requires the ``fnm`` binary on PATH. Lists are read offline from each
+version's ``lib/node_modules`` directory; copy/move/clean operations
 run through ``fnm exec --using <ver> npm ...`` so they touch exactly the
 requested node version.
 """
@@ -302,6 +305,199 @@ def _cmd_clean(args: argparse.Namespace, installed: list[str]) -> int:
     return 0
 
 
+# --- interactive wizard --------------------------------------------------
+
+
+def _pick_value(
+    title: str,
+    options: list[tuple[str, str]],
+    *,
+    default_index: int | None = None,
+) -> str | None:
+    """One-shot curses menu; returns the picked value or None on cancel."""
+    from toolscripts.core.ui_curses import select_one
+
+    idx = select_one(title, [label for _, label in options], default_index=default_index)
+    if idx is None:
+        return None
+    return options[idx][0]
+
+
+def _pick_packages(title: str, names: list[str]) -> list[str] | None:
+    """Multi-select from ``names`` (all preselected); None means cancel, [] means nothing."""
+    from toolscripts.core.ui_curses import select_many
+
+    if not names:
+        return []
+    idxs = select_many(title, names, preselected=[True] * len(names))
+    if idxs is None:
+        return None
+    return [names[i] for i in idxs]
+
+
+def _version_options(
+    installed: list[str],
+    packages: dict[str, dict[str, str]],
+    *,
+    exclude: str | None = None,
+) -> list[tuple[str, str]]:
+    return [(ver, f"{ver} ({len(packages[ver])} packages)") for ver in installed if ver != exclude]
+
+
+def _wizard_sync(installed: list[str], packages: dict[str, dict[str, str]], *, move: bool) -> None:
+    """Pick source/target versions, then delegate the rest."""
+    verb = "move" if move else "sync"
+    source = _pick_value(f"{verb}: source node version", _version_options(installed, packages))
+    if source is None:
+        return
+    target = _pick_value(
+        f"{verb}: target node version",
+        _version_options(installed, packages, exclude=source),
+    )
+    if target is None:
+        return
+    _wizard_sync_versions(source, target, packages, move=move)
+
+
+def _wizard_sync_versions(
+    source: str, target: str, packages: dict[str, dict[str, str]], *, move: bool
+) -> None:
+    from toolscripts.core.prompts import yes_no
+
+    if not packages[source]:
+        log.warning("no global packages installed in %s", source)
+        return
+    selected = _pick_packages(
+        f"{'move' if move else 'sync'}: packages from {source}", sorted(packages[source])
+    )
+    if selected is None:
+        return
+    if not selected:
+        log.warning("no packages selected")
+        return
+    plan = build_sync_plan(packages[source], packages[target], selected, force=False)
+    matched = sorted(set(selected) - {name for name, _ in plan})
+    if not plan:
+        log.info("nothing to do - selected packages already match %s", target)
+        return
+    print(f"plan: install {len(plan)} package(s) into {target}:")
+    for name, version in plan:
+        print(f"  {name}@{version}")
+    if matched:
+        log.info("skipping %d already matching: %s", len(matched), ", ".join(matched))
+    if not yes_no(f"Install {len(plan)} package(s) into {target} as shown?"):
+        return
+    if _run_installs(target, plan) != 0:
+        return
+    if not move:
+        return
+    if not yes_no(f"Also remove {len(selected)} package(s) from {source}?"):
+        return
+    if _run_uninstalls(source, selected) != 0:
+        return
+    if yes_no(f"Delete node version {source} (fnm uninstall)?"):
+        run(["fnm", "uninstall", source], check=False)
+
+
+def _wizard_clean(installed: list[str], packages: dict[str, dict[str, str]]) -> None:
+    from toolscripts.core.prompts import yes_no
+
+    version = _pick_value(
+        "clean: remove packages from node version", _version_options(installed, packages)
+    )
+    if version is None:
+        return
+    current = packages[version]
+    if not current:
+        log.warning("no global packages installed in %s", version)
+        return
+    selected = _pick_packages(f"clean: remove packages from {version}", sorted(current))
+    if selected is None:
+        return
+    if not selected:
+        log.warning("no packages selected")
+        return
+    if not yes_no(f"Remove {len(selected)} package(s) from {version}?"):
+        return
+    _run_uninstalls(version, selected)
+
+
+# --- entry point ---------------------------------------------------------
+
+
+def _wizard_diff(installed: list[str], packages: dict[str, dict[str, str]]) -> None:
+    first = _pick_value("diff: first node version", _version_options(installed, packages))
+    if first is None:
+        return
+    second = _pick_value(
+        "diff: second node version",
+        _version_options(installed, packages, exclude=first),
+    )
+    if second is None:
+        return
+    print()
+    _cmd_diff(first, second)
+    try:
+        input("\nPress Enter to return to the menu...")
+    except (EOFError, KeyboardInterrupt):
+        return
+
+
+def _wizard_uninstall(installed: list[str], packages: dict[str, dict[str, str]]) -> None:
+    from toolscripts.core.prompts import yes_no
+
+    version = _pick_value(
+        "uninstall: node version to remove", _version_options(installed, packages)
+    )
+    if version is None:
+        return
+    if not yes_no(f"Delete node version {version} with 'fnm uninstall'?"):
+        return
+    result = run(["fnm", "uninstall", version], check=False)
+    if result.returncode != 0:
+        log.error("fnm uninstall failed for %s", version)
+
+
+def _run_wizard() -> int:
+    """Interactive curses flow: pick operations, versions and packages."""
+    if not sys.stdin.isatty():
+        log.error("interactive wizard requires a TTY (run it in a terminal)")
+        return 1
+    try:
+        import curses  # noqa: F401
+    except ImportError:
+        log.error("curses is not available on this Python build")
+        return 1
+
+    menu = [
+        ("sync", "sync: copy global packages into another node version"),
+        ("move", "move: copy to another version, then delete from the source"),
+        ("clean", "clean: remove global packages from a node version"),
+        ("diff", "diff: compare global packages of two node versions"),
+        ("uninstall", "uninstall: remove an entire node version"),
+        ("quit", "quit"),
+    ]
+    while True:
+        installed = list_versions()
+        if not installed:
+            log.warning("no fnm node versions are installed")
+            return 0
+        packages = {ver: packages_of(ver) for ver in installed}
+        choice = _pick_value(f"npm-gsync ({len(installed)} node versions)", menu)
+        if choice is None or choice == "quit":
+            return 0
+        if choice == "sync":
+            _wizard_sync(installed, packages, move=False)
+        elif choice == "move":
+            _wizard_sync(installed, packages, move=True)
+        elif choice == "clean":
+            _wizard_clean(installed, packages)
+        elif choice == "diff":
+            _wizard_diff(installed, packages)
+        elif choice == "uninstall":
+            _wizard_uninstall(installed, packages)
+
+
 # --- entry point ---------------------------------------------------------
 
 
@@ -325,6 +521,8 @@ def _dispatch(args: argparse.Namespace) -> int:
     if not installed:
         log.error("no fnm node versions found under %s", _versions_dir() / "node-versions")
         return 1
+    if not args.command or args.command == "wizard":
+        return _run_wizard()
     if args.command == "ls":
         return _cmd_ls(installed)
     if args.command == "diff":
@@ -346,7 +544,12 @@ def main() -> None:
         prog="npm-gsync",
         description="Manage npm global packages across fnm node versions: ls, diff, sync, move, clean.",
     )
-    sub = parser.add_subparsers(dest="command", required=True)
+    sub = parser.add_subparsers(dest="command")
+
+    p_wizard = sub.add_parser(
+        "wizard", help="interactive curses flow (default when run with no subcommand)"
+    )
+    add_logging_flags(p_wizard)
 
     p_ls = sub.add_parser("ls", help="list global packages of every installed node version")
     add_logging_flags(p_ls)

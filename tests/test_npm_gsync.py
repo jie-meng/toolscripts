@@ -72,3 +72,133 @@ def test_diff_packages() -> None:
     assert only_a == {"a": "1.0.0"}
     assert only_b == {"c": "3.0.0"}
     assert mismatch == {"b": ("2.0.0", "2.0.1")}
+
+
+# --- wizard (pick flow, with the curses pickers and npm exec mocked) -----
+
+
+WIZARD_PKGS = {
+    "v22.11.0": {"gh": "8.0.0", "pnpm": "10.33.0"},
+    "v22.22.0": {"pnpm": "11.21.0"},
+}
+WIZARD_VERSIONS = ["v22.11.0", "v22.22.0"]
+
+
+def test_wizard_sync_copies_picked_packages(monkeypatch) -> None:
+    from toolscripts.commands.system import npm_gsync as mod
+    from toolscripts.core import prompts, ui_curses
+
+    installs: list[tuple] = []
+    yes_ones = 0
+    select_calls = 0
+
+    def fake_select_one(_title, _items, **kwargs):  # noqa: ARG002
+        nonlocal select_calls
+        select_calls += 1
+        return 0  # source=v22.11.0, target=v22.22.0 (source excluded)
+
+    def fake_select_many(_title, items, *, preselected=None, disabled=None):  # noqa: ARG002
+        assert preselected == [True] * len(items)
+        return list(range(len(items)))
+
+    def fake_yes_no(_question, *, default=False):  # noqa: ARG002
+        nonlocal yes_ones
+        yes_ones += 1
+        return True
+
+    monkeypatch.setattr(ui_curses, "select_one", fake_select_one)
+    monkeypatch.setattr(ui_curses, "select_many", fake_select_many)
+    monkeypatch.setattr(prompts, "yes_no", fake_yes_no)
+    monkeypatch.setattr(mod, "_run_installs", lambda *a: installs.append(a) or 0)
+
+    mod._wizard_sync(WIZARD_VERSIONS, WIZARD_PKGS, move=False)
+
+    assert select_calls == 2
+    assert yes_ones == 1
+    assert installs == [("v22.22.0", [("gh", "8.0.0"), ("pnpm", "10.33.0")])]
+
+
+def test_wizard_move_removes_source_and_deletes_version(monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    from toolscripts.commands.system import npm_gsync as mod
+    from toolscripts.core import prompts, ui_curses
+
+    uninstalls: list[tuple[str, list[str]]] = []
+    runs: list[list[str]] = []
+    yes_ones = 0
+
+    def fake_select_one(_title, _items, **kwargs):  # noqa: ARG002
+        return 0
+
+    def fake_select_many(_title, items, *, preselected=None, **kwargs):  # noqa: ARG002
+        return list(range(len(items)))
+
+    def fake_yes_no(_question, *, default=False):  # noqa: ARG002
+        nonlocal yes_ones
+        yes_ones += 1
+        return True
+
+    def fake_run(cmd, **kwargs):  # noqa: ARG002
+        runs.append(list(cmd))
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(ui_curses, "select_one", fake_select_one)
+    monkeypatch.setattr(ui_curses, "select_many", fake_select_many)
+    monkeypatch.setattr(prompts, "yes_no", fake_yes_no)
+    monkeypatch.setattr(mod, "_run_installs", lambda *a: 0)
+    monkeypatch.setattr(mod, "_run_uninstalls", lambda *a: uninstalls.append(a) or 0)
+    monkeypatch.setattr(mod, "run", fake_run)
+
+    mod._wizard_sync(WIZARD_VERSIONS, WIZARD_PKGS, move=True)
+
+    assert yes_ones == 3  # install confirm, remove-from-source confirm, delete version
+    assert uninstalls == [("v22.11.0", ["gh", "pnpm"])]
+    assert runs == [["fnm", "uninstall", "v22.11.0"]]
+
+
+def test_wizard_clean_removes_picked_packages(monkeypatch) -> None:
+    from toolscripts.commands.system import npm_gsync as mod
+    from toolscripts.core import prompts, ui_curses
+
+    uninstalls: list[tuple[str, list[str]]] = []
+    yes_ones = 0
+
+    def fake_select_one(_title, _items, **kwargs):  # noqa: ARG002
+        return 0  # v22.11.0
+
+    def fake_select_many(_title, _items, **kwargs):  # noqa: ARG002
+        return [1]  # only pnpm
+
+    def fake_yes_no(_question, *, default=False):  # noqa: ARG002
+        nonlocal yes_ones
+        yes_ones += 1
+        return True
+
+    monkeypatch.setattr(ui_curses, "select_one", fake_select_one)
+    monkeypatch.setattr(ui_curses, "select_many", fake_select_many)
+    monkeypatch.setattr(prompts, "yes_no", fake_yes_no)
+    monkeypatch.setattr(mod, "_run_uninstalls", lambda *a: uninstalls.append(a) or 0)
+
+    mod._wizard_clean(WIZARD_VERSIONS, WIZARD_PKGS)
+
+    assert yes_ones == 1
+    assert uninstalls == [("v22.11.0", ["pnpm"])]
+
+
+def test_wizard_cancel_aborts_without_changes(monkeypatch) -> None:
+    from toolscripts.commands.system import npm_gsync as mod
+    from toolscripts.core import ui_curses
+
+    called = False
+
+    def boom(*args, **kwargs):  # noqa: ARG002
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr(ui_curses, "select_one", lambda *a, **k: None)  # user pressed Esc
+    monkeypatch.setattr(mod, "_run_installs", boom)
+
+    mod._wizard_sync(WIZARD_VERSIONS, WIZARD_PKGS, move=False)
+
+    assert not called
