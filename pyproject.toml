@@ -156,6 +156,7 @@ agents-cleanup            = "toolscripts.commands.ai.agents_cleanup:main"
 ai-links                  = "toolscripts.commands.ai.ai_links:main"
 npm-tools                 = "toolscripts.commands.ai.npm_tools:main"
 llamacmd                  = "toolscripts.commands.ai.llamacmd:main"
+pi-extensions-setup       = "toolscripts.commands.ai.pi_extensions:main"
 
 # text / docs / web
 markdown-snippet          = "toolscripts.commands.text.markdown:main"

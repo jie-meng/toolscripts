@@ -154,6 +154,199 @@ single_select = select_one
 multi_select = select_many
 
 
+# ---------------------------------------------------------------------------
+# Multi-select with per-item help footer
+# ---------------------------------------------------------------------------
+
+
+def select_many_help(
+    title: str,
+    items: list[str],
+    helps: list[str],
+    *,
+    preselected: list[bool] | None = None,
+    disabled: set[int] | None = None,
+    selected_color: int = 5,
+    tags: list[str | None] | None = None,
+) -> list[int] | None:
+    """Show a multi-select picker with a per-item help footer.
+
+    Behaves like :func:`select_many`, but the ``helps`` entry of the
+    highlighted item is word-wrapped and shown at the bottom of the screen.
+    Optional ``tags`` are rendered right-aligned in green — use them for
+    per-item status such as ``"installed"``. Returns the chosen indices, or
+    ``None`` on cancel.
+    """
+    _ensure_curses_available()
+    import curses
+
+    def _run(stdscr: curses.window) -> list[int] | None:
+        return _multi_select_help_impl(
+            stdscr, title, items, helps, preselected, disabled, selected_color, tags
+        )
+
+    return curses.wrapper(_run)
+
+
+def _multi_select_help_impl(
+    stdscr,
+    title: str,
+    items: list[str],
+    helps: list[str],
+    preselected: list[bool] | None,
+    disabled: set[int] | None,
+    selected_color: int,
+    tags: list[str | None] | None,
+) -> list[int] | None:
+    import curses
+
+    curses.curs_set(0)
+    curses.use_default_colors()
+    curses.init_pair(1, curses.COLOR_CYAN, -1)
+    curses.init_pair(2, curses.COLOR_RED, -1)
+    curses.init_pair(3, curses.COLOR_YELLOW, -1)
+    curses.init_pair(4, curses.COLOR_WHITE, -1)
+    curses.init_pair(5, curses.COLOR_GREEN, -1)
+
+    disabled = disabled or set()
+    selected = list(preselected) if preselected is not None else [False] * len(items)
+    for i in disabled:
+        selected[i] = False
+
+    cursor = 0
+    all_label = "Select All / Deselect All"
+    total = 1 + len(items)
+    enabled_count = len(items) - len(disabled)
+
+    # Footer layout (from the bottom up): 1 margin, count line, 1 blank,
+    # HELP_LINES of help text, 1 blank separating the list.
+    HELP_LINES = 3
+    FOOTER_ROWS = HELP_LINES + 5
+    body_row = 4
+
+    def next_enabled(pos: int, direction: int) -> int:
+        candidate = (pos + direction) % total
+        for _ in range(total):
+            if candidate == 0 or candidate - 1 not in disabled:
+                return candidate
+            candidate = (candidate + direction) % total
+        return 0
+
+    def prev_enabled_tail() -> int:
+        return next_enabled(0, -1)
+
+    top = 0
+
+    def draw() -> None:
+        nonlocal top
+        stdscr.clear()
+        height, width = stdscr.getmaxyx()
+        stdscr.addstr(0, 0, title, curses.A_BOLD)
+        hint = "j/k move | Space toggle | a all/none | gg/G top/bottom | Enter/o confirm | q quit"
+        stdscr.addstr(2, 0, hint, curses.color_pair(3))
+
+        list_h = max(1, height - body_row - FOOTER_ROWS)
+        if cursor < top:
+            top = cursor
+        elif cursor >= top + list_h:
+            top = cursor - list_h + 1
+
+        visible = range(top, min(top + list_h, total))
+        row = body_row
+        for idx in visible:
+            if idx == 0:
+                enabled_sel = [s for i, s in enumerate(selected) if i not in disabled]
+                all_selected = bool(enabled_sel) and all(enabled_sel)
+                marker = "[x]" if all_selected else "[ ]"
+                attr = curses.A_REVERSE if cursor == 0 else 0
+                with contextlib.suppress(curses.error):
+                    stdscr.addstr(row, 0, f"  {marker}  {all_label}", attr | curses.color_pair(1))
+                row += 1
+                with contextlib.suppress(curses.error):
+                    stdscr.addstr(row, 0, "  " + "-" * min(40, width - 2), curses.color_pair(1))
+                row += 1
+            else:
+                i = idx - 1
+                item = items[i]
+                tag = (tags or [None] * len(items))[i]
+                is_disabled = i in disabled
+                if is_disabled:
+                    marker = "[-]"
+                    attr = curses.A_DIM
+                    color = 0
+                else:
+                    marker = "[x]" if selected[i] else "[ ]"
+                    attr = curses.A_REVERSE if cursor == idx else 0
+                    color = (
+                        curses.color_pair(selected_color) if selected[i] else curses.color_pair(4)
+                    )
+                label = f"  {marker}  {item}"
+                with contextlib.suppress(curses.error):
+                    stdscr.addstr(row, 0, label[: width - 1], attr | color)
+                if tag:
+                    with contextlib.suppress(curses.error):
+                        max_tag = max(1, width - len(label) - 2)
+                        stdscr.addstr(
+                            row,
+                            max(0, width - len(tag[:max_tag]) - 1),
+                            tag[:max_tag],
+                            curses.color_pair(5),
+                        )
+                row += 1
+
+        # Help footer: show the description of the highlighted item.
+        help_text = ""
+        if 0 <= cursor - 1 < len(helps):
+            help_text = helps[cursor - 1]
+        wrapped = _wrap_text(help_text, max(1, width - 2))[:HELP_LINES]
+        help_top = height - 5 - HELP_LINES
+        for i in range(HELP_LINES):
+            text = wrapped[i] if i < len(wrapped) else ""
+            with contextlib.suppress(curses.error):
+                stdscr.addstr(help_top + i, 1, text[: width - 2], curses.color_pair(1))
+
+        count = sum(1 for i, s in enumerate(selected) if s and i not in disabled)
+        with contextlib.suppress(curses.error):
+            stdscr.addstr(
+                height - 2,
+                0,
+                f"  {count}/{enabled_count} selected",
+                curses.color_pair(3),
+            )
+
+        stdscr.refresh()
+
+    while True:
+        draw()
+        key = stdscr.getch()
+
+        if key == curses.KEY_UP or key == ord("k"):
+            cursor = next_enabled(cursor, -1)
+        elif key == curses.KEY_DOWN or key == ord("j"):
+            cursor = next_enabled(cursor, 1)
+        elif key == ord("g"):
+            key2 = stdscr.getch()
+            if key2 == ord("g"):
+                cursor = 0
+        elif key == ord("G"):
+            cursor = prev_enabled_tail()
+        elif key == ord(" "):
+            if cursor == 0:
+                enabled_sel = [s for i, s in enumerate(selected) if i not in disabled]
+                new_val = not (bool(enabled_sel) and all(enabled_sel))
+                selected = [new_val if i not in disabled else False for i in range(len(items))]
+            elif cursor - 1 not in disabled:
+                selected[cursor - 1] = not selected[cursor - 1]
+        elif key == ord("a"):
+            enabled_sel = [s for i, s in enumerate(selected) if i not in disabled]
+            new_val = not (bool(enabled_sel) and all(enabled_sel))
+            selected = [new_val if i not in disabled else False for i in range(len(items))]
+        elif key in (curses.KEY_ENTER, 10, 13) or key == ord("o"):
+            return [i for i, s in enumerate(selected) if s and i not in disabled]
+        elif key in (ord("q"), 27):
+            return None
+
+
 def _single_select_impl(
     stdscr,
     title: str,
