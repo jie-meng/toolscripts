@@ -1,0 +1,27 @@
+src/toolscripts/commands/system/pi_update_all.py
+  s_1f49440a5f358e::t_b792c6cc9c2181 1-32
+README.md
+  s_1f49440a5f358e::t_e11490e9c46278 144
+  s_1f49440a5f358e::t_1d065e2605d7b7 142
+README.zh-CN.md
+  s_1f49440a5f358e::t_2f8b073f0308ae 134
+  s_1f49440a5f358e::t_f4737b10e24ea4 136
+pyproject.toml
+  s_1f49440a5f358e::t_eee2450db6872d 191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "1e1f94a889eb6556d99e92dd1dd213a5ce4fbb56",
+  "prompts": {},
+  "sessions": {
+    "s_1f49440a5f358e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a02e7d-4771-76fc-88b3-4388181ba25a",
+        "model": "auto"
+      },
+      "human_author": "Jie Meng <jmengxy@gmail.com>"
+    }
+  }
+}
