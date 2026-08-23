@@ -145,7 +145,6 @@ audio-record              = "toolscripts.commands.media.record_audio:main"
 audio-trim                = "toolscripts.commands.media.trim_audio:main"
 
 # ai tooling
-ccswitch                  = "toolscripts.commands.ai.ccswitch:main"
 ocdo                      = "toolscripts.commands.ai.ocdo:run_main"
 ocdo-models               = "toolscripts.commands.ai.ocdo:models_main"
 cbdo                      = "toolscripts.commands.ai.cbdo:main"
@@ -189,6 +188,7 @@ iterm-setup               = "toolscripts.commands.system.iterm_setup:main"
 kill-pwchrome             = "toolscripts.commands.system.kill_pwchrome:main"
 brew-upgrade              = "toolscripts.commands.system.brew_upgrade:main"
 npm-gsync                 = "toolscripts.commands.system.npm_gsync:main"
+pi-update-all             = "toolscripts.commands.system.pi_update_all:main"
 
 # security / docker / db / cpp / games
 axios-audit               = "toolscripts.commands.security.axios_audit:main"
