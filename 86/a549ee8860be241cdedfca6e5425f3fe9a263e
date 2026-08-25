@@ -1,0 +1,36 @@
+README.md
+  s_fc8ee2671b6074::t_c9e70c934218ac 144
+README.zh-CN.md
+  s_fc8ee2671b6074::t_c54bc434866d50 136
+src/toolscripts/commands/system/rpi_vpn_setup.py
+  s_fc8ee2671b6074::t_ef63b0e4fad981 1-126,128-136,138-166,168-239,241-293,295-313,317-330,339-357,359-360,362-378
+  s_fc8ee2671b6074::t_8a9b2c912916ee 331-338
+  s_fc8ee2671b6074::t_e45d9280a26009 358,361
+  s_9b18591e408d8b::t_66d93a1b0e52b4 127,137,167,240,294,314-316
+pyproject.toml
+  s_fc8ee2671b6074::t_39a0e6cefa8192 192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "86a549ee8860be241cdedfca6e5425f3fe9a263e",
+  "prompts": {},
+  "sessions": {
+    "s_9b18591e408d8b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0381f-94d5-7974-a41e-0ab47795e1db",
+        "model": "auto"
+      },
+      "human_author": "Jie Meng <jmengxy@gmail.com>"
+    },
+    "s_fc8ee2671b6074": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fc855a9b2ffeFHV9QJ2Nt2h5z3",
+        "model": "x-preview-f-free"
+      },
+      "human_author": "Jie Meng <jmengxy@gmail.com>"
+    }
+  }
+}
