@@ -189,6 +189,7 @@ kill-pwchrome             = "toolscripts.commands.system.kill_pwchrome:main"
 brew-upgrade              = "toolscripts.commands.system.brew_upgrade:main"
 npm-gsync                 = "toolscripts.commands.system.npm_gsync:main"
 pi-update-all             = "toolscripts.commands.system.pi_update_all:main"
+rpi-vpn-setup           = "toolscripts.commands.system.rpi_vpn_setup:main"
 
 # security / docker / db / cpp / games
 axios-audit               = "toolscripts.commands.security.axios_audit:main"
