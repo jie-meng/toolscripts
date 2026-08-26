@@ -1,0 +1,27 @@
+src/toolscripts/commands/ai/pido.py
+  s_a39c8049284fa3::t_56ce5aacabfd7a 29,39
+  s_a39c8049284fa3::t_4901821229cf74 1,13-14,17,20,46
+  s_a39c8049284fa3::t_d42ce7f9ee1c1e 2-12,15-16,18-19,21-28,30-38,40-45
+pyproject.toml
+  s_a39c8049284fa3::t_f2bad8c58a7372 151
+README.md
+  s_a39c8049284fa3::t_df21a0062c192d 142
+README.zh-CN.md
+  s_a39c8049284fa3::t_b007da8813ed09 134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "6ba6a17bab429e7022263bd894b14ab149cfcfcd",
+  "prompts": {},
+  "sessions": {
+    "s_a39c8049284fa3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a03d38-2748-7532-af28-0d6f8fa54ba4",
+        "model": "auto"
+      },
+      "human_author": "Jie Meng <jmengxy@gmail.com>"
+    }
+  }
+}
