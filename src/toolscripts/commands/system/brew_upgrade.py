@@ -5,6 +5,11 @@ Requires the ``brew`` binary on PATH (macOS / Linux only). Runs
 as it runs. Stdin is redirected from ``/dev/null`` so brew runs
 non-interactively: its y/n confirmation prompt is skipped when stdin is not a
 TTY, so no keyboard input is needed and no ``yes``-spam reaches the terminal.
+
+A non-zero ``brew upgrade`` only counts as a failure when something is still
+outdated afterwards. Brew often exits non-zero after doing useful work (e.g.
+a download that fails once and succeeds on retry); in that case the failure
+is downgraded to a warning and the command exits 0.
 """
 
 from __future__ import annotations
@@ -18,6 +23,18 @@ from toolscripts.core.platform import require_platform
 from toolscripts.core.shell import capture, require, run
 
 log = get_logger(__name__)
+
+
+def _something_still_outdated() -> bool:
+    """True if ``brew outdated`` lists anything, or if it can't be checked.
+
+    The uncheckable case defaults to True so a real failure is never
+    downgraded just because the verification step itself broke.
+    """
+    try:
+        return capture(["brew", "outdated"]) != ""
+    except subprocess.CalledProcessError:
+        return True
 
 
 def main() -> None:
@@ -56,10 +73,14 @@ def main() -> None:
                 run(["bash", "-c", cmd])
         except subprocess.CalledProcessError as exc:
             # brew can exit non-zero even after doing useful work (e.g. one
-            # cask fails to upgrade while 10 formulae succeed). Keep going so
-            # cleanup still runs, then report the failed steps at the end.
+            # cask fails to upgrade while 10 formulae succeed, or a download
+            # fails once and a retry succeeds). Keep going so cleanup still
+            # runs, then report the failed steps at the end.
             log.warning("%s exited with status %d", cmd, exc.returncode)
-            failures.append(cmd)
+            if cmd.startswith("brew upgrade") and not _something_still_outdated():
+                log.warning("%s: nothing is outdated, treating the failure as transient", cmd)
+            else:
+                failures.append(cmd)
 
     if failures:
         log.error("failed steps: %s", ", ".join(failures))
