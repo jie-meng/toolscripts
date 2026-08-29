@@ -1,0 +1,14 @@
+src/toolscripts/commands/system/brew_upgrade.py
+  h_e0538e51a4c5ef 8-12,28-39,76-78,80-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d0bf410453332c186cc26a9bf0346ab174135ab5",
+  "prompts": {},
+  "humans": {
+    "h_e0538e51a4c5ef": {
+      "author": "Jie Meng <jmengxy@gmail.com>"
+    }
+  }
+}
