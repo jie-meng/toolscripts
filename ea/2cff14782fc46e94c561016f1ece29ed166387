@@ -1,0 +1,18 @@
+src/toolscripts/commands/system/iterm_setup.py
+  h_e0538e51a4c5ef 28-35,57-58,60-71,109
+src/toolscripts/data/iterm/README.md
+  h_e0538e51a4c5ef 1-13,32
+src/toolscripts/data/iterm/swap_windows.py
+  h_e0538e51a4c5ef 1-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ea2cff14782fc46e94c561016f1ece29ed166387",
+  "prompts": {},
+  "humans": {
+    "h_e0538e51a4c5ef": {
+      "author": "Jie Meng <jmengxy@gmail.com>"
+    }
+  }
+}
