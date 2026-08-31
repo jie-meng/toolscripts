@@ -23,8 +23,15 @@ ITERM_APP = Path("/Applications/iTerm.app")
 ITERM_SCRIPTS = Path.home() / "Library/Application Support/iTerm2/Scripts"
 ITERM_AUTOLAUNCH = ITERM_SCRIPTS / "AutoLaunch"
 PLIST = Path.home() / "Library/Preferences/com.googlecode.iterm2.plist"
-SHORTCUT_KEY = "0x6c-0x180000-0x25"
 PLIST_BUDDY = "/usr/libexec/PlistBuddy"
+
+# (plist key, script function, human-readable shortcut).
+# The plist key is "<character>-<modifiers>-<virtual key code>"; 0x180000 is
+# Cmd+Opt. See com.googlecode.iterm2.plist :GlobalKeyMap for existing entries.
+SHORTCUTS = [
+    ("0x6c-0x180000-0x25", "split_vertical_quarter", "Cmd+Opt+L"),
+    ("0x6b-0x180000-0x28", "swap_windows", "Cmd+Opt+K"),
+]
 
 
 def _bundled_scripts_dir() -> Path | None:
@@ -47,21 +54,21 @@ def _plist_buddy(*args: str) -> bool:
     return res.returncode == 0
 
 
-def _configure_shortcut() -> None:
-    log.info("configuring keyboard shortcut Cmd+Opt+L for split_vertical_quarter() ...")
+def _configure_shortcuts() -> None:
+    # Creating the container fails when it already exists, which is expected.
     _plist_buddy("-c", "Add :GlobalKeyMap dict")
-    _plist_buddy("-c", f"Delete :GlobalKeyMap:{SHORTCUT_KEY}")
-    if not _plist_buddy("-c", f"Add :GlobalKeyMap:{SHORTCUT_KEY} dict"):
-        return
-    _plist_buddy("-c", f"Add :GlobalKeyMap:{SHORTCUT_KEY}:Action integer 60")
-    _plist_buddy("-c", f"Add :GlobalKeyMap:{SHORTCUT_KEY}:'Apply Mode' integer 0")
-    _plist_buddy("-c", f"Add :GlobalKeyMap:{SHORTCUT_KEY}:Escaping integer 2")
-    _plist_buddy(
-        "-c",
-        f"Add :GlobalKeyMap:{SHORTCUT_KEY}:Text string 'split_vertical_quarter()'",
-    )
-    _plist_buddy("-c", f"Add :GlobalKeyMap:{SHORTCUT_KEY}:Version integer 2")
-    log.success("shortcut configured")
+    for key, function, label in SHORTCUTS:
+        log.info("configuring %s for %s() ...", label, function)
+        _plist_buddy("-c", f"Delete :GlobalKeyMap:{key}")
+        if not _plist_buddy("-c", f"Add :GlobalKeyMap:{key} dict"):
+            log.error("could not add %s; skipping", label)
+            continue
+        _plist_buddy("-c", f"Add :GlobalKeyMap:{key}:Action integer 60")
+        _plist_buddy("-c", f"Add :GlobalKeyMap:{key}:'Apply Mode' integer 0")
+        _plist_buddy("-c", f"Add :GlobalKeyMap:{key}:Escaping integer 2")
+        _plist_buddy("-c", f"Add :GlobalKeyMap:{key}:Text string '{function}()'")
+        _plist_buddy("-c", f"Add :GlobalKeyMap:{key}:Version integer 2")
+        log.success("%s -> %s()", label, function)
 
 
 def main() -> None:
@@ -99,7 +106,7 @@ def main() -> None:
         log.success("installed %s", target)
 
     if not args.no_shortcut:
-        _configure_shortcut()
+        _configure_shortcuts()
 
     log.info(
         "next steps: completely quit iTerm2 (Cmd+Q) and reopen so the AutoLaunch script picks up;"

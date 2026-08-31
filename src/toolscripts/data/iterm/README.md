@@ -1,4 +1,16 @@
-# iTerm2 Split Vertical Quarter Script
+# iTerm2 Scripts
+
+Two AutoLaunch scripts are bundled:
+
+| Script | Shortcut | What it does |
+| --- | --- | --- |
+| `split_vertical_quarter.py` | ⌘⌥L | Splits the current pane vertically and toggles the ratio between 0.75/0.25 and 0.50/0.50 |
+| `swap_windows.py` | ⌘⌥K | Swaps the frame (position + size) of the current window with the next window in iTerm2's window list, wrapping around |
+
+With exactly two windows open, ⌘⌥K simply trades their places. Fullscreen
+windows are skipped, since their frames are owned by the screen.
+
+## split_vertical_quarter
 
 This script allows you to split the current iTerm2 window vertically and automatically resize the new right pane to 1/4 of the window width.
 
@@ -17,7 +29,7 @@ Run the setup script from the repository root:
 
 This script will automatically:
 - Copy all Python scripts to iTerm2's AutoLaunch directory
-- Configure keyboard shortcut (⌘⌥L)
+- Configure keyboard shortcuts (⌘⌥L and ⌘⌥K)
 - Set proper permissions
 
 Then follow the manual configuration steps below.
