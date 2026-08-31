@@ -1,0 +1,26 @@
+src/toolscripts/commands/system/iterm_setup.py
+  s_80d13eb88e97ec::t_a39d794dd760ed 37-38
+src/toolscripts/data/iterm/README.md
+  s_80d13eb88e97ec::t_2a81b6f848e886 11-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "71519d1e5c4adb3f01511fb581b02488fe71c181",
+  "prompts": {},
+  "humans": {
+    "h_e0538e51a4c5ef": {
+      "author": "Jie Meng <jmengxy@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_80d13eb88e97ec": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0566f-bec0-7fad-b867-d13eda00df8f",
+        "model": "deepseek-v4-flash-0731"
+      },
+      "human_author": null
+    }
+  }
+}
