@@ -1,14 +1,15 @@
 # iTerm2 Scripts
 
-Two AutoLaunch scripts are bundled:
+One AutoLaunch script is bundled:
 
 | Script | Shortcut | What it does |
 | --- | --- | --- |
 | `split_vertical_quarter.py` | ⌘⌥L | Splits the current pane vertically and toggles the ratio between 0.75/0.25 and 0.50/0.50 |
-| `swap_windows.py` | ⌘⌥K | Swaps the frame (position + size) of the current window with the next window in iTerm2's window list, wrapping around |
 
-With exactly two windows open, ⌘⌥K simply trades their places. Fullscreen
-windows are skipped, since their frames are owned by the screen.
+⌘⌥K needs no script. It is a plain key binding for iTerm2's built-in
+"Swap With Split Pane on Left" action, which exchanges the focused session
+with the session beside it. iTerm2 exposes swapping neither as a Python API
+call nor as a menu item, so no script is needed.
 
 ## split_vertical_quarter
 

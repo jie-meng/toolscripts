@@ -25,12 +25,18 @@ ITERM_AUTOLAUNCH = ITERM_SCRIPTS / "AutoLaunch"
 PLIST = Path.home() / "Library/Preferences/com.googlecode.iterm2.plist"
 PLIST_BUDDY = "/usr/libexec/PlistBuddy"
 
-# (plist key, script function, human-readable shortcut).
+# (plist key, human-readable shortcut, iTerm2 action id, action parameter).
 # The plist key is "<character>-<modifiers>-<virtual key code>"; 0x180000 is
-# Cmd+Opt. See com.googlecode.iterm2.plist :GlobalKeyMap for existing entries.
+# Cmd+Opt. Action ids come from iterm2.binding.BindingAction in the Python API
+# bundled with iTerm2.
+ACTION_INVOKE_SCRIPT_FUNCTION = 60
+ACTION_SWAP_PANE_LEFT = 53
+
 SHORTCUTS = [
-    ("0x6c-0x180000-0x25", "split_vertical_quarter", "Cmd+Opt+L"),
-    ("0x6b-0x180000-0x28", "swap_windows", "Cmd+Opt+K"),
+    ("0x6c-0x180000-0x25", "Cmd+Opt+L", ACTION_INVOKE_SCRIPT_FUNCTION, "split_vertical_quarter()"),
+    # iTerm2's built-in "Swap With Split Pane on Left" key action, so no
+    # script is needed (no swap RPC in the Python API, no menu item).
+    ("0x6b-0x180000-0x28", "Cmd+Opt+K", ACTION_SWAP_PANE_LEFT, ""),
 ]
 
 
@@ -57,18 +63,20 @@ def _plist_buddy(*args: str) -> bool:
 def _configure_shortcuts() -> None:
     # Creating the container fails when it already exists, which is expected.
     _plist_buddy("-c", "Add :GlobalKeyMap dict")
-    for key, function, label in SHORTCUTS:
-        log.info("configuring %s for %s() ...", label, function)
+    for key, label, action, param in SHORTCUTS:
+        log.info("configuring %s ...", label)
         _plist_buddy("-c", f"Delete :GlobalKeyMap:{key}")
         if not _plist_buddy("-c", f"Add :GlobalKeyMap:{key} dict"):
             log.error("could not add %s; skipping", label)
             continue
-        _plist_buddy("-c", f"Add :GlobalKeyMap:{key}:Action integer 60")
-        _plist_buddy("-c", f"Add :GlobalKeyMap:{key}:'Apply Mode' integer 0")
-        _plist_buddy("-c", f"Add :GlobalKeyMap:{key}:Escaping integer 2")
-        _plist_buddy("-c", f"Add :GlobalKeyMap:{key}:Text string '{function}()'")
-        _plist_buddy("-c", f"Add :GlobalKeyMap:{key}:Version integer 2")
-        log.success("%s -> %s()", label, function)
+        _plist_buddy("-c", f"Add :GlobalKeyMap:{key}:Action integer {action}")
+        if action == ACTION_INVOKE_SCRIPT_FUNCTION:
+            # Extra fields iTerm2's own preferences UI writes for text actions.
+            _plist_buddy("-c", f"Add :GlobalKeyMap:{key}:'Apply Mode' integer 0")
+            _plist_buddy("-c", f"Add :GlobalKeyMap:{key}:Escaping integer 2")
+            _plist_buddy("-c", f"Add :GlobalKeyMap:{key}:Version integer 2")
+        _plist_buddy("-c", f"Add :GlobalKeyMap:{key}:Text string '{param}'")
+        log.success("%s -> action %d", label, action)
 
 
 def main() -> None:
