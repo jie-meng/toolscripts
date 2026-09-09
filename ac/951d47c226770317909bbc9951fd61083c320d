@@ -1,0 +1,14 @@
+src/toolscripts/commands/system/iterm_setup.py
+  h_e0538e51a4c5ef 9,19,24-25,57-64,92-162,171-175,182-185,195-196,200,213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "ac951d47c226770317909bbc9951fd61083c320d",
+  "prompts": {},
+  "humans": {
+    "h_e0538e51a4c5ef": {
+      "author": "Jie Meng <jmengxy@gmail.com>"
+    }
+  }
+}
