@@ -186,6 +186,7 @@ agent discovers it on the reflex pass.
 | Pick one item from a list (curses) | `select_one(title, items, *, default_index=None)` → `int \| None` | `toolscripts.core.ui_curses` |
 | Pick zero or more items from a list (curses) | `select_many(title, items, *, preselected=None, disabled=None)` → `list[int] \| None` | `toolscripts.core.ui_curses` |
 | Drill-down browser (group → item + detail pane) | `browse_commands(title, entries, *, detail_provider=...)` | `toolscripts.core.ui_curses` |
+| Git branch snapshot (local+remote, tracking/gone/merged/worktree) | `collect_snapshot(path=".")` → `BranchSnapshot` | `toolscripts.git_utils.branches` |
 
 `require_platform` prints a yellow warning and exits **0** (intentional no-op,
 not a failure) on unsupported OSes.

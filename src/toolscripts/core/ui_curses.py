@@ -79,7 +79,12 @@ class BrowseEntry(NamedTuple):
     summary: str
 
 
-def _ensure_curses_available() -> None:
+def ensure_curses_available() -> None:
+    """Exit with a friendly message when the ``curses`` module is missing.
+
+    Public so that command modules with their own curses loops can reuse
+    the same error handling as the shared pickers.
+    """
     try:
         import curses  # noqa: F401
 
@@ -98,6 +103,9 @@ def _ensure_curses_available() -> None:
         sys.exit(1)
 
 
+_ensure_curses_available = ensure_curses_available  # legacy private alias
+
+
 def select_many(
     title: str,
     items: list[str],
@@ -112,7 +120,7 @@ def select_many(
     all / none, ``Enter`` to confirm, ``q`` or Esc to cancel. Items in
     ``disabled`` are rendered dimmed and cannot be toggled.
     """
-    _ensure_curses_available()
+    ensure_curses_available()
     import curses
 
     def _run(stdscr: curses.window) -> list[int] | None:
@@ -139,7 +147,7 @@ def select_one(
     Keys: ``j``/``k`` or arrows to move, ``Enter`` to confirm, ``q`` or Esc
     to cancel. ``default_index`` highlights one item on entry.
     """
-    _ensure_curses_available()
+    ensure_curses_available()
     import curses
 
     def _run(stdscr: curses.window) -> int | None:
@@ -177,7 +185,7 @@ def select_many_help(
     per-item status such as ``"installed"``. Returns the chosen indices, or
     ``None`` on cancel.
     """
-    _ensure_curses_available()
+    ensure_curses_available()
     import curses
 
     def _run(stdscr: curses.window) -> list[int] | None:
@@ -575,7 +583,7 @@ def browse_commands(
     ``/``                start a search filter (Enter to apply, Esc to clear)
     ``q``                quit
     """
-    _ensure_curses_available()
+    ensure_curses_available()
     import curses
 
     if not entries:
@@ -898,7 +906,7 @@ def browse_docs(
     Returns the picked file node, or ``None`` on cancel.
     Pressing ``Enter`` on a file copies its content to the clipboard.
     """
-    _ensure_curses_available()
+    ensure_curses_available()
     import curses
 
     def _run(stdscr: curses.window) -> DocNode | None:
