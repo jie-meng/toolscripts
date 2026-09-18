@@ -72,6 +72,7 @@ pip install -e .                        # 等价于 ./manage.py install --pip
 | `clipboard`  | `pyperclip`                                   | `git-copy-diff`、`slugify` 等      |
 | `media`      | `pillow`、`matplotlib`                        | `img-resize`、`img-scale` 等       |
 | `office`     | `openpyxl`                                    | `xlsx-text2num`                    |
+| `pdf`        | `pymupdf`、`pillow`、`numpy`、`scipy`         | `pdf-save-ink`                     |
 | `text`       | `markdownify`、`translate`、`binaryornot`     | `web2md`、`translate` 等           |
 | `windows`    | `windows-curses`（仅 Windows）                | 基于 curses 的交互选择器           |
 | `llama`      | `huggingface-hub`                             | `llamacmd`（HF 搜索/下载）         |
@@ -130,7 +131,7 @@ toolscripts-list -i <domain>              # 直接跳转到某个领域（如 gi
 | Git        | `git-alias-setup`、`git-copy-diff`、`git-branch-delete`、`git-merge-to-main`、`git-make-patches`、`git-apply-patches`、`git-install-sensitive-hook`、`git-user`、`git-user-batch`、`git-quick-commit` |
 | Android    | `android-log`、`android-record`、`android-deeplink`、`android-input-text`、`android-screencast`、`android-logcat`、`android-emulator`、`android-batch-install`、`android-retrieve-media`、`android-rename-project`、`android-adbsync`、`android-keystore-generate`、`android-screenshot`、`android-studio` |
 | iOS        | `ios-log`、`ios-log-tail`、`ios-record`、`ios-simulator`、`ios-deeplink`、`xcode-terminal` |
-| 媒体       | `img-resize`、`img-scale`、`imgcat`、`playsound`、`stopsound`、`mp4-compress`、`mov-to-mp4`、`mp4cut`、`mp4togif`、`mp3-to-pcm`、`remove-watermark`、`pdf-merge`、`kindle-pdf-cropper` |
+| 媒体       | `img-resize`、`img-scale`、`imgcat`、`playsound`、`stopsound`、`mp4-compress`、`mov-to-mp4`、`mp4cut`、`mp4togif`、`mp3-to-pcm`、`remove-watermark`、`pdf-merge`、`pdf-save-ink`、`kindle-pdf-cropper` |
 | AI 工具    | `ocdo`、`ocdo-models`、`cbdo`、`pido`、`free-models-openrouter`、`free-models-nvidia`、`agents-setup`、`agents-cleanup`、`ai-links`、`graphifycmd`、`npm-tools` |
 | 文本/文档  | `markdown-snippet`、`slugify`、`web2md`、`translate`、`mermaid`、`mmdcmd`、`statcounter-os-coverage`、`xlsx-text2num`、`docs-pick` |
 | 系统       | `dotnet-globaljson`、`toolscripts-list`、`myip`、`checkspace`、`lsdevcu`、`rm-ds-store`、`rm-meta`、`dirdiff`、`intellij`、`pycharm`、`xcode`、`venv-create`、`uvcmd`、`iterm-setup`、`kill-pwchrome`、`brew-upgrade`、`npm-gsync`、`pi-update-all`、`rpi-vpn-setup` |
