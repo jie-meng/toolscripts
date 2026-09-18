@@ -113,13 +113,22 @@ def _background_estimate(np, Image, ImageFilter, plane_u8, kernel: int):
 
 
 def _big_color_mask(np, ndi, arr, frac: float):
-    """Boolean mask of saturated pixels belonging to a large connected color region.
+    """Boolean mask of saturated pixels that belong to background color regions.
 
     A large-kernel median can't tell a thin rounded corner off a big color block
-    from a small colored chip - both are locally thin. But the corner is *connected*
-    to the block while a chip is isolated. So we label connected components of the
-    saturated-color mask and flag any component covering more than ``frac`` of the
-    page; those get whitened as one piece. Returns None when disabled or nothing qualifies.
+    from a small colored chip - both are locally thin. So we label connected
+    components of the saturated-color mask and remove the ones that are background
+    by two signals:
+
+    * **large**: a component covering more than ``frac`` of the page (a big block,
+      together with the thin rounded corners connected to it), or
+    * **border-touching**: a component that reaches the page edge. A colored card
+      that fills the page can split its background into several small corner
+      wedges, each too small to be "large" - but they touch the border, whereas
+      meaningful chips / circled numbers sit in the interior. Border components
+      still need a smaller floor (``frac``/10) so a stray edge speck isn't removed.
+
+    Returns None when disabled or nothing qualifies.
     """
     mx = arr.max(axis=2)
     mn = arr.min(axis=2)
@@ -132,10 +141,14 @@ def _big_color_mask(np, ndi, arr, frac: float):
     if count == 0:
         return None
     sizes = ndi.sum(np.ones_like(labels), labels, index=range(1, count + 1))
-    big_ids = np.nonzero(sizes > frac * colored.size)[0] + 1
-    if big_ids.size == 0:
+    big_ids = set(np.nonzero(sizes > frac * colored.size)[0] + 1)
+    border_floor = frac * colored.size / 10
+    edges = np.concatenate([labels[0, :], labels[-1, :], labels[:, 0], labels[:, -1]])
+    border_ids = set(np.unique(edges).tolist()) - {0}
+    keep = big_ids | {cid for cid in border_ids if sizes[cid - 1] > border_floor}
+    if not keep:
         return None
-    return np.isin(labels, big_ids)
+    return np.isin(labels, np.fromiter(keep, dtype=labels.dtype))
 
 
 def _process_pixels(
