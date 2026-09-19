@@ -162,15 +162,36 @@ def _stamp_mtime() -> float:
         return 0.0
 
 
-def _write_stamp() -> None:
+def _write_stamp(extras: str = "") -> None:
     try:
-        _STAMP.write_text(f"{_pyproject_mtime()}\n", encoding="utf-8")
+        _STAMP.write_text(f"{_pyproject_mtime()}\n{extras}\n", encoding="utf-8")
     except OSError as exc:
         warn(f"could not write install stamp: {exc}")
 
 
 def _pyproject_changed_since_install() -> bool:
     return _pyproject_mtime() > _stamp_mtime()
+
+
+def _stamped_extras() -> set[str]:
+    """Extras recorded by the last install; empty for a legacy/missing stamp."""
+    try:
+        lines = _STAMP.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return set()
+    if len(lines) < 2:  # legacy stamp (mtime only) -> extras unknown
+        return set()
+    return {e.strip() for e in lines[1].split(",") if e.strip()}
+
+
+def _extras_satisfied(requested: str, stamped: set[str]) -> bool:
+    """True if the requested extras are already covered by the last install."""
+    req = {e.strip() for e in requested.split(",") if e.strip()}
+    if not req:
+        return True  # core-only install: nothing extra to verify
+    if "all" in stamped:
+        return True  # a previous 'all' install covers every extra
+    return req.issubset(stamped)
 
 
 # ---------------------------------------------------------------------------
@@ -296,7 +317,7 @@ def cmd_install(args: argparse.Namespace) -> int:
             cmd.append("--force-reinstall")
         _run(cmd, check=True)
         cleanup_orphans()
-        _write_stamp()
+        _write_stamp(args.extras)
         success(f"{PACKAGE} installed via pip into {sys.executable}")
         return 0
 
@@ -305,11 +326,15 @@ def cmd_install(args: argparse.Namespace) -> int:
         return 1
 
     already = _uv_installed()
+    extras_ok = _extras_satisfied(args.extras, _stamped_extras())
 
-    if already and not args.force and not _pyproject_changed_since_install():
+    if already and not args.force and not _pyproject_changed_since_install() and extras_ok:
         success(f"{PACKAGE} is up to date - editable install picks up src/ changes automatically")
         info("pass --force to reinstall anyway, or edit pyproject.toml to trigger a reinstall")
         return 0
+
+    if already and not args.force and not extras_ok:
+        info(f"requested extras ({args.extras}) are not in the current install; reinstalling")
 
     spec = f".[{args.extras}]" if args.extras else "."
     cmd = ["uv", "tool", "install", "-e", spec]
@@ -317,7 +342,7 @@ def cmd_install(args: argparse.Namespace) -> int:
         cmd.append("--force")
     _run(cmd, check=True)
     cleanup_orphans()
-    _write_stamp()
+    _write_stamp(args.extras)
     success(f"{PACKAGE} installed via uv (extras: {args.extras or 'none'})")
     info("commands are now available on $PATH (~/.local/bin)")
     return 0
