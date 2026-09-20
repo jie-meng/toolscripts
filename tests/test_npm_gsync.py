@@ -32,6 +32,18 @@ def test_read_global_packages(tmp_path: Path) -> None:
     assert read_global_packages(modules) == {"appium": "3.6.0", "@deepseek-ai/dsh": "0.1.0-rc.6"}
 
 
+def test_read_global_packages_skips_npm_trash(tmp_path: Path) -> None:
+    """An interrupted install leaves the replaced package behind as ``.<name>-<hash>``."""
+    modules = tmp_path / "node_modules"
+    _write_pkg(modules / "pnpm", "12.5.1")
+    _write_pkg(modules / ".pnpm-rkBQ2xeH", "12.4.2")
+    _write_pkg(modules / "@github" / "copilot", "1.0.86")
+    _write_pkg(modules / "@github" / ".copilot-Dc5Njnnh", "1.0.80")
+    (modules / ".bin").mkdir(parents=True)
+
+    assert read_global_packages(modules) == {"pnpm": "12.5.1", "@github/copilot": "1.0.86"}
+
+
 def test_read_global_packages_missing_dir(tmp_path: Path) -> None:
     assert read_global_packages(tmp_path / "missing") == {}
 

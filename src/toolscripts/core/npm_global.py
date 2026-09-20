@@ -13,22 +13,35 @@ from pathlib import Path
 SYSTEM_PACKAGES = frozenset({"npm", "corepack"})
 
 
+def _is_trash(name: str) -> bool:
+    """True for npm's housekeeping entries, which are never real packages.
+
+    While replacing a package, arborist renames the old copy aside to
+    ``.<name>-<path hash>`` (see ``@npmcli/arborist/lib/retire-path.js``) and only
+    deletes it once the whole install succeeds - an interrupted install leaves it
+    behind, complete with the old ``package.json``. No valid npm package name can
+    start with a dot, so the prefix identifies the trash plus ``.bin``/``.pnpm``.
+    """
+    return name.startswith(".")
+
+
 def read_global_packages(modules_dir: Path) -> dict[str, str]:
     """Return ``name -> version`` for top-level packages under ``modules_dir``.
 
-    Skips the Node-bundled ``npm``/``corepack`` and ignores entries without a
-    ``package.json`` (e.g. empty ``@scope`` leftovers).
+    Skips the Node-bundled ``npm``/``corepack``, npm's trash and dot directories,
+    and entries without a ``package.json`` (e.g. empty ``@scope`` leftovers).
     """
     packages: dict[str, str] = {}
     if not modules_dir.is_dir():
         return packages
     for entry in sorted(modules_dir.iterdir()):
+        if _is_trash(entry.name) or not entry.is_dir():
+            continue
         if entry.name.startswith("@"):
-            if entry.is_dir():
-                for sub in sorted(entry.iterdir()):
-                    if sub.is_dir():
-                        _record(packages, f"{entry.name}/{sub.name}", sub)
-        elif entry.is_dir():
+            for sub in sorted(entry.iterdir()):
+                if not _is_trash(sub.name) and sub.is_dir():
+                    _record(packages, f"{entry.name}/{sub.name}", sub)
+        else:
             _record(packages, entry.name, entry)
     return packages
 
