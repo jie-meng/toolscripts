@@ -151,8 +151,6 @@ audio-record              = "toolscripts.commands.media.record_audio:main"
 audio-trim                = "toolscripts.commands.media.trim_audio:main"
 
 # ai tooling
-ocdo                      = "toolscripts.commands.ai.ocdo:run_main"
-ocdo-models               = "toolscripts.commands.ai.ocdo:models_main"
 cbdo                      = "toolscripts.commands.ai.cbdo:main"
 pido                      = "toolscripts.commands.ai.pido:main"
 free-models-openrouter    = "toolscripts.commands.ai.free_models_openrouter:main"

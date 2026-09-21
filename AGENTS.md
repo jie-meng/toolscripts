@@ -142,10 +142,6 @@ its own AGENTS.md section (rare), add a section here too.
   `AITool` dataclass and the `AI_TOOLS` list live once in
   `commands/ai/tools.py`, **not** duplicated across the three commands —
   when a vendor moves a config path, you update one row.
-- `ocdo-models` needed an interactive single-choice picker. Instead of
-  copying the multi-select curses code from `agents-setup`, the picker
-  was generalized into `core.ui_curses.select_one` so both commands share
-  the same curses skeleton. (See §6 *Interactive UIs*.)
 - ADB device probing is centralized in `src/toolscripts/adb/` so every
   `android-*` command speaks to ADB the same way (same timeout, same
   error message, same single-vs-multi-device handling).
@@ -278,7 +274,6 @@ hand-written numbered prompt. This keeps every command's picker consistent
 
 Examples in the codebase:
 
-- `ocdo-models` (`commands/ai/ocdo.py`) — `select_one` for picking a model.
 - `agents-setup` / `agents-cleanup` (`commands/ai/`) — `select_many` for
   picking which AI tool integrations to act on, with `disabled=` greying
   out tools that aren't installed.
