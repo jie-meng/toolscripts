@@ -75,18 +75,21 @@ def capture(
     cwd: str | None = None,
     input: str | None = None,
     strip: bool = True,
+    merge_stderr: bool = False,
 ) -> str:
-    """Run ``cmd`` and return its stdout as a string."""
+    """Run ``cmd`` and return its stdout as a string.
+
+    With ``merge_stderr=True``, stderr is captured too — handy for tools
+    (like ffmpeg filters) that log results to stderr.
+    """
     log.debug("capture: %s", " ".join(cmd))
-    result = subprocess.run(
-        list(cmd),
-        check=check,
-        env=env,
-        cwd=cwd,
-        input=input,
-        text=True,
-        capture_output=True,
-    )
+    kwargs: dict[str, object] = dict(check=check, env=env, cwd=cwd, input=input, text=True)
+    if merge_stderr:
+        kwargs["stdout"] = subprocess.PIPE
+        kwargs["stderr"] = subprocess.STDOUT
+    else:
+        kwargs["capture_output"] = True
+    result = subprocess.run(list(cmd), **kwargs)  # type: ignore[arg-type]
     return result.stdout.strip() if strip else result.stdout
 
 

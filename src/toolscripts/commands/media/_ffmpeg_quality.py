@@ -23,6 +23,8 @@ def encode(
     output_file: Path,
     *,
     quality: str | int,
+    video_filter: str | None = None,
+    audio_copy: bool = False,
 ) -> bool:
     """Run ffmpeg libx264/aac encode. Returns True on success."""
     try:
@@ -32,22 +34,12 @@ def encode(
         return False
 
     crf, preset = _PRESETS.get(str(quality), _PRESETS["1"])
-    cmd = [
-        "ffmpeg",
-        "-i",
-        str(input_file),
-        "-c:v",
-        "libx264",
-        "-crf",
-        crf,
-        "-preset",
-        preset,
-        "-c:a",
-        "aac",
-        "-movflags",
-        "+faststart",
-        str(output_file),
-    ]
+    cmd = ["ffmpeg", "-i", str(input_file)]
+    if video_filter:
+        cmd += ["-vf", video_filter]
+    cmd += ["-c:v", "libx264", "-crf", crf, "-preset", preset]
+    cmd += ["-c:a", "copy" if audio_copy else "aac"]
+    cmd += ["-movflags", "+faststart", str(output_file)]
     log.info("running: %s", " ".join(cmd))
     try:
         run(cmd)
