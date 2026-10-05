@@ -1,0 +1,26 @@
+README.md
+  h_e0538e51a4c5ef 142
+README.zh-CN.md
+  h_e0538e51a4c5ef 134
+pyproject.toml
+  h_e0538e51a4c5ef 147
+src/toolscripts/commands/media/_ffmpeg_quality.py
+  h_e0538e51a4c5ef 26-27,37-42
+src/toolscripts/commands/media/remove_black_bars.py
+  h_e0538e51a4c5ef 1-320
+src/toolscripts/core/shell.py
+  h_e0538e51a4c5ef 78,80-84,86-92
+tests/test_remove_black_bars.py
+  h_e0538e51a4c5ef 1-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ad4a02842b582c9fca1914b38b04108186561023",
+  "prompts": {},
+  "humans": {
+    "h_e0538e51a4c5ef": {
+      "author": "Jie Meng <jmengxy@gmail.com>"
+    }
+  }
+}
