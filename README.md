@@ -142,7 +142,7 @@ full options.
 | media      | `img-resize`, `img-scale`, `imgcat`, `playsound`, `stopsound`, `mp4-compress`, `mov-to-mp4`, `mp4cut`, `mp4togif`, `mp3-to-pcm`, `remove-watermark`, `video-remove-black-bars`, `pdf-merge`, `pdf-save-ink`, `kindle-pdf-cropper` |
 | ai         | `cbdo`, `pido`, `free-models-openrouter`, `free-models-nvidia`, `agents-setup`, `agents-cleanup`, `ai-links`, `graphifycmd`, `npm-tools`, `llamacmd`, `pi-extensions-setup` |
 | text/docs  | `markdown-snippet`, `slugify`, `web2md`, `translate`, `mermaid`, `mmdcmd`, `statcounter-os-coverage`, `xlsx-text2num`, `docs-pick` |
-| system     | `dotnet-globaljson`, `toolscripts-list`, `myip`, `checkspace`, `lsdevcu`, `rm-ds-store`, `rm-meta`, `dirdiff`, `intellij`, `pycharm`, `xcode`, `venv-create`, `uvcmd`, `iterm-setup`, `codebuddy-setup`, `kill-pwchrome`, `brew-upgrade`, `npm-gsync`, `pi-update-all`, `rpi-vpn-setup` |
+| system     | `dotnet-globaljson`, `toolscripts-list`, `myip`, `checkspace`, `agent-clean`, `lsdevcu`, `rm-ds-store`, `rm-meta`, `dirdiff`, `intellij`, `pycharm`, `xcode`, `venv-create`, `uvcmd`, `iterm-setup`, `codebuddy-setup`, `kill-pwchrome`, `brew-upgrade`, `npm-gsync`, `pi-update-all`, `rpi-vpn-setup` |
 | misc       | `axios-audit`, `extract-games`, `list-include-dirs-from-here`, `list-include-dirs-clang`, `dockercmd`, `mongo-tool` |
 
 The complete list lives in `[project.scripts]` inside `pyproject.toml` — but

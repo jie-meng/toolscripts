@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from pathlib import Path
 
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
+from toolscripts.core.size import dir_size
 
 log = get_logger(__name__)
 
@@ -20,21 +20,10 @@ _UNITS = {
 }
 
 
-def _dir_size(path: Path) -> int:
-    total = 0
-    for root, _dirs, files in os.walk(path):
-        for fname in files:
-            try:
-                total += (Path(root) / fname).stat().st_size
-            except OSError:
-                continue
-    return total
-
-
 def _entry_size(path: Path) -> int:
     try:
         if path.is_dir():
-            return _dir_size(path)
+            return dir_size(path)
         return path.stat().st_size
     except OSError:
         return 0

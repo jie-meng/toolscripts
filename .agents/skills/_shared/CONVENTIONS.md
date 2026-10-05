@@ -175,6 +175,7 @@ agent discovers it on the reflex pass.
 | Capture stdout | `capture([...])` | `toolscripts.core.shell` |
 | Probe / require binary | `which("foo")`, `require("foo")` | `toolscripts.core.shell` |
 | Best-effort run | `try_run([...])` | `toolscripts.core.shell` |
+| Measure dir/file size + human formatting | `dir_size(p)`, `path_size(p)`, `human_size(n)` | `toolscripts.core.size` |
 | Read npm global packages (skips node-bundled `npm`/`corepack` and npm's `.`-prefixed trash dirs) | `read_global_packages(modules_dir)` → `dict[str, str]` | `toolscripts.core.npm_global` |
 | Clipboard | `copy_to_clipboard(text)` | `toolscripts.core.clipboard` |
 | Platform gate | `require_platform("macos")` (also `"linux"`, `"windows"`) | `toolscripts.core.platform` |
