@@ -1,0 +1,30 @@
+.agents/skills/_shared/CONVENTIONS.md
+  h_e0538e51a4c5ef 178
+README.md
+  h_e0538e51a4c5ef 145
+README.zh-CN.md
+  h_e0538e51a4c5ef 137
+pyproject.toml
+  h_e0538e51a4c5ef 182
+src/toolscripts/commands/system/agent_clean.py
+  h_e0538e51a4c5ef 1-232
+src/toolscripts/commands/system/agent_clean_profiles.py
+  h_e0538e51a4c5ef 1-281
+src/toolscripts/commands/system/checkspace.py
+  h_e0538e51a4c5ef 10,26
+src/toolscripts/core/size.py
+  h_e0538e51a4c5ef 1-53
+tests/test_agent_clean.py
+  h_e0538e51a4c5ef 1-162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9ceba65c2190785eb044451387cb0436bd25ede4",
+  "prompts": {},
+  "humans": {
+    "h_e0538e51a4c5ef": {
+      "author": "Jie Meng <jmengxy@gmail.com>"
+    }
+  }
+}
