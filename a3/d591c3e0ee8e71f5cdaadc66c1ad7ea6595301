@@ -1,0 +1,14 @@
+src/toolscripts/data/ai/AGENTS.md
+  h_e0538e51a4c5ef 106-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a3d591c3e0ee8e71f5cdaadc66c1ad7ea6595301",
+  "prompts": {},
+  "humans": {
+    "h_e0538e51a4c5ef": {
+      "author": "Jie Meng <jmengxy@gmail.com>"
+    }
+  }
+}
