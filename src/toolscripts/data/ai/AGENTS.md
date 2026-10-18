@@ -103,3 +103,14 @@ The test: Every changed line should trace directly to the user's request.
 - Respond in the same language the user is using.
 - Be direct. State what you did, why, and any trade-offs.
 - When uncertain, say so—and explain what information would resolve the uncertainty.
+
+## 13. Sensitive Data
+
+**Secrets and PII stay out of the transcript. Use values indirectly—never display them.**
+
+- **Don't read secret-bearing files into context.** No `cat .env`, credential files (`~/.aws/credentials`, `~/.netrc`, private keys), or token dumps—not even "just to check what's configured".
+- **Don't echo values to verify them.** `echo $API_KEY`, `print(os.environ[...])`, and debug logging leak the secret. To confirm it exists, check that it is set and non-empty, or show a masked prefix—never the value itself.
+- **Read at runtime, use in place.** Have scripts or commands read secrets from the environment or a file and consume them directly; the conversation should carry only the variable name or path, not the value.
+- **Filter output that may contain credentials.** Full-config dumps (`env`, `git config --list`, `docker inspect`, `set -x`) routinely leak them; filter or select fields before output reaches the transcript.
+- **PII is the same class.** Names, emails, phone numbers, addresses, IDs—read and use them via scripts; don't copy them into the conversation unless genuinely needed.
+- **If a secret does surface, treat it as leaked.** Don't repeat it; say so and recommend rotating it.
