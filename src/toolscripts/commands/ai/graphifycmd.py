@@ -17,7 +17,7 @@ from toolscripts.core.colors import GREEN, YELLOW, colored
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
 from toolscripts.core.platform import is_linux, is_macos, is_windows
 from toolscripts.core.prompts import yes_no
-from toolscripts.core.shell import run, which
+from toolscripts.core.shell import capture, run, which
 from toolscripts.core.ui_curses import select_many, select_one
 
 from .tools import AI_TOOLS
@@ -74,8 +74,25 @@ def _graph_data() -> dict | None:
         return None
 
 
+def _hooks_dir() -> Path | None:
+    # Ask git rather than assuming .git/hooks: core.hooksPath (set by many repos) moves it.
+    try:
+        raw = capture(
+            ["git", "rev-parse", "--git-path", "hooks"], cwd=str(PROJECT_ROOT), check=False
+        )
+    except FileNotFoundError:
+        return None
+    if not raw:
+        return None
+    path = Path(raw)
+    return path if path.is_absolute() else PROJECT_ROOT / path
+
+
 def _hooks_installed() -> bool:
-    hook = PROJECT_ROOT / ".git/hooks/post-commit"
+    hooks = _hooks_dir()
+    if hooks is None:
+        return False
+    hook = hooks / "post-commit"
     if not hook.is_file():
         return False
     try:
