@@ -1,0 +1,19 @@
+src/toolscripts/commands/ai/graphifycmd.py
+  s_cdd652d2d0f9fd::t_ac4995b84588f5 20,77-90,92-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e82e98558d17ece97cb75b06f6c04c6eeb2995a8",
+  "prompts": {},
+  "sessions": {
+    "s_cdd652d2d0f9fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e90574b0-698f-4a30-a82d-d0dccd1298f0",
+        "model": "unknown"
+      },
+      "human_author": "Jie Meng <jmengxy@gmail.com>"
+    }
+  }
+}
