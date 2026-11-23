@@ -1,0 +1,21 @@
+manage.py
+  s_2377c3a279e298::t_4e4dc2a1baaf4f 433-434
+src/toolscripts/commands/media/qr_decode.py
+  s_2377c3a279e298::t_1ec26038aa4e21 1-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "88c702f27321ad70fc983348199b48d38d2b02fb",
+  "prompts": {},
+  "sessions": {
+    "s_2377c3a279e298": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_df7046c7dffeXX4NBxzSNuizDY",
+        "model": "unknown"
+      },
+      "human_author": "Jie Meng <jmengxy@gmail.com>"
+    }
+  }
+}
