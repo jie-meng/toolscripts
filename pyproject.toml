@@ -45,10 +45,15 @@ text = [
     "translate>=3.6,<3.7",
     "binaryornot>=0.4,<0.5",
 ]
+qrcode = [
+    "segno>=1.6,<2",
+    "zxing-cpp>=3.1,<4",
+    "pillow>=11.1,<11.2",
+]
 windows = ['windows-curses>=2.3; sys_platform == "win32"']
 llama = ["huggingface-hub>=0.24,<1"]
 all = [
-    "toolscripts[clipboard,media,office,pdf,text,windows,llama]",
+    "toolscripts[clipboard,media,office,pdf,text,qrcode,windows,llama]",
 ]
 dev = [
     "ruff>=0.6",
@@ -150,6 +155,8 @@ pdf-save-ink              = "toolscripts.commands.media.pdf_save_ink:main"
 kindle-pdf-cropper        = "toolscripts.commands.media.kindle_pdf_cropper:main"
 audio-record              = "toolscripts.commands.media.record_audio:main"
 audio-trim                = "toolscripts.commands.media.trim_audio:main"
+qr-gen                    = "toolscripts.commands.media.qr_gen:main"
+qr-decode                 = "toolscripts.commands.media.qr_decode:main"
 
 # ai tooling
 cbdo                      = "toolscripts.commands.ai.cbdo:main"

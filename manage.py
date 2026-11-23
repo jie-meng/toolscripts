@@ -430,7 +430,8 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_EXTRAS,
         help=(
             "comma-separated extras to install (default: none - core only). "
-            "Use 'all' for everything, or pick from clipboard,media,office,pdf,text,windows,llama. "
+            "Use 'all' for everything, or pick from "
+            "clipboard,media,office,pdf,text,qrcode,windows,llama. "
             "Example: --extras media,clipboard"
         ),
     )
