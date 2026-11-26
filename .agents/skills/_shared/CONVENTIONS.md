@@ -184,6 +184,7 @@ agent discovers it on the reflex pass.
 | Pick one item from a list (curses) | `select_one(title, items, *, default_index=None)` → `int \| None` | `toolscripts.core.ui_curses` |
 | Pick zero or more items from a list (curses) | `select_many(title, items, *, preselected=None, disabled=None)` → `list[int] \| None` | `toolscripts.core.ui_curses` |
 | Drill-down browser (group → item + detail pane) | `browse_commands(title, entries, *, detail_provider=...)` | `toolscripts.core.ui_curses` |
+| Running emulator of an AVD / stop it (waits until adb drops it) | `find_emulator_serial(avd)` → `str \| None`, `kill_emulator(serial)` → `bool` | `toolscripts.adb` |
 | Git branch snapshot (local+remote, tracking/gone/merged/worktree) | `collect_snapshot(path=".")` → `BranchSnapshot` | `toolscripts.git_utils.branches` |
 
 `require_platform` prints a yellow warning and exits **0** (intentional no-op,

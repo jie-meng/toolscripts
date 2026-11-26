@@ -7,20 +7,32 @@ import contextlib
 import subprocess
 import sys
 
+from toolscripts.adb import find_emulator_serial, kill_emulator
 from toolscripts.core.log import add_logging_flags, configure_from_args, get_logger
 from toolscripts.core.shell import CommandNotFoundError, capture, require
 from toolscripts.core.ui_curses import _ensure_curses_available
 
 log = get_logger(__name__)
 
+# Public resolvers for the emulator, instead of the host's DNS copied at boot: a VPN switched on or off
+# while the emulator runs leaves it unable to resolve names ("No internet connection", IPs still reachable).
+PUBLIC_DNS = "8.8.8.8,1.1.1.1"
 
-def _pick_avd(avds: list[str], *, writable: bool, detach: bool) -> tuple[int, bool, bool] | None:
-    """Show a curses picker with toggle options. Returns (index, writable, detach) or None on cancel."""
+Options = tuple[bool, bool, bool]
+
+
+def _pick_avd(
+    avds: list[str], *, writable: bool, detach: bool, public_dns: bool
+) -> tuple[int, Options] | None:
+    """Show a curses picker with toggle options.
+
+    Returns (index, (writable, detach, public_dns)) or None on cancel.
+    """
     _ensure_curses_available()
     import curses
 
-    def _run(stdscr: curses.window) -> tuple[int, bool, bool] | None:
-        return _avd_picker_impl(stdscr, avds, writable, detach)
+    def _run(stdscr: curses.window) -> tuple[int, Options] | None:
+        return _avd_picker_impl(stdscr, avds, writable, detach, public_dns)
 
     return curses.wrapper(_run)
 
@@ -30,7 +42,8 @@ def _avd_picker_impl(
     avds: list[str],
     writable: bool,
     detach: bool,
-) -> tuple[int, bool, bool] | None:
+    public_dns: bool,
+) -> tuple[int, Options] | None:
     import curses
 
     curses.curs_set(0)
@@ -44,6 +57,7 @@ def _avd_picker_impl(
     top = 0
     ws = writable
     dt = detach
+    dns = public_dns
 
     def draw() -> None:
         nonlocal top
@@ -52,7 +66,7 @@ def _avd_picker_impl(
 
         title = "Please select emulator"
         stdscr.addstr(0, 0, title, curses.A_BOLD)
-        hint = "j/k move | Enter start | w writable | d detach | q quit"
+        hint = "j/k move | Enter start | w writable | d detach | n public DNS | q quit"
         stdscr.addstr(1, 0, hint, curses.color_pair(3))
 
         body_row = 3
@@ -78,10 +92,17 @@ def _avd_picker_impl(
 
         ws_mark = "[x]" if ws else "[ ]"
         dt_mark = "[x]" if dt else "[ ]"
+        dns_mark = "[x]" if dns else "[ ]"
         with contextlib.suppress(curses.error):
             stdscr.addstr(sep_row + 1, 0, f"  {ws_mark} w  writable-system", curses.color_pair(3))
             stdscr.addstr(
                 sep_row + 2, 0, f"  {dt_mark} d  detach (background)", curses.color_pair(3)
+            )
+            stdscr.addstr(
+                sep_row + 3,
+                0,
+                f"  {dns_mark} n  public DNS ({PUBLIC_DNS}); restarts it if running",
+                curses.color_pair(3),
             )
 
         stdscr.refresh()
@@ -104,8 +125,10 @@ def _avd_picker_impl(
             ws = not ws
         elif key == ord("d"):
             dt = not dt
+        elif key == ord("n"):
+            dns = not dns
         elif key in (curses.KEY_ENTER, 10, 13) or key == ord("o"):
-            return (cursor, ws, dt)
+            return (cursor, (ws, dt, dns))
         elif key in (ord("q"), 27):
             return None
 
@@ -125,6 +148,11 @@ def main() -> None:
         action="store_true",
         help="block terminal until emulator exits (default: detach)",
     )
+    parser.add_argument(
+        "--public-dns",
+        action="store_true",
+        help=f"start with -dns-server {PUBLIC_DNS}, restarting the AVD if it is running (preselects the toggle)",
+    )
     add_logging_flags(parser)
     args = parser.parse_args()
     configure_from_args(args)
@@ -142,16 +170,29 @@ def main() -> None:
         log.warning("no emulator AVDs configured")
         return
 
-    result = _pick_avd(avds, writable=args.writable_system, detach=not args.foreground)
+    result = _pick_avd(
+        avds,
+        writable=args.writable_system,
+        detach=not args.foreground,
+        public_dns=args.public_dns,
+    )
     if result is None:
         return
-    idx, ws, dt = result
+    idx, (ws, dt, dns) = result
     avd = avds[idx]
     log.info("%s selected", avd)
 
     cmd = ["emulator", "-avd", avd]
     if ws:
         cmd.append("-writable-system")
+    if dns:
+        cmd += ["-dns-server", PUBLIC_DNS]
+        running = find_emulator_serial(avd)
+        if running:
+            log.info("%s is running as %s; stopping it to restart with public DNS", avd, running)
+            if not kill_emulator(running):
+                log.error("could not stop %s; not starting a second copy", running)
+                sys.exit(1)
 
     if dt:
         log.info("starting emulator in background")
