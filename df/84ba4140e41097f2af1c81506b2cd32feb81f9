@@ -1,0 +1,27 @@
+.agents/skills/_shared/CONVENTIONS.md
+  s_0c46fab26a34b0::t_6ebb705e2fb136 187
+src/toolscripts/adb/__init__.py
+  s_0c46fab26a34b0::t_6f242d91611dff 4,6
+src/toolscripts/adb/emulators.py
+  s_0c46fab26a34b0::t_d9b726d459d225 1-45
+src/toolscripts/commands/android/emulator.py
+  s_0c46fab26a34b0::t_9132b12bdc1cdc 10,17-19,21-30,34-35,45-46,60,69,95,101-106,128-129,131,151-155,173-178,181,188-195
+tests/test_adb_emulators.py
+  s_0c46fab26a34b0::t_711095fd4ee913 1-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "df84ba4140e41097f2af1c81506b2cd32feb81f9",
+  "prompts": {},
+  "sessions": {
+    "s_0c46fab26a34b0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33ff79b5-ea03-4dcd-a637-401af2da3f99",
+        "model": "unknown"
+      },
+      "human_author": "Jie Meng <jmengxy@gmail.com>"
+    }
+  }
+}
